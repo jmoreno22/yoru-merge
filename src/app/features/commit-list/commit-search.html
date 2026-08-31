@@ -1,0 +1,42 @@
+<ng-icon
+  name="lucideSearch"
+  size="14px"
+  class="shrink-0 text-[var(--app-text-muted)]"
+  aria-hidden="true"
+/>
+<input
+  #field
+  type="search"
+  placeholder="Search commits or path:src/app"
+  title="Add path:src/app to keep only commits touching that path. Quote it when it has spaces: path:&quot;my docs&quot;."
+  data-testid="commit-search-input"
+  aria-label="Search commits. Add path: followed by a path to filter by file."
+  [attr.aria-busy]="isSearching()"
+  [value]="query()"
+  (input)="onInput($any($event.target).value)"
+  (keydown.escape)="onEscape()"
+  class="h-[24px] min-w-0 flex-1 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-[12px] text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+/>
+@if (isActive()) {
+  <span
+    class="shrink-0 font-mono text-[10.5px] tabular-nums text-[var(--app-text-faint)]"
+    data-testid="commit-search-count"
+    role="status"
+  >
+    @if (isSearching()) {
+      Searching…
+    } @else {
+      {{ countLabel() }}
+    }
+  </span>
+  <button
+    type="button"
+    (click)="onClear()"
+    data-testid="commit-search-clear"
+    aria-label="Clear search"
+    title="Clear search (Esc)"
+    class="inline-flex size-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    <ng-icon name="lucideX" size="14px" aria-hidden="true" />
+  </button>
+}

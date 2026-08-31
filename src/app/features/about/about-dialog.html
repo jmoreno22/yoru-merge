@@ -1,0 +1,6 @@
+<yoru-dialog [open]="open()" title="About YoruMerge" size="sm" (closed)="closed.emit()">
+  <app-about-panel dialog-body />
+  <yoru-button dialog-actions variant="primary" (click)="closed.emit()">
+    Close
+  </yoru-button>
+</yoru-dialog>

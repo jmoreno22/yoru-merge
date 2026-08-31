@@ -1,0 +1,44 @@
+# Node
+/node_modules
+/dist
+/out-tsc
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log
+
+# Angular
+/.angular/cache
+/coverage
+
+# Rust / Tauri
+/src-tauri/target
+*.dmg
+*.deb
+*.AppImage
+*.msi
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Agent / workflow metadata (local only, never part of the app)
+.sisyphus/
+.agents/
+.claude/
+skills-lock.json
+**/.sisyphus/
+**/.agents/
+**/.claude/

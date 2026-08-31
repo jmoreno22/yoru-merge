@@ -1,0 +1,207 @@
+<yoru-section-header label="Refs" [count]="localCount()">
+  <yoru-button
+    actions
+    size="sm"
+    variant="ghost"
+    icon="lucideGitBranchPlus"
+    aria-label="Create branch"
+    title="Create branch"
+    [disabled]="!service.isOpen()"
+    (click)="onCreateBranch()"
+  />
+</yoru-section-header>
+
+@if (!service.isOpen()) {
+  <yoru-empty-state
+    icon="lucideGitBranch"
+    title="No repository open"
+    hint="Open a repository to browse its branches, tags and stashes."
+    kanji="枝"
+    data-testid="sidebar-empty"
+  />
+} @else {
+  <div class="relative shrink-0 px-3 py-2">
+    <ng-icon
+      name="lucideSearch"
+      size="13px"
+      class="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[var(--app-text-faint)]"
+      aria-hidden="true"
+    />
+    <input
+      type="text"
+      inputmode="search"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="Filter refs"
+      aria-label="Filter refs"
+      data-testid="refs-filter"
+      [value]="filter()"
+      (input)="onFilter($event)"
+      (keydown.escape)="clearFilter()"
+      (keydown.arrowdown)="focusFirstRow()"
+      class="h-7 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] pl-6 pr-2 font-mono text-[11px] text-[var(--app-text)] transition-colors placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan/60"
+    />
+  </div>
+
+  @if (nodes().length === 0) {
+    @if (filter().trim().length > 0) {
+      <yoru-empty-state
+        icon="lucideSearch"
+        title="No matching ref"
+        [hint]="'Nothing matches ' + filter() + '. Press Escape to clear the filter.'"
+        data-testid="refs-tree-empty"
+      />
+    } @else {
+      <yoru-empty-state
+        icon="lucideGitBranch"
+        title="No refs yet"
+        hint="Branches, tags and stashes appear here as you create them."
+        kanji="枝"
+        data-testid="refs-tree-empty"
+      />
+    }
+  } @else {
+    <div
+      role="tree"
+      aria-label="Repository refs"
+      data-testid="refs-tree"
+      class="neon-scroll min-h-0 flex-1 overflow-y-auto pb-2"
+      (keydown)="onKeydown($event)"
+    >
+      @for (node of nodes(); track node.id) {
+        <div
+          role="treeitem"
+          [attr.data-node-id]="node.id"
+          [attr.data-testid]="'refs-row-' + node.id"
+          [attr.aria-level]="node.level + 1"
+          [attr.aria-posinset]="node.posInSet"
+          [attr.aria-setsize]="node.setSize"
+          [attr.aria-expanded]="isExpandable(node) ? expanded(node) : null"
+          [attr.aria-current]="node.kind === 'branch' && node.current ? 'true' : null"
+          [tabindex]="node.id === activeId() ? 0 : -1"
+          [title]="rowTitle(node)"
+          [class]="rowClass(node)"
+          [style.padding-left.px]="indentPx(node)"
+          [appDragDrop]="payloadFor(node)"
+          (focus)="onRowFocus(node)"
+          (click)="onClick(node, $event)"
+          (dblclick)="onDoubleClick(node)"
+          (contextmenu)="onContextMenu(node, $event)"
+        >
+          @switch (node.kind) {
+            @case ('section') {
+              <yoru-section-header
+                class="pointer-events-none w-full"
+                [label]="node.label"
+                [count]="node.count"
+              >
+                <ng-icon
+                  actions
+                  [name]="node.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
+                  size="14px"
+                  class="text-[var(--app-text-faint)]"
+                  aria-hidden="true"
+                />
+              </yoru-section-header>
+            }
+
+            @case ('folder') {
+              <ng-icon
+                [name]="node.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
+                size="14px"
+                class="shrink-0 text-[var(--app-text-faint)]"
+                aria-hidden="true"
+              />
+              <ng-icon
+                [name]="node.remote ? 'lucideGlobe' : 'lucideFolder'"
+                size="14px"
+                class="shrink-0 text-neon-violet"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 flex-1 truncate">{{ node.label }}</span>
+              <span class="shrink-0 text-[10.5px] text-[var(--app-text-faint)]">
+                {{ node.count }}
+              </span>
+            }
+
+            @case ('branch') {
+              <span class="w-3.5 shrink-0" aria-hidden="true"></span>
+              <ng-icon
+                [name]="
+                  node.current
+                    ? 'lucideCircleDot'
+                    : node.remote
+                      ? 'lucideCloudDownload'
+                      : 'lucideGitBranch'
+                "
+                size="14px"
+                class="shrink-0"
+                [class.text-neon-cyan]="node.current"
+                [class.text-[var(--app-text-muted)]]="!node.current"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 shrink truncate">{{ node.label }}</span>
+              @if (node.branch.upstream; as upstream) {
+                <span
+                  class="min-w-0 shrink truncate text-[10.5px] text-[var(--app-text-faint)]"
+                >
+                  {{ upstream }}
+                </span>
+              }
+              <span class="ml-auto flex shrink-0 items-center gap-1">
+                @if (node.branch.ahead > 0) {
+                  <span
+                    class="inline-flex items-center gap-px text-[10.5px] text-neon-violet"
+                    [attr.aria-label]="node.branch.ahead + ' commits ahead of upstream'"
+                    [title]="node.branch.ahead + ' commits ahead of upstream'"
+                  >
+                    <ng-icon name="lucideArrowUp" size="11px" aria-hidden="true" />
+                    {{ node.branch.ahead }}
+                  </span>
+                }
+                @if (node.branch.behind > 0) {
+                  <span
+                    class="inline-flex items-center gap-px text-[10.5px] text-neon-pink"
+                    [attr.aria-label]="node.branch.behind + ' commits behind upstream'"
+                    [title]="node.branch.behind + ' commits behind upstream'"
+                  >
+                    <ng-icon name="lucideArrowDown" size="11px" aria-hidden="true" />
+                    {{ node.branch.behind }}
+                  </span>
+                }
+              </span>
+            }
+
+            @case ('tag') {
+              <span class="w-3.5 shrink-0" aria-hidden="true"></span>
+              <ng-icon
+                name="lucideTag"
+                size="14px"
+                class="shrink-0 text-[var(--app-text-muted)]"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 flex-1 truncate">{{ node.label }}</span>
+              <span class="shrink-0 text-[10.5px] text-[var(--app-text-faint)]">
+                {{ shortSha(node.tag.sha) }}
+              </span>
+            }
+
+            @case ('stash') {
+              <span class="w-3.5 shrink-0" aria-hidden="true"></span>
+              <ng-icon
+                name="lucideArchive"
+                size="14px"
+                class="shrink-0 text-[var(--app-text-muted)]"
+                aria-hidden="true"
+              />
+              <span class="shrink-0 text-[10.5px] text-neon-violet">
+                {{ node.stash.index }}
+              </span>
+              <span class="min-w-0 flex-1 truncate">{{ node.label }}</span>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+}

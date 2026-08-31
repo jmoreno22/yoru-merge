@@ -1,0 +1,136 @@
+@if (file(); as currentFile) {
+  <div
+    class="flex h-full min-h-0 flex-col bg-[var(--app-bg)]"
+    data-testid="blame-viewer"
+    role="region"
+    [attr.aria-label]="
+      'Blame for ' +
+      currentFile +
+      (revLabel() ? ' at ' + revLabel() : ' in the working tree')
+    "
+  >
+    <header
+      class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
+    >
+      <ng-icon
+        name="lucideUser"
+        size="16px"
+        class="shrink-0 text-neon-cyan"
+        aria-hidden="true"
+      />
+      <span
+        class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+      >
+        Blame
+      </span>
+      <span
+        class="min-w-0 truncate font-mono text-xs text-[var(--app-text)]"
+        [title]="currentFile"
+      >
+        {{ currentFile }}
+      </span>
+      @if (revLabel(); as short) {
+        <span
+          class="shrink-0 font-mono text-[11px] text-neon-violet"
+          data-testid="blame-rev"
+          [title]="'Blamed as of ' + rev()"
+        >
+          at {{ short }}
+        </span>
+      } @else {
+        <span
+          class="shrink-0 font-mono text-[11px] text-[var(--app-text-faint)]"
+          data-testid="blame-rev"
+        >
+          working tree
+        </span>
+      }
+      @if (rows().length > 0) {
+        <span
+          class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-faint)]"
+        >
+          {{ rows().length }} lines
+        </span>
+      }
+      <span class="flex-1"></span>
+      <button
+        type="button"
+        class="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+        data-testid="blame-close"
+        aria-label="Close blame (Escape)"
+        title="Close (Escape)"
+        (click)="onClose()"
+      >
+        <ng-icon name="lucideX" size="14px" aria-hidden="true" />
+      </button>
+    </header>
+
+    @if (error(); as message) {
+      <div class="flex flex-1 flex-col" data-testid="blame-error">
+        <yoru-empty-state
+          icon="lucideTriangleAlert"
+          title="Blame failed"
+          [hint]="message"
+        />
+      </div>
+    } @else if (loading()) {
+      <div class="flex flex-col gap-2 p-4" aria-busy="true">
+        @for (row of skeletonRows; track row) {
+          <yoru-skeleton [width]="row % 3 === 0 ? '68%' : '92%'" height="12px" />
+        }
+      </div>
+    } @else if (isEmpty()) {
+      <div class="flex flex-1 flex-col" data-testid="blame-empty">
+        <yoru-empty-state
+          icon="lucideFile"
+          title="Nothing to blame"
+          hint="This file is empty or has no committed history yet."
+        />
+      </div>
+    } @else {
+      <cdk-virtual-scroll-viewport
+        class="neon-scroll min-h-0 flex-1 bg-[var(--app-surface)]"
+        data-testid="blame-content"
+        [itemSize]="rowHeight"
+      >
+        <div
+          *cdkVirtualFor="let row of rows(); trackBy: trackRow"
+          class="bl-row"
+          [class.bl-group-start]="row.first"
+          [attr.data-testid]="'blame-line-' + row.line.line_no"
+          (contextmenu)="onCommitMenu($event, row)"
+        >
+          @if (row.first) {
+            <button
+              type="button"
+              class="bl-gutter bl-gutter-button"
+              [title]="row.line.sha + ' — ' + row.line.message"
+              [attr.aria-label]="
+                'Go to commit ' + row.shortSha + ' by ' + row.line.author
+              "
+              (click)="onSelectCommit(row.line.sha)"
+            >
+              <yoru-avatar
+                [name]="row.line.author"
+                [seed]="row.line.author"
+                [size]="16"
+              />
+              <span class="bl-sha">{{ row.shortSha }}</span>
+              <span class="bl-author">{{ row.line.author }}</span>
+              <span class="bl-when">{{ row.when }}</span>
+            </button>
+          } @else {
+            <span class="bl-gutter bl-gutter-cont" aria-hidden="true">
+              <span class="bl-stripe"></span>
+            </span>
+          }
+
+          <span class="bl-lineno" [style.minWidth.ch]="lineNoWidth() + 2">
+            {{ row.line.line_no }}
+          </span>
+          <code class="bl-code">{{ row.line.content }}</code>
+        </div>
+      </cdk-virtual-scroll-viewport>
+    }
+  </div>
+}

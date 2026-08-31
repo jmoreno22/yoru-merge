@@ -1,0 +1,14 @@
+<button
+  [type]="type()"
+  [disabled]="disabled() || loading()"
+  [class]="buttonClass()"
+  [attr.aria-label]="ariaLabel()"
+  [attr.title]="title()"
+>
+  @if (loading()) {
+    <yoru-spinner [size]="14" />
+  } @else if (icon(); as name) {
+    <ng-icon [name]="name" size="14px" class="shrink-0" aria-hidden="true" />
+  }
+  <ng-content />
+</button>

@@ -1,0 +1,436 @@
+/* YoruMerge — Yoru Night design system.
+ * Source of truth: DESIGN.md at the workspace root. Update it first, then here.
+ */
+
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Fonts ────────────────────────────────────────────────────────────
+ *
+ * Self-hosted: a desktop app must render identically offline and on first
+ * launch, and a request to fonts.googleapis.com would also have to be opened
+ * up in the Tauri CSP.
+ *
+ * IBM Plex Sans and JetBrains Mono are variable fonts (one file covers the
+ * whole weight range); Zen Dots is static 400. Latin subset only — the
+ * fallback stacks cover anything outside it.
+ *
+ * `swap` for body text (never block reading a commit message on a font) and
+ * `block` for mono and display, where a fallback swap would reflow diff
+ * columns and the wordmark.
+ */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url("./assets/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: block;
+  src: url("./assets/fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Zen Dots";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("./assets/fonts/zen-dots-latin.woff2") format("woff2");
+}
+
+@theme {
+  /* Yoru — dark surfaces (background → border) */
+  --color-yoru-950: #050712;
+  --color-yoru-900: #080b18;
+  --color-yoru-800: #12162a;
+  --color-yoru-700: #1a2038;
+  --color-yoru-600: #252d4a;
+
+  /* Yuki — light surfaces */
+  --color-yuki-50: #f7faff;
+  --color-yuki-100: #eef4ff;
+  --color-yuki-200: #e3ecfb;
+  --color-yuki-300: #b9c8e8;
+
+  /* Ink — light text */
+  --color-ink-950: #101426;
+  --color-ink-700: #24314f;
+  --color-ink-600: #465a7f;
+
+  /* Moon — dark text */
+  --color-moon-50: #f4f8ff;
+  --color-moon-100: #ddeaff;
+  --color-moon-200: #afc8f7;
+  --color-moon-300: #7ea6ef;
+
+  /* Neon accents */
+  --color-neon-cyan: #00e5ff;
+  --color-neon-blue: #3b82ff;
+  --color-neon-violet: #9b5cff;
+  --color-neon-pink: #ff4fb8;
+
+  /* Sakura */
+  --color-sakura-300: #ff9bd2;
+  --color-sakura-400: #ff6fbe;
+  --color-sakura-500: #ff3fa4;
+
+  /* Git semantic */
+  --color-git-added: #35f2a2;
+  --color-git-modified: #ffd166;
+  --color-git-deleted: #ff4d5e;
+  --color-git-renamed: #00e5ff;
+  --color-git-conflict: #ff4fb8;
+
+  /* Typography */
+  --font-display: "Zen Dots", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body:
+    "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Cascadia Code", Consolas, "DejaVu Sans Mono", "Liberation Mono",
+    monospace;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Shadows. `shadow-panel` follows the theme through --app-shadow-panel, so a
+   * panel does not have to know which theme it is painted in. */
+  --shadow-panel: var(--app-shadow-panel);
+  --shadow-neon-cyan: 0 0 24px rgb(0 229 255 / 0.28);
+  --shadow-neon-pink: 0 0 24px rgb(255 79 184 / 0.25);
+  --shadow-light-panel: 0 18px 50px rgb(24 45 90 / 0.14);
+}
+
+/* ── Semantic tokens ──────────────────────────────────────────────────
+ *
+ * Referenced from templates as bg-[var(--app-surface)] etc. Components must
+ * never hardcode a hex value: these are the only theme-aware surface colours.
+ *
+ * --app-text        primary copy
+ * --app-text-muted  secondary copy: labels, metadata, inactive rows
+ * --app-text-faint  tertiary copy: hints, counts, disabled reasons.
+ *                   Calibrated to stay above WCAG AA 4.5:1 on every surface in
+ *                   its own theme, which is why it is a token and not an
+ *                   opacity modifier stacked on --app-text-muted.
+ * --app-conflict-text  Sakura *text* (conflict labels, banner titles, chips).
+ *                   Separate from --color-git-conflict, which stays the fill
+ *                   and border tone: #ff4fb8 as small text on a light surface
+ *                   is 2.97:1 (2.43:1 on its own /10 tint), so the light theme
+ *                   darkens it to the same hue at 5.4–6.7:1. Dark theme keeps
+ *                   #ff4fb8, which is already 5.4–6.6:1 there.
+ */
+:root {
+  color-scheme: light;
+  --app-bg: #f7faff;
+  --app-surface: #ffffff;
+  --app-surface-raised: #eef4ff;
+  --app-panel: #e3ecfb;
+  --app-border: #b9c8e8;
+  --app-text: #101426;
+  --app-text-muted: #465a7f;
+  --app-text-faint: #546889; /* ≥ 4.75:1 on every light surface */
+  --app-conflict-text: #b0116a; /* same hue as #ff4fb8, ≥ 5.4:1 on light */
+  --app-shadow-panel: 0 18px 50px rgb(24 45 90 / 0.14);
+}
+
+.dark {
+  color-scheme: dark;
+  --app-bg: #050712;
+  --app-surface: #080b18;
+  --app-surface-raised: #12162a;
+  --app-panel: #1a2038;
+  --app-border: #252d4a;
+  --app-text: #f4f8ff;
+  --app-text-muted: #afc8f7;
+  --app-text-faint: #7e93b8; /* ≥ 5.16:1 on every dark surface */
+  --app-conflict-text: #ff4fb8; /* ≥ 5.4:1 on every dark surface */
+  --app-shadow-panel: 0 24px 80px rgb(0 0 0 / 0.45);
+}
+
+/* ── Z-index scale ────────────────────────────────────────────────────
+ *
+ * Four layers, in stacking order. Nothing in the app may invent a z-index
+ * outside this scale; use z-[var(--z-…)].
+ *
+ * --z-dropdown  anchored to something on the page and dismissed by clicking
+ *               away: context menus, submenus, toolbar dropdowns, autocomplete.
+ * --z-overlay   floats above a dropdown but does not take focus: tooltips,
+ *               drag ghosts, the command-palette backdrop.
+ * --z-modal     takes focus and blocks the app behind it: dialogs, the merge
+ *               resolver, the command palette.
+ * --z-toast     always visible, never blocks: notifications. Above modals so a
+ *               failure raised by a dialog action is still readable.
+ */
+:root {
+  --z-dropdown: 1000;
+  --z-overlay: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+}
+
+/* ── Density ──────────────────────────────────────────────────────────
+ *
+ * The layout contract shared by the commit list, the refs panel and the
+ * working-changes list. --row-h MUST match the CDK virtual scroll `itemSize`
+ * and the branch graph row height, or the graph lanes drift from their rows.
+ */
+:root {
+  --row-h: 34px;
+  --file-row-h: 30px;
+  --ref-row-h: 30px;
+  --panel-head-h: 34px;
+  --panel-pad: 16px;
+
+  /* Window chrome. The shell reads these so compact mode can shrink them. */
+  --titlebar-h: 38px;
+  --toolbar-h: 48px;
+  --rail-w: 48px;
+  --statusbar-h: 26px;
+}
+
+/* Compact density, toggled by SettingsDialogService writing data-density.
+ *
+ * --row-h and --file-row-h stay put on purpose: both are pinned to a CDK
+ * virtual-scroll `itemSize` declared in TypeScript (COMMIT_ROW_HEIGHT,
+ * FILE_ROW_HEIGHT), and a token that disagrees with `itemSize` misplaces every
+ * row and drifts the graph lanes off their commits.
+ */
+:root[data-density="compact"] {
+  --ref-row-h: 26px;
+  --panel-head-h: 30px;
+  --panel-pad: 10px;
+
+  --titlebar-h: 32px;
+  --toolbar-h: 40px;
+  --rail-w: 44px;
+  --statusbar-h: 24px;
+}
+
+/* ── Branch graph lanes ───────────────────────────────────────────────
+ *
+ * Read once per theme by the canvas renderer (getComputedStyle is expensive
+ * per frame). Lane colour is stable per branch within a session.
+ */
+:root {
+  --graph-lane-1: #00e5ff;
+  --graph-lane-2: #9b5cff;
+  --graph-lane-3: #ff4fb8;
+  --graph-lane-4: #35f2a2;
+  --graph-lane-5: #ffd166;
+  --graph-lane-6: #3b82ff;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--font-body);
+}
+
+/* Base UI size. Deliberately on <body>, not <html>: `rem` (and therefore every
+ * Tailwind spacing utility) must stay anchored to the 16px root. */
+body {
+  font-size: 13px;
+}
+
+/* Theme switches should read as a dim, not a cut. */
+html {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+/* Focus is always visible and always cyan — the one ring in the app. */
+:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Motion utilities ─────────────────────────────────────────────────
+ *
+ * Kept global rather than in component CSS so any feature can apply
+ * `.skeleton` to a placeholder without re-declaring the keyframes.
+ */
+
+/* Skeleton shimmer — for loading placeholders. */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--app-panel) 25%,
+    var(--app-surface-raised) 50%,
+    var(--app-panel) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: var(--radius-xs);
+}
+
+/* Fade-in for transient overlays (palette, dialogs, menus, toasts). */
+@keyframes yoru-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.yoru-fade-in {
+  animation: yoru-fade-in 150ms ease-out both;
+}
+
+/* Subtle pulsing glow — used by the fetch progress bar to suggest activity
+ * even when the percentage hasn't moved in a few hundred ms. */
+@keyframes yoru-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(0 229 255 / 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 0 rgb(0 229 255 / 0.45);
+  }
+}
+
+.yoru-pulse {
+  animation: yoru-pulse-glow 1.8s ease-in-out infinite;
+}
+
+/* ── `.neon-scroll` — Yoru Night subtle-neon scrollbar utility ────────
+ *
+ * Shared scrollbar chrome for any scrollable surface inside the app
+ * (cdk-virtual-scroll-viewport, <ul>, <div>, <pre>, …). Apply by adding
+ * `class="neon-scroll"` to the element that owns the overflow.
+ *
+ * Design intent: "neon pero no tan fuerte" — the resting state is a dark
+ * border tinted with a low-intensity cyan wash, the hover state lifts to a
+ * stronger cyan with a soft inner glow. Canonical spec → DESIGN.md ›
+ * Components › Scrollbars.
+ *
+ * Feature CSS MUST NOT redeclare its own `::-webkit-scrollbar` rules — the
+ * utility owns the chrome so commit lists, working changes, diffs, blame and
+ * file history stay visually coherent.
+ */
+
+.neon-scroll {
+  /* Firefox / GTK parity — thin track, soft cyan-tinted thumb. */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-neon-cyan) 32%, var(--app-border))
+    transparent;
+}
+
+/* WebKit / Chromium (Tauri ships WebView2 on Windows and WebKitGTK on Linux —
+ * both honor the ::-webkit-scrollbar pseudo-elements). */
+.neon-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.neon-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.neon-scroll::-webkit-scrollbar-thumb {
+  /* Resting: dark border tinted with a low-intensity cyan wash. The 2px
+   * transparent inset border + padding-box clip narrows the visible thumb to
+   * ~6px so it still reads "thin" even though the gutter is 10px. */
+  background-color: color-mix(in srgb, var(--color-neon-cyan) 18%, var(--app-border));
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.neon-scroll::-webkit-scrollbar-thumb:hover {
+  /* Hover: stronger cyan tint + soft inner glow. NOT full saturation — the
+   * design intent is "neon but not harsh" during long sessions. */
+  background-color: color-mix(in srgb, var(--color-neon-cyan) 55%, var(--app-border));
+  background-clip: padding-box;
+  box-shadow: 0 0 6px rgb(0 229 255 / 0.3);
+}
+
+.neon-scroll::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--color-neon-cyan) 70%, var(--app-border));
+  background-clip: padding-box;
+  box-shadow: 0 0 6px rgb(0 229 255 / 0.3);
+}
+
+.neon-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── Drag-and-drop affordances ────────────────────────────────────────
+ *
+ * Used by the `[appDragDrop]` directive on commit rows and branch rows. The
+ * directive owns the `.drag-over` toggle; CSS owns the look.
+ *
+ * An inset box-shadow (not `border:`, which would change box sizing) keeps the
+ * rows in the CDK virtual viewport pixel-perfect so the lane glyphs in the
+ * adjacent branch graph canvas stay vertically aligned.
+ *
+ * `.yoru-dragging` is added to <body> for the lifetime of any drag and
+ * suppresses native text selection across the whole window, so the cursor
+ * doesn't drag a stray text range from a <span> inside the row.
+ */
+.drag-over {
+  box-shadow:
+    inset 0 0 0 1px var(--color-neon-cyan),
+    0 0 12px 0 rgb(0 229 255 / 0.35);
+  background-color: color-mix(
+    in srgb,
+    var(--color-neon-cyan) 8%,
+    var(--app-panel)
+  ) !important;
+  transition:
+    box-shadow 80ms ease,
+    background-color 80ms ease;
+}
+
+body.yoru-dragging,
+body.yoru-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: grabbing !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* biome-ignore lint/style/noDescendingSpecificity: a universal accessibility
+     override is meant to follow the rules it neutralises, and every
+     declaration below carries !important. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

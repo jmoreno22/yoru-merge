@@ -1,0 +1,70 @@
+<yoru-dialog
+  [open]="true"
+  [title]="spec().title"
+  [size]="spec().size ?? 'sm'"
+  [tone]="spec().tone ?? 'default'"
+  [dismissible]="spec().tone !== 'danger'"
+  (closed)="cancel()"
+>
+  <div dialog-body class="flex flex-col gap-3">
+    @if (spec().body; as body) {
+      <p class="text-[13px] leading-relaxed text-[var(--app-text)]">{{ body }}</p>
+    }
+
+    @for (row of spec().rows ?? []; track row.label) {
+      <div
+        class="flex items-baseline justify-between gap-4 border-b border-[var(--app-border)] pb-1.5 last:border-b-0"
+      >
+        <span
+          class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+          >{{ row.label }}</span
+        >
+        <span class="truncate font-mono text-[12px] text-[var(--app-text)]">{{
+          row.value
+        }}</span>
+      </div>
+    }
+
+    @for (field of fields(); track field.key; let first = $first) {
+      <yoru-field [label]="field.label" [hint]="field.hint ?? ''">
+        @if (field.multiline) {
+          <textarea
+            #control
+            rows="6"
+            class="neon-scroll field-input resize-y"
+            [attr.placeholder]="field.placeholder ?? null"
+            [attr.aria-required]="field.required ? 'true' : null"
+            [value]="valueOf(field)"
+            (input)="onInput(field, $any($event.target).value)"
+          ></textarea>
+        } @else {
+          <input
+            #control
+            type="text"
+            spellcheck="false"
+            class="field-input"
+            [attr.placeholder]="field.placeholder ?? null"
+            [attr.aria-required]="field.required ? 'true' : null"
+            [value]="valueOf(field)"
+            (input)="onInput(field, $any($event.target).value)"
+            (keydown.enter)="onFieldEnter(field)"
+          />
+        }
+      </yoru-field>
+    }
+  </div>
+
+  @if (spec().cancelLabel !== null) {
+    <yoru-button dialog-actions variant="ghost" (click)="cancel()">
+      {{ spec().cancelLabel ?? 'Cancel' }}
+    </yoru-button>
+  }
+  <yoru-button
+    dialog-actions
+    [variant]="spec().tone === 'danger' ? 'danger' : 'primary'"
+    [disabled]="!canConfirm()"
+    (click)="confirm()"
+  >
+    {{ spec().confirmLabel }}
+  </yoru-button>
+</yoru-dialog>

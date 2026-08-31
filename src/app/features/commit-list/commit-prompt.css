@@ -1,0 +1,18 @@
+.field-input {
+  width: 100%;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--app-text);
+}
+
+.field-input::placeholder {
+  color: var(--app-text-faint);
+}
+
+.field-input:focus {
+  border-color: var(--color-neon-cyan);
+}

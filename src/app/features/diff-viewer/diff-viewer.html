@@ -1,0 +1,203 @@
+@if (!hasDiff()) {
+  <div class="flex h-full flex-col bg-[var(--app-bg)]">
+    <yoru-empty-state
+      icon="lucideFileDiff"
+      title="No diff selected"
+      hint="Pick a commit or a changed file to see its patch here."
+      kanji="夜"
+    />
+  </div>
+} @else {
+  <div class="flex h-full min-h-0 w-full flex-col bg-[var(--app-bg)]">
+    @if (heading(); as head) {
+      <header
+        class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
+      >
+        <span
+          class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+          data-testid="diff-source-chip"
+        >
+          {{ head.chip }}
+        </span>
+
+        <span
+          class="min-w-0 truncate font-mono text-xs"
+          [title]="head.title"
+          data-testid="diff-source-label"
+        >
+          <span class="text-[var(--app-text-faint)]">{{ head.dirname }}</span
+          ><span class="text-[var(--app-text)]">{{ head.basename }}</span>
+        </span>
+
+        <button
+          type="button"
+          class="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+          [attr.aria-label]="'Copy ' + head.title"
+          title="Copy"
+          (click)="copyHeading()"
+        >
+          <ng-icon name="lucideCopy" size="14px" aria-hidden="true" />
+        </button>
+
+        @if (summary(); as stats) {
+          <span
+            class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-muted)]"
+          >
+            {{ stats.files }} {{ stats.files === 1 ? "file" : "files" }}
+          </span>
+          <span class="shrink-0 font-mono text-[11px] tabular-nums text-git-added">
+            +{{ stats.additions }}
+          </span>
+          <span class="shrink-0 font-mono text-[11px] tabular-nums text-git-deleted">
+            -{{ stats.deletions }}
+          </span>
+        }
+
+        <span class="flex-1"></span>
+
+        @if (currentFile(); as file) {
+          <yoru-button
+            size="sm"
+            variant="ghost"
+            icon="lucideUser"
+            (click)="openBlame.emit(file)"
+          >
+            Blame
+          </yoru-button>
+          <yoru-button
+            size="sm"
+            variant="ghost"
+            icon="lucideHistory"
+            (click)="openHistory.emit(file)"
+          >
+            History
+          </yoru-button>
+          <yoru-button
+            size="sm"
+            variant="ghost"
+            icon="lucideExternalLink"
+            (click)="onOpenFile(file)"
+          >
+            Open
+          </yoru-button>
+          <yoru-button
+            size="sm"
+            variant="ghost"
+            icon="lucideFolderOpen"
+            (click)="onRevealFile(file)"
+          >
+            Reveal
+          </yoru-button>
+        }
+      </header>
+    }
+
+    <div
+      class="neon-scroll flex h-8 shrink-0 items-center gap-2 overflow-x-auto border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
+    >
+      <yoru-segmented
+        [options]="layoutOptions"
+        [value]="viewMode()"
+        (valueChange)="onLayout($event)"
+        ariaLabel="Diff layout"
+      />
+
+      <button
+        type="button"
+        class="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-xs border border-[var(--app-border)] px-2 text-xs transition-colors hover:bg-[var(--app-panel)]"
+        [class]="
+          ignoreWhitespace()
+            ? 'text-neon-cyan border-neon-cyan/50'
+            : 'text-[var(--app-text-muted)]'
+        "
+        [attr.aria-pressed]="ignoreWhitespace()"
+        title="Ignore whitespace-only changes"
+        (click)="toggleWhitespace()"
+      >
+        <ng-icon
+          [name]="ignoreWhitespace() ? 'lucideCheck' : 'lucideSpace'"
+          size="14px"
+          aria-hidden="true"
+        />
+        Whitespace
+      </button>
+
+      <button
+        type="button"
+        class="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-xs border border-[var(--app-border)] px-2 text-xs transition-colors hover:bg-[var(--app-panel)]"
+        [class]="
+          wordWrap()
+            ? 'text-neon-cyan border-neon-cyan/50'
+            : 'text-[var(--app-text-muted)]'
+        "
+        [attr.aria-pressed]="wordWrap()"
+        title="Wrap long lines"
+        (click)="toggleWrap()"
+      >
+        <ng-icon
+          [name]="wordWrap() ? 'lucideCheck' : 'lucideWrapText'"
+          size="14px"
+          aria-hidden="true"
+        />
+        Wrap
+      </button>
+
+      <span
+        class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+      >
+        Context
+      </span>
+      <yoru-segmented
+        [options]="contextOptions"
+        [value]="contextValue()"
+        (valueChange)="onContext($event)"
+        ariaLabel="Context lines"
+      />
+
+      <span class="flex-1"></span>
+
+      <span
+        class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-faint)]"
+        data-testid="diff-hunk-counter"
+      >
+        {{ hunkPosition() }} / {{ hunkTotal() }}
+      </span>
+      <button
+        type="button"
+        class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+        aria-label="Previous hunk (p)"
+        title="Previous hunk (p)"
+        [disabled]="hunkTotal() === 0"
+        (click)="goToPreviousHunk()"
+      >
+        <ng-icon name="lucideChevronUp" size="14px" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+        aria-label="Next hunk (n)"
+        title="Next hunk (n)"
+        [disabled]="hunkTotal() === 0"
+        (click)="goToNextHunk()"
+      >
+        <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
+      </button>
+    </div>
+
+    <app-diff-view
+      class="min-h-0 flex-1"
+      [text]="diffText()"
+      [layout]="viewMode()"
+      [ignoreWhitespace]="ignoreWhitespace()"
+      [wordWrap]="wordWrap()"
+      [contextLines]="contextLines()"
+      [imageContext]="imageContext()"
+      [stageTarget]="stageTarget()"
+      [busy]="busy()"
+      (hunkAction)="onHunkAction($event)"
+      (lineAction)="onLineAction($event)"
+      (openFile)="onOpenFile($event)"
+      (revealFile)="onRevealFile($event)"
+    />
+  </div>
+}

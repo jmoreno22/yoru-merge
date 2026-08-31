@@ -1,0 +1,24 @@
+<div
+  class="flex h-screen w-screen flex-col overflow-hidden bg-[var(--app-bg)] text-[var(--app-text)] [background-image:radial-gradient(circle_at_top_right,rgba(0,229,255,0.05),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,79,184,0.04),transparent_30%)] dark:[background-image:radial-gradient(circle_at_top_right,rgba(0,229,255,0.16),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,79,184,0.10),transparent_30%)]"
+  data-testid="app-shell"
+>
+  <app-titlebar />
+  <app-toolbar />
+
+  <div class="flex min-h-0 min-w-0 flex-1">
+    @if (repo.isOpen()) {
+      <app-rail />
+    }
+    <app-main-content class="flex-1" />
+  </div>
+
+  <app-status-bar />
+
+  <!-- Every dialog, the command palette and the settings sheet render here. -->
+  <app-dialog-host />
+
+  <!-- Drag-and-drop drop menu; it has no template of its own. -->
+  <app-drop-action-menu />
+
+  <yoru-toast-host />
+</div>

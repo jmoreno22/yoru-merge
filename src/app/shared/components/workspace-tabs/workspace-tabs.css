@@ -1,0 +1,7 @@
+/* The strip scrolls horizontally when many repositories are open, but a
+ * scrollbar inside a 38 px titlebar would eat a third of the row, so this is
+ * the one place .neon-scroll's track is hidden on Chromium. Wheel and keyboard
+ * scrolling still work. */
+:host [data-testid="workspace-tabs-bar"]::-webkit-scrollbar {
+  height: 0;
+}

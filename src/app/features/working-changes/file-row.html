@@ -1,0 +1,84 @@
+<ng-icon
+  [name]="statusIcon()"
+  size="14px"
+  class="shrink-0"
+  [class]="statusClass()"
+  [style.marginLeft.px]="indent()"
+  aria-hidden="true"
+/>
+<span class="sr-only">{{ label() }}</span>
+
+<span class="flex min-w-0 flex-1 items-center gap-1 font-mono">
+  @if (entry().oldPath; as oldPath) {
+    <span class="truncate text-[var(--app-text-faint)]">{{ oldPath }}</span>
+    <ng-icon
+      name="lucideChevronRight"
+      size="12px"
+      class="shrink-0 text-[var(--app-text-faint)]"
+      aria-hidden="true"
+    />
+    <span class="sr-only">renamed to</span>
+  }
+  @if (row().dir) {
+    <span class="shrink-0 truncate text-[var(--app-text-faint)]">{{ row().dir }}</span>
+  }
+  <span class="truncate text-[var(--app-text)]">{{ row().name }}</span>
+</span>
+
+@if (submodule()) {
+  <!-- Icon-only: the 30px row has no width to spare, so the word is sr-only. -->
+  <span
+    title="Submodule"
+    data-testid="submodule-badge"
+    class="flex size-4 shrink-0 items-center justify-center rounded-full border border-neon-violet/40 bg-neon-violet/10 text-neon-violet"
+  >
+    <ng-icon name="lucidePackage" size="10px" aria-hidden="true" />
+    <span class="sr-only">submodule</span>
+  </span>
+}
+
+@if (untracked()) {
+  <span
+    class="shrink-0 rounded-full border border-[var(--app-border)] px-1.5 font-mono text-[10px] text-[var(--app-text-faint)]"
+    >untracked</span
+  >
+}
+
+<span
+  class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+>
+  @if (conflicted()) {
+    <button
+      type="button"
+      (click)="onResolve($event)"
+      [attr.aria-label]="'Resolve ' + row().name"
+      class="inline-flex h-6 items-center gap-1 rounded-xs border border-sakura-400/50 bg-sakura-400/10 px-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--app-conflict-text)] transition-colors hover:bg-sakura-400/20"
+    >
+      <ng-icon name="lucideGitMerge" size="12px" aria-hidden="true" />
+      Resolve
+    </button>
+  }
+  <button
+    type="button"
+    (click)="onPrimary($event)"
+    [attr.aria-label]="primaryLabel()"
+    class="inline-flex h-6 w-6 items-center justify-center rounded-xs border transition-colors"
+    [class]="primaryClass()"
+  >
+    <ng-icon [name]="primaryIcon()" size="14px" aria-hidden="true" />
+  </button>
+  @if (canDiscard()) {
+    <button
+      type="button"
+      (click)="onDiscard($event)"
+      [attr.aria-label]="discardLabel()"
+      class="inline-flex h-6 w-6 items-center justify-center rounded-xs border border-git-deleted/40 bg-git-deleted/5 text-git-deleted transition-colors hover:bg-git-deleted/20"
+    >
+      <ng-icon
+        [name]="untracked() ? 'lucideTrash2' : 'lucideUndo2'"
+        size="14px"
+        aria-hidden="true"
+      />
+    </button>
+  }
+</span>

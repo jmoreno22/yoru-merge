@@ -1,0 +1,221 @@
+.inspector-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--panel-pad);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.meta-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--app-text-muted);
+}
+
+.sha-chip,
+.parent-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-xs);
+  background: var(--app-surface);
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--app-text);
+}
+
+.sha-chip:hover,
+.parent-link:hover {
+  border-color: color-mix(in srgb, var(--color-neon-cyan) 50%, transparent);
+  color: var(--color-neon-cyan);
+}
+
+.signature {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.added {
+  color: var(--color-git-added);
+}
+
+.deleted {
+  color: var(--color-git-deleted);
+}
+
+.subject {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--app-text);
+  overflow-wrap: anywhere;
+}
+
+.body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--app-text-muted);
+}
+
+.files-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  height: var(--panel-head-h);
+  align-items: center;
+  gap: 8px;
+  padding: 0 var(--panel-pad);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.file-filter {
+  height: 24px;
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-xs);
+  background: var(--app-surface);
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--app-text);
+}
+
+.file-filter::placeholder {
+  color: var(--app-text-faint);
+}
+
+.file-filter:focus {
+  border-color: var(--color-neon-cyan);
+  outline: none;
+}
+
+/* The WebView paints its own clear button on top of the field. */
+.file-filter::-webkit-search-cancel-button,
+.file-filter::-webkit-search-decoration {
+  appearance: none;
+}
+
+.mode-button {
+  display: inline-flex;
+  height: 24px;
+  width: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  color: var(--app-text-muted);
+}
+
+.mode-button:hover {
+  background: var(--app-panel);
+  color: var(--app-text);
+}
+
+.mode-button.is-active {
+  background: var(--app-panel);
+  color: var(--color-neon-cyan);
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 8px;
+}
+
+.folder-row,
+.file-row {
+  display: flex;
+  width: 100%;
+  height: var(--file-row-h);
+  align-items: center;
+  gap: 6px;
+  padding-right: var(--panel-pad);
+  text-align: left;
+  font-size: 12px;
+  color: var(--app-text);
+}
+
+.folder-row {
+  color: var(--app-text-muted);
+}
+
+.folder-row:hover,
+.file-row:hover {
+  background: var(--app-panel);
+}
+
+.file-row.is-active {
+  background: color-mix(in srgb, var(--color-neon-cyan) 14%, transparent);
+}
+
+.folder-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-faint);
+}
+
+.status-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The letter beside the icon is what makes the status readable without
+ * relying on the colour of the chip. */
+.sr-letter {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.old-path {
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--app-text-faint);
+}
+
+.file-stats {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-faint);
+}

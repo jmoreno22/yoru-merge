@@ -1,0 +1,151 @@
+<div
+  class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3"
+>
+  <ng-icon
+    name="lucideFilter"
+    size="14px"
+    class="shrink-0 text-[var(--app-text-faint)]"
+    aria-hidden="true"
+  />
+  <input
+    [value]="filter()"
+    (input)="onFilterInput($event)"
+    (keydown.escape)="clearFilter()"
+    placeholder="Filter files"
+    aria-label="Filter changed files"
+    class="h-6 min-w-0 flex-1 bg-transparent font-mono text-xs text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)]"
+  />
+  <button
+    type="button"
+    (click)="clearFilter()"
+    aria-label="Clear filter"
+    [class.hidden]="filter().length === 0"
+    class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-faint)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    <ng-icon name="lucideX" size="12px" aria-hidden="true" />
+  </button>
+  <yoru-segmented
+    [options]="viewOptions"
+    [(value)]="viewMode"
+    ariaLabel="File layout"
+  />
+</div>
+
+@if (hasChanges()) {
+  <div class="flex min-h-0 flex-1 flex-col">
+    @if (showConflicts()) {
+      <app-changes-list
+        class="shrink-0 border-b border-[var(--app-border)]"
+        headerClass="border-l-2 border-sakura-400 bg-sakura-400/5"
+        [section]="'conflicts'"
+        label="Conflicts"
+        [rows]="conflictRows()"
+        [count]="fileCount(conflictRows())"
+        [maxVisibleRows]="maxConflictRows"
+        [selectedPaths]="selectedIn('conflicts')"
+        [activePath]="activeIn('conflicts')"
+        [diffPath]="worktreeDiffPath()"
+        emptyHint="All conflicts resolved."
+        (rowSelect)="onRowSelect('conflicts', $event)"
+        (rowActivate)="onRowActivate('conflicts', $event)"
+        (rowPrimary)="onRowPrimary('conflicts', $event)"
+        (rowResolve)="onRowResolve($event)"
+        (rowMenu)="onRowMenu('conflicts', $event)"
+        (folderToggle)="onFolderToggle($event)"
+        (activeChange)="onActiveChange('conflicts', $event)"
+        (selectAllRequested)="onSelectAll('conflicts')"
+      ></app-changes-list>
+    }
+
+    <app-changes-list
+      class="border-b border-[var(--app-border)]"
+      [class.flex-1]="stagedRows().length > 0"
+      [class.shrink-0]="stagedRows().length === 0"
+      [section]="'staged'"
+      label="Staged"
+      [rows]="stagedRows()"
+      [count]="fileCount(stagedRows())"
+      [selectedPaths]="selectedIn('staged')"
+      [activePath]="activeIn('staged')"
+      [diffPath]="stagedDiffPath()"
+      emptyHint="Nothing staged yet."
+      (rowSelect)="onRowSelect('staged', $event)"
+      (rowActivate)="onRowActivate('staged', $event)"
+      (rowPrimary)="onRowPrimary('staged', $event)"
+      (rowMenu)="onRowMenu('staged', $event)"
+      (folderToggle)="onFolderToggle($event)"
+      (activeChange)="onActiveChange('staged', $event)"
+      (selectAllRequested)="onSelectAll('staged')"
+    >
+      <yoru-button
+        actions
+        size="sm"
+        variant="ghost"
+        icon="lucideMinus"
+        [disabled]="stagedRows().length === 0"
+        (click)="unstageAll()"
+      >
+        Unstage all
+      </yoru-button>
+    </app-changes-list>
+
+    <app-changes-list
+      [class.flex-1]="changeRows().length > 0"
+      [class.shrink-0]="changeRows().length === 0"
+      [section]="'changes'"
+      label="Changes"
+      [rows]="changeRows()"
+      [count]="fileCount(changeRows())"
+      [selectedPaths]="selectedIn('changes')"
+      [activePath]="activeIn('changes')"
+      [diffPath]="worktreeDiffPath()"
+      emptyHint="No unstaged changes."
+      (rowSelect)="onRowSelect('changes', $event)"
+      (rowActivate)="onRowActivate('changes', $event)"
+      (rowPrimary)="onRowPrimary('changes', $event)"
+      (rowDiscard)="onRowDiscard('changes', $event)"
+      (rowMenu)="onRowMenu('changes', $event)"
+      (folderToggle)="onFolderToggle($event)"
+      (activeChange)="onActiveChange('changes', $event)"
+      (selectAllRequested)="onSelectAll('changes')"
+    >
+      <yoru-button
+        actions
+        size="sm"
+        variant="ghost"
+        icon="lucideUndo2"
+        [disabled]="changeRows().length === 0"
+        (click)="discardAll()"
+      >
+        Discard all
+      </yoru-button>
+      <yoru-button
+        actions
+        size="sm"
+        variant="ghost"
+        icon="lucidePlus"
+        [disabled]="changeRows().length === 0"
+        (click)="stageAll()"
+      >
+        Stage all
+      </yoru-button>
+    </app-changes-list>
+  </div>
+} @else {
+  <yoru-empty-state
+    icon="lucideCircleCheck"
+    title="Nothing to commit"
+    hint="The working tree is clean. Amend is still available below."
+    kanji="合"
+  />
+}
+
+<app-commit-composer />
+
+<app-discard-confirm-modal
+  [open]="discardOpen()"
+  [files]="discardTargets()"
+  [untracked]="untrackedPaths()"
+  (cancel)="closeDiscard()"
+  (confirm)="onDiscardConfirm()"
+/>

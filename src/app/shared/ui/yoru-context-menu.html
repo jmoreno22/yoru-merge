@@ -1,0 +1,120 @@
+<div
+  #panel
+  role="menu"
+  tabindex="-1"
+  [attr.aria-activedescendant]="
+    activeIndex() >= 0 ? uid + '-i-' + activeIndex() : null
+  "
+  (keydown)="onKeydown($event)"
+  [style.left.px]="position().x"
+  [style.top.px]="position().y"
+  class="neon-scroll yoru-fade-in fixed z-[var(--z-dropdown)] max-h-[70vh] min-w-[13rem] overflow-y-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] py-1 shadow-panel outline-none"
+>
+  @for (item of items(); track item.id; let i = $index) {
+    @if (item.separatorBefore && i > 0) {
+      <div class="my-1 h-px bg-[var(--app-border)]" role="separator"></div>
+    }
+    <button
+      #menuItem
+      type="button"
+      role="menuitem"
+      [id]="uid + '-i-' + i"
+      [attr.aria-disabled]="item.disabled ? true : null"
+      [attr.aria-haspopup]="item.children?.length ? 'menu' : null"
+      [attr.aria-expanded]="
+        item.children?.length ? submenuOwner() === item.id : null
+      "
+      [class]="itemClass(item, activeIndex() === i)"
+      (click)="onItemClick(item, i, false)"
+      (mouseenter)="onItemHover(i, false)"
+    >
+      @if (item.icon; as icon) {
+        <ng-icon
+          [name]="icon"
+          size="14px"
+          class="mt-[3px] shrink-0"
+          aria-hidden="true"
+        />
+      } @else {
+        <span class="w-[14px] shrink-0" aria-hidden="true"></span>
+      }
+
+      <span class="flex min-w-0 flex-1 flex-col">
+        <span class="truncate">{{ item.label }}</span>
+        @if (item.disabled && item.disabledReason) {
+          <span class="truncate text-[11px] leading-[15px]">
+            {{ item.disabledReason }}
+          </span>
+        }
+      </span>
+
+      @if (item.children?.length) {
+        <ng-icon
+          name="lucideChevronRight"
+          size="14px"
+          class="mt-[3px] shrink-0 text-[var(--app-text-faint)]"
+          aria-hidden="true"
+        />
+      } @else if (item.shortcut; as shortcut) {
+        <span class="mt-[2px] flex shrink-0 items-center gap-1">
+          @for (token of shortcutTokens(shortcut); track $index) {
+            <kbd
+              class="inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-[4px] border border-[var(--app-border)] px-1 font-mono text-[10px] leading-none text-[var(--app-text-faint)]"
+            >
+              {{ token }}
+            </kbd>
+          }
+        </span>
+      }
+    </button>
+  }
+</div>
+
+@if (submenuItems().length > 0) {
+  <div
+    #submenuPanel
+    role="menu"
+    tabindex="-1"
+    [attr.aria-activedescendant]="
+      submenuActiveIndex() >= 0 ? uid + '-s-' + submenuActiveIndex() : null
+    "
+    (keydown)="onKeydown($event)"
+    [style.left.px]="submenuPosition().x"
+    [style.top.px]="submenuPosition().y"
+    class="neon-scroll yoru-fade-in fixed z-[var(--z-dropdown)] max-h-[70vh] min-w-[11rem] overflow-y-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] py-1 shadow-panel outline-none"
+  >
+    @for (item of submenuItems(); track item.id; let i = $index) {
+      @if (item.separatorBefore && i > 0) {
+        <div class="my-1 h-px bg-[var(--app-border)]" role="separator"></div>
+      }
+      <button
+        type="button"
+        role="menuitem"
+        [id]="uid + '-s-' + i"
+        [attr.aria-disabled]="item.disabled ? true : null"
+        [class]="itemClass(item, submenuActiveIndex() === i)"
+        (click)="onItemClick(item, i, true)"
+        (mouseenter)="onItemHover(i, true)"
+      >
+        @if (item.icon; as icon) {
+          <ng-icon
+            [name]="icon"
+            size="14px"
+            class="mt-[3px] shrink-0"
+            aria-hidden="true"
+          />
+        } @else {
+          <span class="w-[14px] shrink-0" aria-hidden="true"></span>
+        }
+        <span class="flex min-w-0 flex-1 flex-col">
+          <span class="truncate">{{ item.label }}</span>
+          @if (item.disabled && item.disabledReason) {
+            <span class="truncate text-[11px] leading-[15px]">
+              {{ item.disabledReason }}
+            </span>
+          }
+        </span>
+      </button>
+    }
+  </div>
+}

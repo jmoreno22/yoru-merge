@@ -1,0 +1,358 @@
+<yoru-dialog [open]="open()" title="Settings" size="lg" (closed)="close()">
+  <div dialog-body class="flex min-h-0 gap-5">
+    <nav
+      role="tablist"
+      aria-orientation="vertical"
+      aria-label="Settings sections"
+      (keydown)="onNavKeydown($event)"
+      class="flex w-36 shrink-0 flex-col gap-0.5"
+    >
+      @for (item of sections; track item.id) {
+        <button
+          #navButton
+          type="button"
+          role="tab"
+          [id]="'settings-tab-' + item.id"
+          [attr.aria-selected]="section() === item.id"
+          [attr.aria-controls]="'settings-panel-' + item.id"
+          [tabindex]="section() === item.id ? 0 : -1"
+          [attr.data-testid]="'settings-tab-' + item.id"
+          (click)="select(item.id)"
+          class="flex h-8 items-center rounded-sm px-2.5 text-left text-[13px] transition-colors"
+          [class]="
+            section() === item.id
+              ? 'bg-neon-cyan/12 text-neon-cyan'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]'
+          "
+        >
+          {{ item.label }}
+        </button>
+      }
+    </nav>
+
+    <div
+      role="tabpanel"
+      [id]="'settings-panel-' + section()"
+      [attr.aria-labelledby]="'settings-tab-' + section()"
+      class="s-panel flex min-w-0 flex-1 flex-col gap-5"
+    >
+      @switch (section()) {
+        @case ('general') {
+          <yoru-field label="Interface density" hint="Row heights and panel padding">
+            <yoru-segmented
+              [options]="densityOptions"
+              [value]="prefs.uiDensity()"
+              (valueChange)="onDensity($event)"
+              ariaLabel="Interface density"
+            />
+          </yoru-field>
+
+          <yoru-switch
+            [checked]="prefs.confirmDangerous()"
+            (checkedChange)="prefs.setConfirmDangerous($event)"
+            label="Confirm dangerous actions"
+            hint="Ask before a force push, a hard reset or removing a remote"
+          />
+
+          <yoru-field
+            label="Auto-fetch"
+            hint="Minutes between background fetches. 0 turns it off."
+          >
+            <input
+              type="number"
+              min="0"
+              max="180"
+              inputmode="numeric"
+              class="s-input"
+              data-testid="settings-auto-fetch"
+              [value]="prefs.autoFetchMinutes()"
+              (change)="onAutoFetch($event)"
+            />
+          </yoru-field>
+
+          <yoru-field
+            label="Default pull mode"
+            hint="Used when Pull is run without picking a mode"
+          >
+            <yoru-segmented
+              [options]="pullModeOptions"
+              [value]="prefs.pullMode()"
+              (valueChange)="onPullMode($event)"
+              ariaLabel="Default pull mode"
+            />
+          </yoru-field>
+        }
+
+        @case ('git') {
+          <yoru-field
+            label="Scope"
+            [hint]="
+              hasRepo()
+                ? 'Repository values override the global ones.'
+                : 'Open a repository to edit its own values.'
+            "
+          >
+            <yoru-segmented
+              [options]="scopeOptions()"
+              [value]="hasRepo() ? scope() : 'global'"
+              (valueChange)="onScope($event)"
+              ariaLabel="Configuration scope"
+            />
+          </yoru-field>
+
+          <div class="grid grid-cols-2 gap-4">
+            <yoru-field
+              label="User name"
+              [hint]="
+                scope() === 'repo' && userName().length === 0 && globalUserName()
+                  ? 'Using global: ' + globalUserName()
+                  : ''
+              "
+            >
+              <input
+                type="text"
+                autocomplete="off"
+                class="s-input"
+                data-testid="settings-user-name"
+                [value]="userName()"
+                [disabled]="configBusy()"
+                [placeholder]="scope() === 'repo' ? globalUserName() : ''"
+                (change)="onConfigInput('user.name', $event)"
+              />
+            </yoru-field>
+
+            <yoru-field
+              label="User email"
+              [hint]="
+                scope() === 'repo' && userEmail().length === 0 && globalUserEmail()
+                  ? 'Using global: ' + globalUserEmail()
+                  : ''
+              "
+            >
+              <input
+                type="email"
+                autocomplete="off"
+                class="s-input"
+                data-testid="settings-user-email"
+                [value]="userEmail()"
+                [disabled]="configBusy()"
+                [placeholder]="scope() === 'repo' ? globalUserEmail() : ''"
+                (change)="onConfigInput('user.email', $event)"
+              />
+            </yoru-field>
+          </div>
+
+          <yoru-switch
+            [checked]="pullRebase()"
+            [disabled]="configBusy()"
+            (checkedChange)="onConfigFlag('pull.rebase', $event)"
+            label="Rebase on pull"
+            hint="pull.rebase"
+          />
+
+          <yoru-switch
+            [checked]="gpgSign()"
+            [disabled]="configBusy()"
+            (checkedChange)="onConfigFlag('commit.gpgsign', $event)"
+            label="Sign commits"
+            hint="commit.gpgsign"
+          />
+
+          <yoru-field label="Signing format" hint="gpg.format">
+            <yoru-segmented
+              [options]="signingFormatOptions"
+              [value]="signingFormat()"
+              (valueChange)="onConfigChoice('gpg.format', $event)"
+              ariaLabel="Signing format"
+            />
+          </yoru-field>
+
+          <yoru-field
+            label="Default branch for new repositories"
+            hint="init.defaultBranch"
+          >
+            <input
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              class="s-input"
+              data-testid="settings-default-branch"
+              [value]="defaultBranch()"
+              [disabled]="configBusy()"
+              placeholder="main"
+              (change)="onConfigInput('init.defaultBranch', $event)"
+            />
+          </yoru-field>
+
+          <yoru-field label="Line endings" hint="core.autocrlf">
+            <yoru-segmented
+              [options]="autocrlfOptions"
+              [value]="autocrlf()"
+              (valueChange)="onConfigChoice('core.autocrlf', $event)"
+              ariaLabel="Line endings"
+            />
+          </yoru-field>
+        }
+
+        @case ('appearance') {
+          <yoru-field
+            label="Theme"
+            [hint]="'System currently resolves to ' + osTheme() + '.'"
+          >
+            <yoru-segmented
+              [options]="themeOptions"
+              [value]="themeMode()"
+              (valueChange)="onTheme($event)"
+              ariaLabel="Theme"
+            />
+          </yoru-field>
+
+          <yoru-field label="Diff layout" hint="Default for newly opened diffs">
+            <yoru-segmented
+              [options]="diffModeOptions"
+              [value]="prefs.diffViewMode()"
+              (valueChange)="onDiffMode($event)"
+              ariaLabel="Diff layout"
+            />
+          </yoru-field>
+
+          <yoru-field label="Context lines">
+            <yoru-segmented
+              [options]="contextOptions"
+              [value]="prefs.diffContextLines().toString()"
+              (valueChange)="onContextLines($event)"
+              ariaLabel="Context lines"
+            />
+          </yoru-field>
+
+          <yoru-switch
+            [checked]="prefs.diffIgnoreWhitespace()"
+            (checkedChange)="prefs.setDiffIgnoreWhitespace($event)"
+            label="Ignore whitespace"
+          />
+
+          <yoru-switch
+            [checked]="prefs.diffWordWrap()"
+            (checkedChange)="prefs.setDiffWordWrap($event)"
+            label="Wrap long lines"
+          />
+        }
+
+        @case ('integrations') {
+          <yoru-field
+            label="External editor"
+            hint="Command used by Open in editor. Blank falls back to VISUAL, EDITOR, then code."
+          >
+            <select
+              class="s-select"
+              data-testid="settings-editor-preset"
+              [value]="editorPresetId()"
+              (change)="onEditorPreset($event)"
+            >
+              @for (preset of editorPresets; track preset.id) {
+                <option [value]="preset.id">{{ preset.label }}</option>
+              }
+            </select>
+          </yoru-field>
+
+          @if (editorCustom() || editorPresetId() === 'custom') {
+            <yoru-field label="Editor command" [error]="editorError()">
+              <input
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                class="s-input"
+                data-testid="settings-editor-command"
+                [value]="prefs.externalEditor()"
+                placeholder="emacsclient -c"
+                (change)="onEditorCommand($event)"
+              />
+            </yoru-field>
+          }
+
+          <yoru-field
+            label="Terminal"
+            hint="A command you set wins outright: if it fails, nothing else is tried."
+          >
+            <select
+              class="s-select"
+              data-testid="settings-terminal-preset"
+              [value]="terminalPresetId()"
+              (change)="onTerminalPreset($event)"
+            >
+              @for (preset of terminalPresets; track preset.id) {
+                <option [value]="preset.id">{{ preset.label }}</option>
+              }
+            </select>
+          </yoru-field>
+
+          @if (terminalCustom() || terminalPresetId() === 'custom') {
+            <yoru-field
+              label="Terminal command"
+              [hint]="terminalHint()"
+              [error]="terminalError()"
+            >
+              <input
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                class="s-input"
+                data-testid="settings-terminal-command"
+                [value]="prefs.terminal()"
+                [attr.aria-invalid]="terminalError() ? 'true' : null"
+                placeholder="foot -D {dir}"
+                (change)="onTerminalCommand($event)"
+              />
+            </yoru-field>
+          }
+
+          <yoru-field
+            label="Open on remote"
+            hint="Detected from the origin URL. GitHub, GitLab and Bitbucket are supported."
+          >
+            <p
+              class="font-mono text-xs text-[var(--app-text-muted)]"
+              data-testid="settings-remote-provider"
+            >
+              {{ remoteProvider() }}
+            </p>
+          </yoru-field>
+        }
+
+        @case ('keyboard') {
+          <table class="w-full text-[13px]" data-testid="settings-shortcuts">
+            <caption class="sr-only">Registered keyboard shortcuts</caption>
+            <thead>
+              <tr
+                class="border-b border-[var(--app-border)] text-left font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+              >
+                <th scope="col" class="py-1.5 font-bold">Command</th>
+                <th scope="col" class="py-1.5 font-bold">Shortcut</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (shortcut of shortcuts(); track shortcut.id) {
+                <tr class="border-b border-[var(--app-border)]/50">
+                  <td class="py-1.5 text-[var(--app-text)]">{{ shortcut.label }}</td>
+                  <td class="py-1.5">
+                    <yoru-kbd [combo]="shortcut.combo" />
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="2" class="py-4 text-[var(--app-text-faint)]">
+                    No shortcuts registered yet.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        @case ('about') {
+          <app-about-panel />
+        }
+      }
+    </div>
+  </div>
+</yoru-dialog>

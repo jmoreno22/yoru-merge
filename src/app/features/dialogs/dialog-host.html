@@ -1,0 +1,40 @@
+<app-confirm-dialog />
+<app-prompt-dialog />
+
+@if (dialogs.cloneOpen()) {
+  <app-clone-repo-dialog [open]="true" (closed)="dialogs.closeClone()" />
+}
+
+@if (dialogs.remotesOpen()) {
+  <app-remotes-manager [open]="true" (closed)="dialogs.closeRemotes()" />
+}
+
+@if (dialogs.mergeOpen()) {
+  <app-merge-branch-dialog [open]="true" (closed)="dialogs.closeMerge()" />
+}
+
+@if (dialogs.resolverOpen()) {
+  <app-merge-resolver
+    [open]="true"
+    [initialFile]="dialogs.resolverFile()"
+    (closed)="dialogs.closeMergeResolver()"
+  />
+}
+
+@if (dialogs.aboutOpen()) {
+  <app-about-dialog [open]="true" (closed)="dialogs.closeAbout()" />
+}
+
+@if (dialogs.stashOptionsOpen()) {
+  <app-stash-options-dialog [open]="true" (closed)="dialogs.closeStashOptions()" />
+}
+
+@if (dialogs.updateOpen()) {
+  <app-update-dialog [open]="true" (closed)="dialogs.closeUpdate()" />
+}
+
+@if (settings.isOpen()) {
+  <app-settings-dialog />
+}
+
+<app-command-palette />

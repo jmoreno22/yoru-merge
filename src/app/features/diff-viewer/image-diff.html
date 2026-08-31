@@ -1,0 +1,30 @@
+@if (error(); as message) {
+  <p class="dv-notice" data-testid="image-diff-error">
+    <ng-icon name="lucideInfo" size="14px" aria-hidden="true" />
+    Image preview failed: {{ message }}
+  </p>
+} @else if (loading() || (!beforeUrl() && !afterUrl())) {
+  <p class="dv-notice" aria-busy="true">
+    <yoru-spinner [size]="14" label="Loading image preview" />
+    Loading image preview…
+  </p>
+} @else {
+  <div class="dv-img-grid" data-testid="image-diff">
+    @if (beforeUrl(); as url) {
+      <figure class="dv-img-side">
+        <figcaption class="dv-img-label text-git-deleted">Old</figcaption>
+        <div class="dv-img-frame">
+          <img class="dv-img" [src]="url" [alt]="'Previous version of ' + oldFile()" />
+        </div>
+      </figure>
+    }
+    @if (afterUrl(); as url) {
+      <figure class="dv-img-side">
+        <figcaption class="dv-img-label text-git-added">New</figcaption>
+        <div class="dv-img-frame">
+          <img class="dv-img" [src]="url" [alt]="'New version of ' + file()" />
+        </div>
+      </figure>
+    }
+  </div>
+}

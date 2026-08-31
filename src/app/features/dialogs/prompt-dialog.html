@@ -1,0 +1,42 @@
+@if (request(); as request) {
+  <yoru-dialog
+    [open]="true"
+    [title]="request.title"
+    size="sm"
+    (closed)="onCancel()"
+  >
+    <yoru-field
+      dialog-body
+      [label]="request.label"
+      [hint]="request.hint ?? ''"
+      [error]="error()"
+    >
+      <input
+        type="text"
+        cdkFocusInitial
+        autocomplete="off"
+        spellcheck="false"
+        data-testid="prompt-input"
+        [value]="value()"
+        [placeholder]="request.placeholder ?? ''"
+        [attr.aria-invalid]="error() ? 'true' : null"
+        (input)="onInput($event)"
+        (keydown.enter)="onSubmit()"
+        class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 text-[13px] text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+      />
+    </yoru-field>
+
+    <yoru-button dialog-actions variant="ghost" (click)="onCancel()">
+      Cancel
+    </yoru-button>
+    <yoru-button
+      dialog-actions
+      variant="primary"
+      [disabled]="!canSubmit()"
+      data-testid="prompt-accept"
+      (click)="onSubmit()"
+    >
+      {{ request.confirmLabel ?? 'OK' }}
+    </yoru-button>
+  </yoru-dialog>
+}

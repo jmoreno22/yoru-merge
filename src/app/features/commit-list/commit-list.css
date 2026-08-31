@@ -1,0 +1,157 @@
+/* Commit history rows.
+ *
+ * The column geometry lives here rather than in utilities because the header
+ * strip and every row have to agree on it pixel for pixel; a single set of
+ * class names is the only way to keep them from drifting apart.
+ *
+ * Scrollbar chrome comes from the shared `.neon-scroll` utility in
+ * src/styles.css, applied to the viewport in the template.
+ */
+
+cdk-virtual-scroll-viewport {
+  display: block;
+  contain: strict;
+  overscroll-behavior: contain;
+}
+
+/* The CDK positions its content wrapper absolutely, so its width is
+ * shrink-to-fit and grows to the widest row's max-content; `min-width: 100%`
+ * only sets the floor. Without a ceiling the subject stops truncating below
+ * ~800 px of column and Date/SHA slide out of view. Scoped to this component:
+ * the blame viewer uses the same wrapper and must be free to grow. */
+/* biome-ignore lint/correctness/noUnknownPseudoElement: ::ng-deep is the only
+ * way to reach an element the CDK renders from its own template. */
+:host ::ng-deep .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+}
+
+.column-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  height: var(--panel-head-h);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-surface-raised) 40%, transparent);
+}
+
+.column-header > * {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--app-text-muted);
+}
+
+.commit-row {
+  display: flex;
+  height: var(--row-h);
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 6px;
+  border-left: 2px solid transparent;
+  cursor: default;
+}
+
+.commit-row:hover {
+  background: var(--app-panel);
+}
+
+.commit-row.is-selected {
+  background: color-mix(in srgb, var(--color-neon-cyan) 14%, transparent);
+}
+
+.commit-row.is-current {
+  border-left-color: var(--color-neon-cyan);
+}
+
+.commit-row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-neon-cyan);
+}
+
+.col-description {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  /* Ref badges do not shrink, so a narrow column would paint them across the
+   * author and date cells; clipping keeps every column readable instead. */
+  overflow: hidden;
+}
+
+.col-author {
+  display: flex;
+  width: 150px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--app-text-muted);
+}
+
+.col-date {
+  width: 104px;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-muted);
+}
+
+.col-sha {
+  width: 8ch;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--app-text-faint);
+}
+
+.subject {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--app-text);
+}
+
+/* Commits the current branch cannot reach read one level quieter; the row's
+ * title and aria-label say so in words, colour is only the echo. */
+.subject.off-branch {
+  color: var(--app-text-muted);
+}
+
+.ref-overflow {
+  flex-shrink: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-xs);
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  color: var(--app-text-muted);
+}
+
+.list-footer {
+  display: flex;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-top: 1px solid var(--app-border);
+}
+
+.footer-count {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-faint);
+}

@@ -1,0 +1,129 @@
+@if (open()) {
+  <div
+    class="yoru-fade-in fixed inset-0 z-[var(--z-modal)] flex items-start justify-center bg-yoru-950/70 p-6 pt-[12vh] backdrop-blur-sm"
+    (click)="close()"
+  >
+    <div
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command palette"
+      (click)="$event.stopPropagation()"
+      class="flex w-[min(40rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-raised)] shadow-panel"
+    >
+      <div
+        class="flex min-h-12 items-center gap-2 border-b border-[var(--app-border)] px-3"
+      >
+        <ng-icon
+          name="lucideSearch"
+          size="16px"
+          aria-hidden="true"
+          class="shrink-0 text-[var(--app-text-muted)]"
+        />
+        @if (pendingLabel(); as label) {
+          <span
+            class="my-3 shrink-0 rounded-xs bg-neon-cyan/12 px-2 py-1 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-neon-cyan"
+            data-testid="palette-pending"
+          >
+            {{ label }}
+          </span>
+        }
+        <input
+          type="text"
+          cdkFocusInitial
+          role="combobox"
+          autocomplete="off"
+          spellcheck="false"
+          aria-controls="palette-list"
+          aria-expanded="true"
+          [attr.aria-activedescendant]="
+            active() === null ? null : 'palette-item-' + highlighted()
+          "
+          [attr.aria-label]="hint()"
+          [value]="query()"
+          [placeholder]="hint()"
+          data-testid="palette-input"
+          (input)="onInput($event)"
+          (keydown)="onKeydown($event)"
+          class="my-3 h-6 min-w-0 flex-1 bg-transparent text-[13px] text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:outline-none"
+        />
+        @if (searching()) {
+          <span
+            class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+            role="status"
+          >
+            Searching
+          </span>
+        }
+      </div>
+
+      @if (items().length === 0) {
+        <yoru-empty-state
+          icon="lucideSearch"
+          title="Nothing matches"
+          hint="Try a different term, or Tab to switch mode."
+        />
+      } @else {
+        <ul
+          id="palette-list"
+          role="listbox"
+          [attr.aria-label]="hint()"
+          class="neon-scroll max-h-[22rem] overflow-y-auto py-1"
+          data-testid="palette-list"
+        >
+          @for (item of items(); track item.id; let index = $index) {
+            <li
+              #row
+              role="option"
+              [id]="'palette-item-' + index"
+              [attr.aria-selected]="highlighted() === index"
+            >
+              <button
+                type="button"
+                tabindex="-1"
+                (click)="select(index)"
+                (mousemove)="highlighted.set(index)"
+                [attr.data-testid]="'palette-item-' + item.id"
+                class="flex h-9 w-full items-center gap-2.5 px-3 text-left transition-colors"
+                [class]="
+                  highlighted() === index
+                    ? 'bg-neon-cyan/12 text-neon-cyan'
+                    : 'text-[var(--app-text)] hover:bg-[var(--app-panel)]'
+                "
+              >
+                <ng-icon
+                  [name]="item.icon"
+                  size="14px"
+                  aria-hidden="true"
+                  class="shrink-0"
+                />
+                <span class="truncate text-[13px]">{{ item.label }}</span>
+                @if (item.hint; as meta) {
+                  <span
+                    class="ml-auto shrink-0 truncate font-mono text-[10.5px] text-[var(--app-text-faint)]"
+                  >
+                    {{ meta }}
+                  </span>
+                }
+                @if (item.combo; as combo) {
+                  <yoru-kbd [combo]="combo" class="shrink-0" />
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <footer
+        class="flex h-8 shrink-0 items-center gap-3 border-t border-[var(--app-border)] px-3 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+      >
+        <span>&gt; branches</span>
+        <span>&#64; files</span>
+        <span># commits</span>
+        <span>: settings</span>
+        <span class="ml-auto">Tab switches mode</span>
+      </footer>
+    </div>
+  </div>
+}

@@ -1,0 +1,289 @@
+<yoru-dialog
+  [open]="open()"
+  title="Resolve conflicts"
+  size="full"
+  tone="conflict"
+  [dismissible]="false"
+  (closed)="onClose()"
+>
+  <div
+    dialog-body
+    class="flex min-h-0 flex-1 gap-4"
+    (keydown)="onKeydown($event)"
+    data-testid="merge-resolver-body"
+  >
+    <aside class="flex w-64 shrink-0 flex-col gap-1">
+      <yoru-section-header label="Conflicted files" [count]="conflicts().length" />
+      @if (conflicts().length === 0) {
+        <yoru-empty-state
+          icon="lucideCircleCheck"
+          title="All conflicts resolved"
+          [hint]="'Continue the ' + operation() + ' to finish.'"
+          kanji="合"
+        />
+      } @else {
+        <ul class="neon-scroll flex min-h-0 flex-1 flex-col overflow-y-auto">
+          @for (entry of conflicts(); track entry.path) {
+            <li>
+              <button
+                type="button"
+                (click)="selectFile(entry)"
+                [attr.aria-current]="file() === entry.path ? 'true' : null"
+                [attr.data-testid]="'conflict-file-' + entry.path"
+                class="flex h-[var(--file-row-h)] w-full items-center gap-2 rounded-xs px-2 text-left transition-colors"
+                [class]="
+                  file() === entry.path
+                    ? 'bg-git-conflict/12 text-[var(--app-conflict-text)]'
+                    : 'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]'
+                "
+              >
+                <ng-icon
+                  name="lucideFileX"
+                  size="14px"
+                  aria-hidden="true"
+                  class="shrink-0 text-[var(--app-conflict-text)]"
+                />
+                <span class="truncate font-mono text-xs" [title]="entry.path">
+                  {{ entry.path }}
+                </span>
+                <span
+                  class="ml-auto shrink-0 font-mono text-[10.5px] text-[var(--app-text-faint)]"
+                  [attr.aria-label]="
+                    entry.conflict_count +
+                    (entry.conflict_count === 1 ? ' block' : ' blocks')
+                  "
+                >
+                  {{ entry.conflict_count }}
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <section class="flex min-w-0 flex-1 flex-col gap-2">
+      @if (file(); as path) {
+        <header
+          class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-3 border-b border-[var(--app-border)]"
+        >
+          <span class="truncate font-mono text-xs text-[var(--app-text)]" [title]="path">
+            {{ path }}
+          </span>
+          <span
+            class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+            data-testid="resolver-counters"
+          >
+            File {{ fileIndex() }} of {{ conflicts().length }} · Block
+            {{ activePosition() }} of {{ blocks().length }}
+          </span>
+
+          <div class="ml-auto flex shrink-0 items-center gap-1">
+            <yoru-button
+              size="sm"
+              variant="ghost"
+              icon="lucideChevronUp"
+              [disabled]="blocks().length === 0"
+              data-testid="resolver-prev"
+              (click)="previous()"
+            >
+              Previous
+            </yoru-button>
+            <yoru-button
+              size="sm"
+              variant="ghost"
+              icon="lucideChevronDown"
+              [disabled]="blocks().length === 0"
+              data-testid="resolver-next"
+              (click)="next()"
+            >
+              Next
+            </yoru-button>
+          </div>
+        </header>
+
+        @if (loading()) {
+          <div class="flex flex-1 items-center justify-center">
+            <yoru-spinner [size]="16" label="Loading the conflicted file" />
+          </div>
+        } @else if (loadError(); as message) {
+          <p role="alert" class="text-[13px] text-git-deleted">{{ message }}</p>
+        } @else {
+          <div class="grid min-h-0 shrink-0 grid-cols-2 gap-3">
+            <div class="flex min-w-0 flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span
+                  class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-neon-cyan"
+                >
+                  Ours
+                </span>
+                @if (oursLine() > 0) {
+                  <span class="font-mono text-[10.5px] text-[var(--app-text-faint)]">
+                    line {{ oursLine() }}
+                  </span>
+                }
+                <yoru-button
+                  size="sm"
+                  variant="ghost"
+                  class="ml-auto"
+                  [disabled]="active() === null"
+                  data-testid="take-ours"
+                  (click)="take('ours')"
+                >
+                  Take ours
+                </yoru-button>
+              </div>
+              <pre
+                class="neon-scroll max-h-40 min-h-16 overflow-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs text-[var(--app-text)]"
+                data-testid="pane-ours"
+              >{{ oursText() }}</pre>
+            </div>
+
+            <div class="flex min-w-0 flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span
+                  class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
+                >
+                  Theirs
+                </span>
+                @if (theirsLine() > 0) {
+                  <span class="font-mono text-[10.5px] text-[var(--app-text-faint)]">
+                    line {{ theirsLine() }}
+                  </span>
+                }
+                <yoru-button
+                  size="sm"
+                  variant="ghost"
+                  class="ml-auto"
+                  [disabled]="active() === null"
+                  data-testid="take-theirs"
+                  (click)="take('theirs')"
+                >
+                  Take theirs
+                </yoru-button>
+              </div>
+              <pre
+                class="neon-scroll max-h-40 min-h-16 overflow-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs text-[var(--app-text)]"
+                data-testid="pane-theirs"
+              >{{ theirsText() }}</pre>
+            </div>
+          </div>
+
+          <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <yoru-button
+              size="sm"
+              variant="secondary"
+              [disabled]="active() === null"
+              data-testid="take-both"
+              (click)="take('both')"
+            >
+              Keep both
+            </yoru-button>
+            <span
+              class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+            >
+              n next · p previous · 1 ours · 2 theirs · 3 both
+            </span>
+            <span class="ml-auto flex items-center gap-2">
+              <yoru-button
+                size="sm"
+                variant="ghost"
+                [disabled]="busy()"
+                data-testid="take-all-ours"
+                (click)="onTakeWholeFile('ours')"
+              >
+                Take all ours
+              </yoru-button>
+              <yoru-button
+                size="sm"
+                variant="ghost"
+                [disabled]="busy()"
+                data-testid="take-all-theirs"
+                (click)="onTakeWholeFile('theirs')"
+              >
+                Take all theirs
+              </yoru-button>
+              <yoru-button
+                size="sm"
+                variant="danger"
+                icon="lucideTrash2"
+                [disabled]="busy()"
+                data-testid="delete-conflicted"
+                (click)="onDeleteFile()"
+              >
+                Delete file
+              </yoru-button>
+            </span>
+          </div>
+
+          <label class="flex min-h-0 flex-1 flex-col gap-1">
+            <span
+              class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+            >
+              Result
+            </span>
+            <textarea
+              spellcheck="false"
+              data-testid="resolver-result"
+              [value]="text()"
+              (input)="onTextInput($event)"
+              class="neon-scroll min-h-40 flex-1 resize-none rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs leading-relaxed text-[var(--app-text)] focus:border-neon-cyan focus:outline-none"
+            ></textarea>
+          </label>
+
+          @if (!resolved()) {
+            <p
+              class="shrink-0 text-[11px] text-[var(--app-conflict-text)]"
+              role="status"
+              data-testid="resolver-markers"
+            >
+              Conflict markers are still in the file. Resolve every block before
+              saving.
+            </p>
+          }
+        }
+      } @else {
+        <yoru-empty-state
+          icon="lucideCircleCheck"
+          title="Nothing left to resolve"
+          [hint]="'Continue the ' + operation() + ' to finish it.'"
+          kanji="合"
+        />
+      }
+    </section>
+  </div>
+
+  <yoru-button
+    dialog-actions
+    variant="ghost"
+    data-testid="resolver-abort"
+    (click)="onAbort()"
+  >
+    Abort {{ operation() }}
+  </yoru-button>
+  <yoru-button dialog-actions variant="ghost" (click)="onClose()">Close</yoru-button>
+  @if (allResolved()) {
+    <yoru-button
+      dialog-actions
+      variant="primary"
+      icon="lucidePlay"
+      [loading]="busy()"
+      data-testid="resolver-continue"
+      (click)="onContinue()"
+    >
+      Continue {{ operation() }}
+    </yoru-button>
+  } @else {
+    <yoru-button
+      dialog-actions
+      variant="primary"
+      icon="lucideCheck"
+      [loading]="saving()"
+      [disabled]="!canSave()"
+      data-testid="resolver-save"
+      (click)="onSave()"
+    >
+      Mark resolved
+    </yoru-button>
+  }
+</yoru-dialog>

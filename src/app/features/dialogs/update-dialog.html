@@ -1,0 +1,104 @@
+<yoru-dialog [open]="open()" title="Update available" size="md" (closed)="closed.emit()">
+  @if (info(); as update) {
+    <!-- One projectable root: a branch with several of them lands outside the
+         dialog body altogether. -->
+    <ng-container dialog-body>
+      <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+        <span class="text-[var(--app-text-muted)]" data-testid="update-current-version">
+          {{ update.currentVersion }}
+        </span>
+        <ng-icon
+          name="lucideChevronRight"
+          size="12px"
+          class="text-[var(--app-text-faint)]"
+          aria-hidden="true"
+        />
+        <span class="text-neon-cyan" data-testid="update-next-version">
+          {{ update.version }}
+        </span>
+        @if (update.date; as day) {
+          <span class="text-[var(--app-text-faint)]">released {{ day }}</span>
+        }
+      </div>
+
+      @if (update.notes) {
+        <div class="flex min-h-0 flex-col gap-1.5">
+          <span
+            class="text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+          >
+            Release notes
+          </span>
+          <!-- Plain text on purpose: the notes are markdown from the release and
+               nothing in the app renders untrusted HTML. -->
+          <pre
+            data-testid="update-notes"
+            class="neon-scroll max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-xs leading-[1.6] text-[var(--app-text)]"
+          >{{ update.notes }}</pre>
+        </div>
+      }
+
+      @if (downloading()) {
+        <div role="status" data-testid="update-progress" class="flex flex-col gap-1.5">
+          @if (percent(); as done) {
+            <span
+              class="h-1 w-full overflow-hidden rounded-full bg-[var(--app-panel)]"
+              aria-hidden="true"
+            >
+              <span class="block h-full bg-neon-cyan" [style.width.%]="done"></span>
+            </span>
+            <span class="font-mono text-xs text-[var(--app-text-muted)]">
+              Downloading… {{ done }}%
+            </span>
+          } @else {
+            <span
+              class="flex items-center gap-2 font-mono text-xs text-[var(--app-text-muted)]"
+            >
+              <yoru-spinner [size]="12" label="Downloading update" />
+              Downloading…
+            </span>
+          }
+        </div>
+      } @else if (ready()) {
+        <p class="text-[13px] text-[var(--app-text-muted)]">
+          Version {{ update.version }} is installed. Restart YoruMerge to start using it.
+        </p>
+      }
+    </ng-container>
+  } @else {
+    <p dialog-body class="text-[13px] text-[var(--app-text-muted)]">
+      YoruMerge is up to date.
+    </p>
+  }
+
+  <yoru-button
+    dialog-actions
+    variant="ghost"
+    data-testid="update-later"
+    (click)="closed.emit()"
+  >
+    Later
+  </yoru-button>
+  @if (ready()) {
+    <yoru-button
+      dialog-actions
+      variant="primary"
+      icon="lucideRefreshCw"
+      data-testid="update-restart"
+      (click)="onRestart()"
+    >
+      Restart now
+    </yoru-button>
+  } @else if (info()) {
+    <yoru-button
+      dialog-actions
+      variant="primary"
+      icon="lucideDownload"
+      [loading]="downloading()"
+      [disabled]="downloading()"
+      data-testid="update-install"
+      (click)="onUpdate()"
+    >
+      Update now
+    </yoru-button>
+  }
+</yoru-dialog>

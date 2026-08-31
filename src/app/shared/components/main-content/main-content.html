@@ -1,0 +1,120 @@
+@if (!repo.isOpen()) {
+  <div class="flex min-h-0 flex-1">
+    <app-repo-manager class="flex-1" />
+  </div>
+} @else {
+  <app-repo-state-banner />
+
+  <div class="flex min-h-0 min-w-0 flex-1" data-testid="repo-workbench">
+    @if (prefs.refsPanelOpen()) {
+      <app-sidebar
+        class="shrink-0 border-r border-[var(--app-border)]"
+        [class.transition-[width]]="!sidebarDragging()"
+        [class.duration-200]="!sidebarDragging()"
+        [style.width.px]="sidebarPx()"
+      />
+      <app-splitter
+        orientation="vertical"
+        [value]="prefs.sidebarWidth()"
+        (resizeStart)="onSidebarDragStart()"
+        (resize)="onSidebarResize($event)"
+        (resizeEnd)="onSidebarDragEnd()"
+        data-testid="splitter-sidebar"
+      />
+    }
+
+    <div #split class="flex min-h-0 min-w-0 flex-1">
+      <section
+        class="flex min-h-0 min-w-0 shrink-0 flex-col border-r border-[var(--app-border)] bg-[var(--app-surface)]"
+        [class.transition-[width]]="!workbenchDragging()"
+        [class.duration-200]="!workbenchDragging()"
+        [style.width.px]="centrePx()"
+        data-testid="centre-column"
+      >
+        @switch (view()) {
+          @case ('changes') {
+            <div class="flex min-h-0 flex-1 flex-col">
+              <app-working-changes />
+            </div>
+          }
+          @case ('reflog') {
+            <div class="flex min-h-0 flex-1 flex-col">
+              <app-reflog-view />
+            </div>
+          }
+          @default {
+            <app-commit-search />
+            <div class="flex min-h-0 min-w-0 flex-1">
+              @if (graphWidth() > 0) {
+                <app-branch-graph
+                  class="shrink-0 border-r border-[var(--app-border)]/60"
+                  [style.width.px]="graphWidth()"
+                  [graphData]="repo.graphData()"
+                  [scrollTop]="repo.listScrollTop()"
+                />
+              }
+              <div class="flex min-w-0 flex-1 flex-col">
+                <app-commit-list [showSearch]="false" />
+              </div>
+            </div>
+          }
+        }
+      </section>
+
+      <app-splitter
+        orientation="vertical"
+        [value]="prefs.workbenchSplit()"
+        (resizeStart)="onWorkbenchDragStart()"
+        (resize)="onWorkbenchResize($event)"
+        (resizeEnd)="onWorkbenchDragEnd()"
+        data-testid="splitter-workbench"
+      />
+
+      <section
+        class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--app-bg)]"
+        data-testid="inspector-column"
+      >
+        @if (view() !== 'changes') {
+          <div class="flex min-h-0 flex-[2] flex-col">
+            <app-commit-inspector />
+          </div>
+        }
+
+        <div
+          class="flex min-h-0 flex-[3] flex-col border-t border-[var(--app-border)]"
+        >
+          <app-diff-viewer
+            (openBlame)="onOpenBlame($event)"
+            (openHistory)="onOpenFileHistory($event)"
+          />
+        </div>
+
+        @if (blameFile(); as file) {
+          <div
+            class="flex min-h-0 flex-[3] flex-col border-t border-[var(--app-border)]"
+          >
+            <app-blame-viewer
+              class="block h-full min-h-0"
+              [file]="file"
+              [rev]="blameRev()"
+              (close)="onCloseBlame()"
+            />
+          </div>
+        }
+
+        @if (fileHistoryFile(); as file) {
+          <div
+            class="flex min-h-0 flex-[2] flex-col border-t border-[var(--app-border)]"
+          >
+            <app-file-history-panel
+              class="block h-full min-h-0"
+              [file]="file"
+              (close)="onCloseFileHistory()"
+              (selectCommit)="onSelectHistoryCommit($event)"
+            />
+          </div>
+        }
+      </section>
+    </div>
+  </div>
+}

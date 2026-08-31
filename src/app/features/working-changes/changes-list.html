@@ -1,0 +1,71 @@
+<yoru-section-header
+  [label]="label()"
+  [count]="count()"
+  [class]="headerClass()"
+>
+  <ng-content select="[actions]" ngProjectAs="[actions]" />
+</yoru-section-header>
+
+@if (rows().length === 0) {
+  <p class="px-3 py-2 font-mono text-[11px] text-[var(--app-text-faint)]">
+    {{ emptyHint() }}
+  </p>
+} @else {
+  <cdk-virtual-scroll-viewport
+    class="neon-scroll min-h-0"
+    [itemSize]="rowHeight"
+    [class.flex-1]="viewportHeight() === null"
+    [style.height.px]="viewportHeight()"
+    role="listbox"
+    aria-multiselectable="true"
+    [attr.aria-label]="label()"
+    (keydown)="onKeydown($event)"
+  >
+    <ng-container *cdkVirtualFor="let row of rows(); trackBy: trackRow">
+      @if (row.kind === 'folder') {
+        <div
+          role="option"
+          class="flex h-[var(--file-row-h)] cursor-pointer select-none items-center gap-1.5 border-l-2 border-transparent pr-2 text-xs outline-none hover:bg-[var(--app-panel)]/60"
+          [attr.data-path]="row.path"
+          [attr.tabindex]="row.path === tabbablePath() ? 0 : -1"
+          [attr.aria-expanded]="!row.collapsed"
+          [attr.aria-selected]="false"
+          [style.paddingLeft.px]="8 + row.depth * 18"
+          [title]="row.path"
+          (click)="folderToggle.emit(row.path)"
+        >
+          <ng-icon
+            [name]="row.collapsed ? 'lucideChevronRight' : 'lucideChevronDown'"
+            size="14px"
+            class="shrink-0 text-[var(--app-text-faint)]"
+            aria-hidden="true"
+          />
+          <ng-icon
+            [name]="row.collapsed ? 'lucideFolder' : 'lucideFolderOpen'"
+            size="14px"
+            class="shrink-0 text-[var(--app-text-muted)]"
+            aria-hidden="true"
+          />
+          <span class="truncate font-mono text-[var(--app-text-muted)]">{{
+            row.name
+          }}</span>
+          <span class="ml-auto font-mono text-[10px] text-[var(--app-text-faint)]">{{
+            row.count
+          }}</span>
+        </div>
+      } @else {
+        <app-file-row
+          [row]="row"
+          [selected]="isSelected(row.path)"
+          [active]="row.path === tabbablePath()"
+          [openInDiff]="row.path === diffPath()"
+          (click)="onRowClick(row.path, $event)"
+          (contextmenu)="onRowMenu(row.path, $event)"
+          (primary)="rowPrimary.emit(row.path)"
+          (discard)="rowDiscard.emit(row.path)"
+          (resolve)="rowResolve.emit(row.path)"
+        />
+      }
+    </ng-container>
+  </cdk-virtual-scroll-viewport>
+}

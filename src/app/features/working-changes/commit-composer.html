@@ -1,0 +1,219 @@
+<div class="flex flex-wrap items-center gap-1">
+  @for (option of types; track option) {
+    <button
+      type="button"
+      (click)="onTypeClick(option)"
+      [attr.aria-pressed]="option === type()"
+      class="h-5 rounded-full border px-2 font-mono text-[10.5px] transition-colors"
+      [class]="
+        option === type()
+          ? 'border-neon-cyan/60 bg-neon-cyan/15 text-neon-cyan'
+          : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:border-neon-cyan/40 hover:text-[var(--app-text)]'
+      "
+    >
+      {{ option }}
+    </button>
+  }
+</div>
+
+<div class="flex items-center gap-2">
+  <input
+    list="commit-scope-options"
+    [value]="scope()"
+    (input)="onScopeInput($event)"
+    placeholder="scope"
+    aria-label="Commit scope"
+    class="h-7 w-32 min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-xs text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan/60"
+  />
+  <datalist id="commit-scope-options">
+    @for (option of scopeOptions(); track option) {
+      <option [value]="option"></option>
+    }
+  </datalist>
+
+  <button
+    type="button"
+    (click)="breaking.set(!breaking())"
+    [attr.aria-pressed]="breaking()"
+    aria-label="Breaking change"
+    class="h-7 rounded-xs border px-2 font-mono text-[10.5px] uppercase tracking-[0.12em] transition-colors"
+    [class]="
+      breaking()
+        ? 'border-git-deleted/60 bg-git-deleted/15 text-git-deleted'
+        : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
+    "
+  >
+    breaking !
+  </button>
+
+  <span
+    class="ml-auto shrink-0 font-mono text-[10.5px]"
+    [class]="counterClass()"
+    [title]="
+      'Subject length: keep it under ' +
+      subjectWarn +
+      ' characters, never past ' +
+      subjectMax
+    "
+  >
+    {{ headerLength() }}/{{ subjectMax }}
+  </span>
+</div>
+
+<div class="flex flex-col gap-1">
+  <input
+    #subjectInput
+    [value]="subject()"
+    (input)="onSubjectInput($event)"
+    placeholder="Summary"
+    aria-label="Commit subject"
+    class="h-8 w-full min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-[13px] text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan/60"
+  />
+  <!-- 0–72 ruler with the 50-character tick git recommends. -->
+  <div
+    class="relative h-[2px] w-full rounded-full bg-[var(--app-border)]"
+    aria-hidden="true"
+  >
+    <div
+      class="h-full rounded-full transition-[width]"
+      [class]="rulerClass()"
+      [style.width.%]="rulerPercent()"
+    ></div>
+    <span
+      class="absolute top-[-2px] h-[6px] w-px bg-[var(--app-text-faint)]"
+      [style.left.%]="warnTickPercent"
+    ></span>
+  </div>
+</div>
+
+<textarea
+  [value]="body()"
+  (input)="onBodyInput($event)"
+  rows="2"
+  placeholder="Body — wrap at 72 columns"
+  aria-label="Commit body"
+  class="neon-scroll w-full resize-none rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 font-mono text-xs leading-relaxed text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan/60"
+></textarea>
+
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+  <yoru-switch
+    [checked]="amend()"
+    (checkedChange)="onAmendChange($event)"
+    label="Amend"
+  />
+  <yoru-switch [(checked)]="signoff" label="Sign-off" />
+  <yoru-switch [(checked)]="noVerify" label="Skip hooks" />
+  <yoru-switch
+    [checked]="gpgSign()"
+    [disabled]="true"
+    label="GPG sign"
+    [hint]="gpgHint()"
+  />
+</div>
+
+@if (amendWarning(); as warning) {
+  <p
+    role="status"
+    data-testid="amend-force-push-warning"
+    class="flex items-start gap-1.5 rounded-xs border border-git-modified/40 bg-git-modified/10 px-2 py-1.5 text-[11px] leading-snug text-git-modified"
+  >
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="13px"
+      class="mt-px shrink-0"
+      aria-hidden="true"
+    />
+    <span class="min-w-0">{{ warning }}</span>
+  </p>
+}
+
+<div class="flex items-center gap-2">
+  <p class="min-w-0 flex-1 truncate font-mono text-[10.5px] text-[var(--app-text-faint)]">
+    {{ summaryText() }}
+  </p>
+
+  @if (readiness().reason; as reason) {
+    <span class="shrink-0 text-[11px] text-[var(--app-text-faint)]">{{ reason }}</span>
+  } @else {
+    <yoru-kbd combo="mod+enter" />
+  }
+
+  <button
+    type="button"
+    (click)="openRecentMenu($event)"
+    [disabled]="!hasRecent()"
+    aria-label="Recent commit messages"
+    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+  >
+    <ng-icon name="lucideHistory" size="14px" aria-hidden="true" />
+  </button>
+
+  <div class="flex shrink-0 items-stretch gap-px">
+    <yoru-button
+      variant="primary"
+      size="sm"
+      icon="lucideGitCommitHorizontal"
+      [disabled]="!readiness().canCommit"
+      [loading]="busy()"
+      (click)="commit('commit')"
+    >
+      {{ commitLabel() }}
+    </yoru-button>
+    <button
+      type="button"
+      (click)="openCommitMenu($event)"
+      [disabled]="!readiness().canCommit"
+      aria-label="More commit actions"
+      class="inline-flex h-7 w-6 items-center justify-center rounded-sm bg-neon-cyan text-yoru-950 transition-colors hover:bg-moon-50 disabled:cursor-not-allowed disabled:opacity-45"
+    >
+      <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
+    </button>
+  </div>
+</div>
+
+<yoru-dialog
+  [open]="tagDialogOpen()"
+  title="Create tag on the new commit"
+  (closed)="closeTagDialog()"
+>
+  <label dialog-body class="flex flex-col gap-1.5">
+    <span
+      class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+    >
+      Tag name
+    </span>
+    <input
+      [value]="tagName()"
+      (input)="onTagNameInput($event)"
+      placeholder="v1.0.0"
+      class="h-8 w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-[13px] text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan/60"
+    />
+  </label>
+
+  <label dialog-body class="flex flex-col gap-1.5">
+    <span
+      class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+    >
+      Message
+    </span>
+    <input
+      [value]="tagMessage()"
+      (input)="onTagMessageInput($event)"
+      placeholder="Leave empty for a lightweight tag"
+      class="h-8 w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-[13px] text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan/60"
+    />
+  </label>
+
+  <yoru-button dialog-actions variant="ghost" (click)="closeTagDialog()">
+    Cancel
+  </yoru-button>
+  <yoru-button
+    dialog-actions
+    variant="primary"
+    icon="lucideTag"
+    [disabled]="tagName().trim().length === 0"
+    (click)="confirmTag()"
+  >
+    Create tag
+  </yoru-button>
+</yoru-dialog>

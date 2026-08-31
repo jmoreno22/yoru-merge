@@ -1,0 +1,22 @@
+@if (kanji()) {
+  <span
+    class="pointer-events-none absolute select-none font-display text-[110px] leading-none text-[var(--app-text)] opacity-[0.06]"
+    aria-hidden="true"
+  >
+    {{ kanji() }}
+  </span>
+}
+@if (icon(); as name) {
+  <ng-icon
+    [name]="name"
+    size="18px"
+    class="relative text-[var(--app-text-muted)]"
+    aria-hidden="true"
+  />
+}
+<p class="relative text-[13px] text-[var(--app-text)]">{{ title() }}</p>
+@if (hint()) {
+  <p class="relative max-w-[42ch] text-[11px] text-[var(--app-text-faint)]">
+    {{ hint() }}
+  </p>
+}

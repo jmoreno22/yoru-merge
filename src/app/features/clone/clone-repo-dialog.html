@@ -1,0 +1,181 @@
+<yoru-dialog
+  [open]="open()"
+  title="Clone repository"
+  size="md"
+  [dismissible]="!cloning()"
+  (closed)="onClose()"
+>
+  <yoru-field
+    dialog-body
+    label="Repository URL"
+    [error]="urlValid() ? '' : 'Not a URL git can clone (https, ssh, git, file or user@host:path).'"
+    hint="https://host/owner/repo.git · git@host:owner/repo.git · a local path"
+  >
+    <input
+      type="text"
+      cdkFocusInitial
+      autocomplete="off"
+      spellcheck="false"
+      data-testid="clone-url"
+      [value]="url()"
+      [disabled]="cloning()"
+      [attr.aria-invalid]="urlValid() ? null : 'true'"
+      (input)="onUrlInput($event)"
+      placeholder="https://github.com/owner/repo.git"
+      class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none disabled:opacity-50"
+    />
+  </yoru-field>
+
+  <yoru-field dialog-body label="Location">
+    <div class="flex gap-2">
+      <input
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        data-testid="clone-parent"
+        [value]="parent()"
+        [disabled]="cloning()"
+        (input)="onParentInput($event)"
+        placeholder="Parent folder"
+        class="h-8 min-w-0 flex-1 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none disabled:opacity-50"
+      />
+      <yoru-button
+        size="sm"
+        variant="secondary"
+        icon="lucideFolderOpen"
+        [disabled]="cloning()"
+        data-testid="clone-browse"
+        (click)="chooseParent()"
+      >
+        Browse
+      </yoru-button>
+    </div>
+  </yoru-field>
+
+  <yoru-field dialog-body label="Folder name">
+    <input
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      data-testid="clone-folder"
+      [value]="folder()"
+      [disabled]="cloning()"
+      (input)="onFolderInput($event)"
+      placeholder="repo"
+      class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none disabled:opacity-50"
+    />
+  </yoru-field>
+
+  @if (destination(); as dest) {
+    <p
+      dialog-body
+      class="truncate font-mono text-[11px] text-[var(--app-text-faint)]"
+      data-testid="clone-destination"
+      [title]="dest"
+    >
+      Clones into {{ dest }}
+    </p>
+  }
+
+  <div dialog-body class="flex flex-col gap-3">
+    <button
+      type="button"
+      (click)="toggleOptions()"
+      [attr.aria-expanded]="showOptions()"
+      aria-controls="clone-options"
+      class="flex w-fit items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)]"
+    >
+      {{ showOptions() ? 'Hide options' : 'Show options' }}
+    </button>
+
+    @if (showOptions()) {
+      <div id="clone-options" class="flex flex-col gap-3">
+        <div class="grid grid-cols-2 gap-3">
+          <yoru-field label="Depth" hint="Blank for the full history">
+            <input
+              type="number"
+              min="1"
+              inputmode="numeric"
+              data-testid="clone-depth"
+              [value]="depth()"
+              [disabled]="cloning()"
+              (input)="onDepthInput($event)"
+              placeholder="full"
+              class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none disabled:opacity-50"
+            />
+          </yoru-field>
+          <yoru-field label="Branch" hint="Blank for the default branch">
+            <input
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              data-testid="clone-branch"
+              [value]="branch()"
+              [disabled]="cloning()"
+              (input)="onBranchInput($event)"
+              placeholder="main"
+              class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none disabled:opacity-50"
+            />
+          </yoru-field>
+        </div>
+        <yoru-switch
+          [(checked)]="recursive"
+          [disabled]="cloning()"
+          label="Clone submodules"
+          hint="git clone --recurse-submodules"
+        />
+      </div>
+    }
+  </div>
+
+  @if (cloning()) {
+    <div dialog-body class="flex flex-col gap-1.5" data-testid="clone-progress">
+      <div
+        class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--app-panel)]"
+        role="progressbar"
+        [attr.aria-valuenow]="percent()"
+        [attr.aria-valuemin]="percent() === null ? null : 0"
+        [attr.aria-valuemax]="percent() === null ? null : 100"
+        [attr.aria-label]="phaseLabel()"
+      >
+        @if (percent(); as value) {
+          <div
+            class="h-full rounded-full bg-neon-cyan transition-[width] duration-150"
+            [style.width.%]="value"
+          ></div>
+        } @else {
+          <div class="yoru-pulse h-full w-1/3 rounded-full bg-neon-cyan"></div>
+        }
+      </div>
+      <p class="font-mono text-[11px] text-[var(--app-text-muted)]" aria-live="polite">
+        @if (canceling()) {
+          Canceling…
+        } @else {
+          {{ phaseLabel() }}@if (percent(); as value) { · {{ value }}% }
+        }
+      </p>
+    </div>
+  }
+
+  <yoru-button
+    dialog-actions
+    variant="ghost"
+    [loading]="canceling()"
+    [disabled]="canceling()"
+    data-testid="clone-cancel"
+    (click)="onClose()"
+  >
+    {{ cloning() ? 'Cancel clone' : 'Cancel' }}
+  </yoru-button>
+  <yoru-button
+    dialog-actions
+    variant="primary"
+    icon="lucideCloudDownload"
+    [loading]="cloning()"
+    [disabled]="!canClone()"
+    data-testid="clone-submit"
+    (click)="onClone()"
+  >
+    {{ cloning() ? 'Cloning…' : 'Clone' }}
+  </yoru-button>
+</yoru-dialog>

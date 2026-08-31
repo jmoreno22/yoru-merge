@@ -1,0 +1,41 @@
+@if (request(); as request) {
+  <yoru-dialog
+    [open]="true"
+    [title]="request.title"
+    [tone]="tone()"
+    size="sm"
+    [dismissible]="false"
+    (closed)="onCancel()"
+  >
+    <p dialog-body class="text-[13px] leading-relaxed text-[var(--app-text)]">
+      {{ request.body }}
+    </p>
+    @if (request.doubleConfirm && armed()) {
+      <p
+        dialog-body
+        role="alert"
+        class="text-[11px] text-git-deleted"
+        data-testid="confirm-armed"
+      >
+        Press again to confirm. This cannot be undone.
+      </p>
+    }
+
+    <yoru-button
+      dialog-actions
+      variant="ghost"
+      data-testid="confirm-cancel"
+      (click)="onCancel()"
+    >
+      {{ request.cancelLabel ?? 'Cancel' }}
+    </yoru-button>
+    <yoru-button
+      dialog-actions
+      [variant]="tone() === 'danger' ? 'danger' : 'primary'"
+      data-testid="confirm-accept"
+      (click)="onConfirm()"
+    >
+      {{ confirmLabel() }}
+    </yoru-button>
+  </yoru-dialog>
+}

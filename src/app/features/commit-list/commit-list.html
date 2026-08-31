@@ -1,0 +1,120 @@
+@if (showSearch()) {
+  <app-commit-search />
+}
+
+<div class="column-header" aria-hidden="true">
+  <span class="col-description">Description</span>
+  @if (showAuthor()) {
+    <span class="col-author">Author</span>
+  }
+  @if (showDate()) {
+    <span class="col-date">Date</span>
+  }
+  @if (showSha()) {
+    <span class="col-sha">SHA</span>
+  }
+</div>
+
+<div class="relative min-h-0 flex-1" data-testid="commit-rows">
+  @if (showSkeleton()) {
+    <div class="flex flex-col" data-testid="commit-list-skeleton">
+      @for (row of skeletonRows; track row) {
+        <div class="flex h-[34px] items-center gap-2 px-2">
+          <yoru-skeleton width="55%" height="10px" />
+          <yoru-skeleton class="ml-auto" width="90px" height="10px" />
+          <yoru-skeleton width="60px" height="10px" />
+        </div>
+      }
+    </div>
+  } @else if (searchEmpty()) {
+    <yoru-empty-state
+      data-testid="commit-search-empty"
+      icon="lucideSearch"
+      title="No matching commits"
+      [hint]="'Nothing in the loaded history matches ' + searchQuery()"
+    />
+  } @else if (rows().length === 0) {
+    <yoru-empty-state
+      data-testid="commit-list-empty"
+      icon="lucideGitCommitHorizontal"
+      title="No commits yet"
+      hint="Make your first commit and the history will show up here."
+      kanji="夜"
+    />
+  } @else {
+    <cdk-virtual-scroll-viewport
+      [itemSize]="rowHeight"
+      class="neon-scroll h-full"
+      minBufferPx="272"
+      maxBufferPx="544"
+      tabindex="0"
+      role="listbox"
+      aria-label="Commit history"
+      aria-multiselectable="true"
+      [attr.aria-activedescendant]="activeRowId()"
+      (keydown)="onKeydown($event)"
+    >
+      <div
+        *cdkVirtualFor="let row of rows(); trackBy: trackBySha; let i = index"
+        [id]="rowId(row.sha)"
+        [attr.data-testid]="'commit-row-' + row.sha"
+        role="option"
+        [attr.aria-selected]="isSelected(row.sha)"
+        [attr.aria-label]="row.title"
+        [title]="row.title"
+        [appDragDrop]="row.payload"
+        (click)="onRowClick($event, i)"
+        (contextmenu)="onContextMenu($event, i)"
+        class="commit-row"
+        [class.is-selected]="isSelected(row.sha)"
+        [class.is-current]="row.sha === selectedSha()"
+      >
+        <div class="col-description">
+          @for (ref of row.refs; track ref.ref_type + ':' + ref.name) {
+            <yoru-badge
+              class="shrink-0"
+              [type]="ref.ref_type"
+              [label]="ref.name"
+              [solid]="ref.ref_type === 'head'"
+            />
+          }
+          @if (row.hiddenRefs > 0) {
+            <span class="ref-overflow" [title]="row.hiddenRefsTitle"
+              >+{{ row.hiddenRefs }}</span
+            >
+          }
+          <span class="subject" [class.off-branch]="row.offBranch">{{
+            row.subject
+          }}</span>
+        </div>
+
+        @if (showAuthor()) {
+          <div class="col-author">
+            <yoru-avatar
+              class="shrink-0"
+              [name]="row.authorName"
+              [seed]="row.authorEmail"
+              [size]="16"
+            />
+            <span class="truncate">{{ row.authorName }}</span>
+          </div>
+        }
+        @if (showDate()) {
+          <span class="col-date" [title]="row.absoluteDate">{{
+            row.relativeDate
+          }}</span>
+        }
+        @if (showSha()) {
+          <code class="col-sha">{{ row.shortSha }}</code>
+        }
+      </div>
+    </cdk-virtual-scroll-viewport>
+  }
+</div>
+
+<footer class="list-footer" data-testid="commit-list-footer">
+  <span class="footer-count">{{ footerLabel() }}</span>
+  @if (historyLoading() && rows().length > 0) {
+    <yoru-spinner class="ml-auto" [size]="14" label="Loading more commits" />
+  }
+</footer>

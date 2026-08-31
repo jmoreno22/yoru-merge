@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YoruMerge</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Painted before styles.css arrives so the window never flashes white. -->
+    <style>
+      html {
+        background: #f7faff;
+        color-scheme: light;
+      }
+      html.dark {
+        background: #050712;
+        color-scheme: dark;
+      }
+    </style>
+
+    <!-- Render-blocking on purpose: sets .dark before the first paint. -->
+    <script src="assets/theme-preboot.js"></script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

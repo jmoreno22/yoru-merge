@@ -1,0 +1,60 @@
+<yoru-section-header label="Reflog" [count]="entries().length" />
+
+@if (entries().length === 0) {
+  <yoru-empty-state
+    icon="lucideHistory"
+    title="No reflog entries"
+    hint="Every checkout, commit, merge and reset lands here."
+    kanji="歴"
+  />
+} @else {
+  <ul
+    class="neon-scroll min-h-0 flex-1 overflow-y-auto"
+    data-testid="reflog-list"
+    aria-label="Reflog entries"
+  >
+    @for (entry of entries(); track entry.selector) {
+      <li>
+        <div
+          class="group flex items-center gap-2 border-b border-[var(--app-border)]/50 px-3 py-1.5 transition-colors hover:bg-[var(--app-panel)]/60"
+          [class.bg-[var(--app-panel)]]="selectedSha() === entry.sha"
+        >
+          <button
+            type="button"
+            (click)="onSelect(entry)"
+            [attr.aria-label]="'Show ' + entry.selector + ' — ' + entry.message"
+            class="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
+            [attr.data-testid]="'reflog-entry-' + entry.selector"
+          >
+            <span class="flex w-full min-w-0 items-center gap-2">
+              <span class="shrink-0 font-mono text-[10.5px] text-neon-cyan">
+                {{ entry.selector }}
+              </span>
+              <span class="truncate text-xs text-[var(--app-text)]">
+                {{ entry.message }}
+              </span>
+            </span>
+            <span
+              class="flex w-full min-w-0 items-center gap-2 font-mono text-[10.5px] text-[var(--app-text-faint)]"
+            >
+              <span class="shrink-0">{{ entry.short_sha }}</span>
+              <span class="shrink-0">{{ entry.action }}</span>
+              <span class="truncate">{{ when(entry) }}</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            #menuAnchor
+            (click)="onMenu(entry, menuAnchor)"
+            [disabled]="busy()"
+            [attr.aria-label]="'Actions for ' + entry.selector"
+            class="flex size-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-colors hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)] focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <ng-icon name="lucideEllipsisVertical" size="14px" aria-hidden="true" />
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+}

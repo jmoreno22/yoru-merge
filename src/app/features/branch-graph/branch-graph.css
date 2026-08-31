@@ -1,0 +1,37 @@
+/* The graph owns no chrome: a transparent canvas fills the host so whatever
+ * surface the panel provides shows through, including when it is empty. */
+
+:host {
+  display: block;
+  position: relative;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+/* Anchored at the hovered node and pushed clear of the lane column, which is
+ * only a handful of pixels wide. */
+.graph-tooltip {
+  position: absolute;
+  z-index: var(--z-overlay);
+  display: flex;
+  max-width: 320px;
+  align-items: center;
+  gap: 6px;
+  transform: translate(14px, -50%);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-xs);
+  background: var(--app-surface-raised);
+  box-shadow: var(--app-shadow-panel);
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--app-text);
+  pointer-events: none;
+  white-space: nowrap;
+}

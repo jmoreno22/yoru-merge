@@ -1,0 +1,35 @@
+@for (toast of toasts(); track toast.id) {
+  <div
+    class="yoru-fade-in pointer-events-auto flex items-start gap-2 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-3 py-2 shadow-panel"
+    [attr.role]="toast.level === 'error' ? 'alert' : 'status'"
+  >
+    <ng-icon
+      [name]="iconFor(toast.level)"
+      size="14px"
+      [class]="'mt-[2px] shrink-0 ' + toneFor(toast.level)"
+      aria-hidden="true"
+    />
+    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+      <p class="text-[13px] leading-[18px] text-[var(--app-text)]">
+        {{ toast.message }}
+      </p>
+      @if (toast.action; as action) {
+        <button
+          type="button"
+          (click)="runAction(toast)"
+          class="self-start rounded-xs px-1.5 py-0.5 text-[11px] font-semibold text-neon-cyan transition-colors hover:bg-neon-cyan/10"
+        >
+          {{ action.label }}
+        </button>
+      }
+    </div>
+    <button
+      type="button"
+      (click)="dismiss(toast.id)"
+      aria-label="Dismiss notification"
+      class="mt-[1px] inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    >
+      <ng-icon name="lucideX" size="12px" aria-hidden="true" />
+    </button>
+  </div>
+}

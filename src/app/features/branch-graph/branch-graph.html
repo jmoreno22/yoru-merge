@@ -1,0 +1,24 @@
+@if (!isEmpty()) {
+  <canvas
+    #canvas
+    data-testid="branch-graph-canvas"
+    class="block h-full w-full"
+    aria-hidden="true"
+    (pointermove)="onPointerMove($event)"
+    (pointerleave)="onPointerLeave()"
+    (click)="onClick($event)"
+  ></canvas>
+
+  @if (hover(); as target) {
+    <div
+      class="graph-tooltip"
+      role="tooltip"
+      data-testid="branch-graph-tooltip"
+      [style.top.px]="target.y"
+      [style.left.px]="target.x"
+    >
+      <code class="shrink-0 text-[var(--app-text-faint)]">{{ target.shortSha }}</code>
+      <span class="truncate">{{ target.subject }}</span>
+    </div>
+  }
+}

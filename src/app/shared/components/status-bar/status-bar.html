@@ -1,0 +1,137 @@
+@if (repo.isOpen()) {
+  <span
+    class="flex shrink-0 items-center gap-1.5"
+    [attr.aria-label]="activity().label"
+    [yoruTooltip]="activity().label"
+    data-testid="status-activity"
+  >
+    <span
+      class="size-1.5 rounded-full"
+      [style.background]="activityColor()"
+      aria-hidden="true"
+    ></span>
+    <span class="font-mono">{{ activity().label }}</span>
+  </span>
+
+  @if (repo.currentBranch(); as branch) {
+    <span class="flex min-w-0 items-center gap-1 font-mono" data-testid="status-branch">
+      <ng-icon
+        name="lucideGitBranch"
+        size="12px"
+        class="shrink-0 text-neon-cyan"
+        aria-hidden="true"
+      />
+      <span class="truncate text-[var(--app-text)]">{{ branch }}</span>
+      @if (upstream(); as tracking) {
+        <span
+          class="truncate text-[var(--app-text-faint)]"
+          [attr.aria-label]="'tracking ' + tracking"
+        >
+          {{ tracking }}
+        </span>
+      }
+    </span>
+
+    <span class="flex shrink-0 items-center gap-1.5 font-mono">
+      <span
+        class="flex items-center"
+        [attr.aria-label]="repo.aheadBehind().ahead + ' commits ahead of upstream'"
+      >
+        <ng-icon name="lucideArrowUp" size="11px" aria-hidden="true" />
+        {{ repo.aheadBehind().ahead }}
+      </span>
+      <span
+        class="flex items-center"
+        [attr.aria-label]="repo.aheadBehind().behind + ' commits behind upstream'"
+      >
+        <ng-icon name="lucideArrowDown" size="11px" aria-hidden="true" />
+        {{ repo.aheadBehind().behind }}
+      </span>
+    </span>
+  }
+
+  @if (detached()) {
+    <span
+      class="flex shrink-0 items-center gap-1 font-mono text-[var(--app-conflict-text)]"
+      data-testid="status-detached"
+    >
+      <ng-icon name="lucideCircleDot" size="12px" aria-hidden="true" />
+      <span>detached HEAD</span>
+    </span>
+  }
+
+  @if (headSha(); as sha) {
+    <button
+      type="button"
+      (click)="onCopySha()"
+      [yoruTooltip]="'Copy the full HEAD sha'"
+      [attr.aria-label]="'HEAD is ' + sha + ' — copy the full sha'"
+      data-testid="status-head-sha"
+      class="shrink-0 rounded-xs px-1 font-mono transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    >
+      {{ sha }}
+    </button>
+  }
+
+  <button
+    type="button"
+    (click)="onShowChanges()"
+    [yoruTooltip]="'Show the working tree'"
+    [attr.aria-label]="changeCount() + ' uncommitted changes — show them'"
+    data-testid="status-changes"
+    class="shrink-0 rounded-xs px-1 font-mono transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    {{ changeCount() }} {{ changeCount() === 1 ? 'change' : 'changes' }}
+  </button>
+
+  @if (sequencerLabel(); as label) {
+    <span
+      class="flex shrink-0 items-center gap-1 font-mono text-[var(--app-conflict-text)]"
+      data-testid="status-sequencer"
+    >
+      <ng-icon name="lucideTriangleAlert" size="12px" aria-hidden="true" />
+      <span>{{ label }}</span>
+    </span>
+  }
+
+  @if (fetching()) {
+    <span
+      class="flex shrink-0 items-center gap-1.5 font-mono"
+      role="status"
+      data-testid="status-fetch-progress"
+    >
+      <ng-icon name="lucideCloudDownload" size="12px" aria-hidden="true" />
+      <span
+        class="h-1 w-16 overflow-hidden rounded-full bg-[var(--app-panel)]"
+        aria-hidden="true"
+      >
+        <span class="block h-full bg-neon-cyan" [style.width.%]="fetchPercent()"></span>
+      </span>
+      <span>{{ repo.fetchProgress()?.phase }} {{ fetchPercent() }}%</span>
+    </span>
+  } @else if (fetchedAgo(); as ago) {
+    <span class="flex shrink-0 items-center gap-1 font-mono" data-testid="status-fetched">
+      <ng-icon name="lucideClock" size="12px" aria-hidden="true" />
+      <span>fetched {{ ago }}</span>
+    </span>
+  }
+} @else {
+  <span class="font-mono text-[var(--app-text-faint)]" data-testid="status-empty">
+    No repository open
+  </span>
+}
+
+<span class="flex-1"></span>
+
+@if (gitVersion(); as version) {
+  <span class="shrink-0 font-mono text-[var(--app-text-faint)]" data-testid="status-git">
+    git {{ version }}
+  </span>
+}
+
+<span
+  class="shrink-0 font-display text-[10.5px] tracking-[0.12em] text-[var(--app-text-faint)]"
+  data-testid="status-app"
+>
+  YORU
+</span>

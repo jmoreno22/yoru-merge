@@ -1,0 +1,104 @@
+<div
+  class="neon-scroll flex min-w-0 items-stretch overflow-x-auto"
+  role="tablist"
+  aria-label="Open repositories"
+  data-testid="workspace-tabs-bar"
+>
+  @for (state of tabs(); track state.tabId) {
+    <div
+      role="tab"
+      [attr.aria-selected]="isActive(state)"
+      [attr.tabindex]="isActive(state) ? 0 : -1"
+      [attr.data-tab-active]="isActive(state) ? 'true' : null"
+      [attr.data-tab-id]="state.tabId"
+      [title]="state.path"
+      (click)="onSelect(state.tabId)"
+      (auxclick)="onAuxClick(state, $event)"
+      (contextmenu)="onContextMenu(state, $event)"
+      (keydown)="onKeydown(state, $event)"
+      data-testid="workspace-tab"
+      class="group relative flex h-full min-w-36 max-w-56 cursor-pointer items-center gap-1.5 border-r border-[var(--app-border)] pl-2.5 pr-1.5 text-xs outline-none transition-colors"
+      [class.bg-[var(--app-surface-raised)]]="isActive(state)"
+      [class.text-[var(--app-text)]]="isActive(state)"
+      [class.text-[var(--app-text-muted)]]="!isActive(state)"
+      [class.hover:bg-[var(--app-panel)]]="!isActive(state)"
+    >
+      @if (isActive(state)) {
+        <span
+          class="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-neon-cyan"
+          aria-hidden="true"
+        ></span>
+      }
+
+      @if (state.loading()) {
+        <ng-icon
+          name="lucideLoaderCircle"
+          size="13px"
+          class="shrink-0 animate-spin text-neon-cyan"
+          aria-hidden="true"
+        />
+      } @else if (state.notFound()) {
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="13px"
+          class="shrink-0 text-[var(--app-conflict-text)]"
+          aria-hidden="true"
+        />
+      } @else {
+        <ng-icon
+          name="lucideDatabase"
+          size="13px"
+          class="shrink-0"
+          [class.text-neon-cyan]="isActive(state)"
+          aria-hidden="true"
+        />
+      }
+
+      <span class="truncate font-mono" data-testid="workspace-tab-name">
+        {{ tabName(state) }}
+      </span>
+
+      @if (state.notFound()) {
+        <span
+          class="shrink-0 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
+          data-testid="workspace-tab-not-found"
+        >
+          missing
+        </span>
+      } @else if (dirtyCount(state); as dirty) {
+        <span
+          class="shrink-0 rounded-xs bg-[var(--app-panel)] px-1 font-mono text-[10.5px] text-git-modified"
+          [attr.aria-label]="dirty + ' uncommitted changes'"
+          data-testid="workspace-tab-dirty"
+        >
+          {{ dirty }}
+        </span>
+      }
+
+      <span class="flex-1"></span>
+
+      <button
+        type="button"
+        [attr.aria-label]="'Close ' + tabName(state)"
+        [yoruTooltip]="'Close ' + tabName(state)"
+        (click)="onClose(state, $event)"
+        data-testid="workspace-tab-close"
+        class="flex size-5 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-conflict-text)] focus-visible:opacity-100 group-hover:opacity-100"
+        [class.opacity-100]="isActive(state)"
+      >
+        <ng-icon name="lucideX" size="13px" aria-hidden="true" />
+      </button>
+    </div>
+  }
+
+  <button
+    type="button"
+    aria-label="Open, clone or initialize a repository"
+    [yoruTooltip]="'Open, clone or initialize a repository'"
+    (click)="onAdd($event)"
+    data-testid="workspace-tab-add"
+    class="flex h-full w-9 shrink-0 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    <ng-icon name="lucidePlus" size="15px" aria-hidden="true" />
+  </button>
+</div>

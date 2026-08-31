@@ -1,0 +1,11 @@
+/* Type-checking context for Vitest specs. The app tsconfigs exclude *.spec.ts,
+   so without this file editors report specs as not being part of a project. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": []
+  },
+  "include": ["src/**/*.spec.ts"],
+  "exclude": ["out-tsc", "dist", "node_modules"]
+}

@@ -1,0 +1,42 @@
+/* A dropped commit stays fully legible; the strike-through and the muted tone
+ * carry the state, not a lowered opacity. */
+.rebase-row.is-dropped .rebase-subject {
+  color: var(--app-text-faint);
+  text-decoration: line-through;
+}
+
+.message-input {
+  width: 100%;
+  resize: vertical;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--app-border);
+  background: var(--app-panel);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--app-text);
+}
+
+.message-input:focus {
+  border-color: var(--color-neon-cyan);
+}
+
+/* The row the pointer is carrying, and the gap it leaves behind. */
+.rebase-row.cdk-drag-preview {
+  border-color: var(--color-neon-cyan);
+  box-shadow: var(--app-shadow-panel);
+}
+
+.rebase-row.cdk-drag-placeholder {
+  opacity: 0.35;
+}
+
+.cdk-drop-list-dragging .rebase-row:not(.cdk-drag-placeholder) {
+  transition: transform 160ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdk-drop-list-dragging .rebase-row:not(.cdk-drag-placeholder) {
+    transition: none;
+  }
+}

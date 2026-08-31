@@ -1,0 +1,82 @@
+@if (banner(); as state) {
+  <div
+    class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-3 border-b border-git-conflict/40 bg-git-conflict/10 px-3"
+    role="status"
+    aria-live="polite"
+    data-testid="repo-state-banner"
+  >
+    <span
+      class="inline-flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
+      data-testid="repo-state-title"
+    >
+      <ng-icon name="lucideTriangleAlert" size="14px" aria-hidden="true" />
+      <span>{{ state.title }}</span>
+    </span>
+
+    <span class="h-4 w-px shrink-0 bg-git-conflict/30" aria-hidden="true"></span>
+
+    <span
+      class="min-w-0 flex-1 truncate text-[11px] text-[var(--app-text-muted)]"
+      data-testid="repo-state-hint"
+    >
+      {{ state.hint }}
+    </span>
+
+    @if (state.continueBlockedReason; as reason) {
+      <span class="shrink-0 font-mono text-[10.5px] text-[var(--app-text-faint)]">
+        {{ reason }}
+      </span>
+    }
+
+    @if (state.driver !== 'none') {
+      <yoru-button
+        size="sm"
+        variant="primary"
+        icon="lucidePlay"
+        [disabled]="!state.canContinue || busy()"
+        (click)="onContinue()"
+        data-testid="repo-state-continue"
+      >
+        Continue
+      </yoru-button>
+    }
+
+    @if (state.canSkip) {
+      <yoru-button
+        size="sm"
+        variant="secondary"
+        icon="lucideSkipForward"
+        [disabled]="busy()"
+        (click)="onSkip()"
+        data-testid="repo-state-skip"
+      >
+        Skip
+      </yoru-button>
+    }
+
+    @if (state.canAbort) {
+      <yoru-button
+        size="sm"
+        variant="danger"
+        icon="lucideBan"
+        [disabled]="busy()"
+        (click)="onAbort()"
+        data-testid="repo-state-abort"
+      >
+        Abort
+      </yoru-button>
+    }
+
+    @if (state.canResolve) {
+      <yoru-button
+        size="sm"
+        variant="secondary"
+        icon="lucideGitMerge"
+        (click)="onResolve()"
+        data-testid="repo-state-resolve"
+      >
+        Resolve…
+      </yoru-button>
+    }
+  </div>
+}

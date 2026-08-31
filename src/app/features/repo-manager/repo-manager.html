@@ -1,0 +1,162 @@
+<div class="neon-scroll flex h-full w-full justify-center overflow-y-auto p-[var(--panel-pad)]">
+  <div class="flex w-full max-w-2xl flex-col gap-8 py-10">
+    <header class="flex flex-col gap-2">
+      <h1
+        class="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-pink bg-clip-text font-display text-2xl tracking-widest text-transparent"
+      >
+        YoruMerge
+      </h1>
+      <p class="text-[13px] text-[var(--app-text-muted)]">
+        Open a repository to start, or bring a new one in.
+      </p>
+    </header>
+
+    @if (error(); as message) {
+      <p
+        role="alert"
+        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-[13px] text-git-deleted"
+        data-testid="repo-manager-error"
+      >
+        {{ message }}
+      </p>
+    }
+
+    <div class="grid gap-3 sm:grid-cols-3">
+      <button
+        type="button"
+        [disabled]="loading()"
+        data-testid="repo-open"
+        (click)="onOpen()"
+        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-neon-cyan/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
+      >
+        <ng-icon
+          name="lucideFolderOpen"
+          size="18px"
+          aria-hidden="true"
+          class="text-neon-cyan"
+        />
+        <span class="text-[13px] font-semibold text-[var(--app-text)]">Open folder</span>
+        <span class="text-[11px] text-[var(--app-text-faint)]">
+          A repository already on this machine
+        </span>
+      </button>
+
+      <button
+        type="button"
+        [disabled]="loading()"
+        data-testid="repo-clone"
+        (click)="onClone()"
+        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-neon-cyan/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
+      >
+        <ng-icon
+          name="lucideCloudDownload"
+          size="18px"
+          aria-hidden="true"
+          class="text-neon-cyan"
+        />
+        <span class="text-[13px] font-semibold text-[var(--app-text)]">Clone</span>
+        <span class="text-[11px] text-[var(--app-text-faint)]">
+          From a URL, with depth and branch options
+        </span>
+      </button>
+
+      <button
+        type="button"
+        [disabled]="loading()"
+        data-testid="repo-init"
+        (click)="onInit()"
+        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-neon-cyan/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
+      >
+        <ng-icon
+          name="lucideGitBranchPlus"
+          size="18px"
+          aria-hidden="true"
+          class="text-neon-cyan"
+        />
+        <span class="text-[13px] font-semibold text-[var(--app-text)]">Init repo</span>
+        <span class="text-[11px] text-[var(--app-text-faint)]">
+          Start git in a folder you already have
+        </span>
+      </button>
+    </div>
+
+    <section class="flex min-h-0 flex-col gap-2">
+      <h2
+        class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+      >
+        Recent
+      </h2>
+
+      @if (visibleRecents().length === 0) {
+        <yoru-empty-state
+          icon="lucideDatabase"
+          title="No repositories yet"
+          hint="The ones you open show up here."
+          kanji="夜"
+        />
+      } @else {
+        <ul class="flex flex-col gap-1" data-testid="repo-recents">
+          @for (entry of visibleRecents(); track entry.path) {
+            <li>
+              <div
+                class="group flex items-center gap-3 rounded-sm border border-transparent px-3 py-2 transition-colors hover:border-[var(--app-border)] hover:bg-[var(--app-panel)]"
+              >
+                <button
+                  type="button"
+                  [disabled]="loading()"
+                  [attr.data-testid]="'repo-recent-' + entry.name"
+                  (click)="onRecent(entry)"
+                  (contextmenu)="onRecentMenu($event, entry)"
+                  class="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <ng-icon
+                    name="lucideDatabase"
+                    size="14px"
+                    aria-hidden="true"
+                    class="shrink-0 text-[var(--app-text-muted)]"
+                  />
+                  <span class="flex min-w-0 flex-col">
+                    <span class="truncate text-[13px] text-[var(--app-text)]">
+                      {{ entry.name }}
+                    </span>
+                    <span
+                      class="truncate font-mono text-[11px] text-[var(--app-text-faint)]"
+                      [title]="entry.path"
+                    >
+                      {{ entry.path }}
+                    </span>
+                  </span>
+                  <span
+                    class="ml-auto shrink-0 font-mono text-[11px] text-[var(--app-text-faint)]"
+                  >
+                    {{ lastOpened(entry) }}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  [attr.aria-label]="'More actions for ' + entry.name"
+                  [attr.data-testid]="'repo-recent-menu-' + entry.name"
+                  (click)="onRecentMenu($event, entry)"
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:opacity-100"
+                >
+                  <ng-icon name="lucideMoreHorizontal" size="14px" aria-hidden="true" />
+                </button>
+
+                <button
+                  type="button"
+                  [attr.aria-label]="'Remove ' + entry.name + ' from recents'"
+                  [attr.data-testid]="'repo-recent-remove-' + entry.name"
+                  (click)="onRemoveRecent(entry, $event)"
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-git-deleted focus-visible:opacity-100"
+                >
+                  <ng-icon name="lucideX" size="14px" aria-hidden="true" />
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+</div>

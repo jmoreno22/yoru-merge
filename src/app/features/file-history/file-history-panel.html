@@ -1,0 +1,135 @@
+@if (file(); as currentFile) {
+  <aside
+    class="flex h-full min-h-0 flex-col bg-[var(--app-surface)]"
+    data-testid="file-history-panel"
+    role="region"
+    [attr.aria-label]="'File history for ' + currentFile"
+  >
+    <header
+      class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3"
+    >
+      <ng-icon
+        name="lucideHistory"
+        size="16px"
+        class="shrink-0 text-neon-violet"
+        aria-hidden="true"
+      />
+      <span
+        class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+      >
+        History
+      </span>
+      <span
+        class="min-w-0 truncate font-mono text-xs text-[var(--app-text)]"
+        [title]="currentFile"
+      >
+        {{ currentFile }}
+      </span>
+      @if (rows().length > 0) {
+        <span
+          class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-faint)]"
+        >
+          {{ rows().length }}
+        </span>
+      }
+      <span class="flex-1"></span>
+      <button
+        type="button"
+        class="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+        data-testid="file-history-close"
+        aria-label="Close file history (Escape)"
+        title="Close (Escape)"
+        (click)="onClose()"
+      >
+        <ng-icon name="lucideX" size="14px" aria-hidden="true" />
+      </button>
+    </header>
+
+    <button
+      type="button"
+      class="flex h-8 shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3 text-left text-xs transition-colors hover:bg-[var(--app-panel)]"
+      [class]="
+        selectedSha() === null
+          ? 'text-neon-cyan'
+          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
+      "
+      data-testid="file-history-working-copy"
+      (click)="onShowWorkingCopy()"
+    >
+      <ng-icon name="lucideFileDiff" size="14px" aria-hidden="true" />
+      Uncommitted changes
+    </button>
+
+    @if (error(); as message) {
+      <div class="flex flex-1 flex-col" data-testid="file-history-error">
+        <yoru-empty-state
+          icon="lucideTriangleAlert"
+          title="Could not load the history"
+          [hint]="message"
+        />
+      </div>
+    } @else if (loading()) {
+      <div class="flex flex-col gap-3 p-4" aria-busy="true">
+        @for (row of skeletonRows; track row) {
+          <yoru-skeleton width="100%" height="30px" />
+        }
+      </div>
+    } @else if (isEmpty()) {
+      <div class="flex flex-1 flex-col" data-testid="file-history-empty">
+        <yoru-empty-state
+          icon="lucideHistory"
+          title="No commits touched this file"
+          hint="It may be untracked, or renamed without history following it."
+        />
+      </div>
+    } @else {
+      <cdk-virtual-scroll-viewport
+        class="neon-scroll min-h-0 flex-1"
+        data-testid="file-history-list"
+        [itemSize]="rowHeight"
+        role="listbox"
+        [attr.aria-label]="'Commits touching ' + currentFile"
+      >
+        <div
+          *cdkVirtualFor="let row of rows(); trackBy: trackRow"
+          role="option"
+          tabindex="0"
+          class="flex h-[46px] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3 outline-none transition-colors hover:bg-[var(--app-panel)] focus-visible:bg-[var(--app-panel)]"
+          [class]="
+            row.commit.sha === selectedSha()
+              ? 'bg-[var(--app-panel)] border-l-2 border-l-neon-cyan'
+              : ''
+          "
+          [attr.aria-selected]="row.commit.sha === selectedSha()"
+          [attr.data-testid]="'file-history-item-' + row.commit.sha"
+          [title]="row.commit.message"
+          (click)="onSelect(row.commit.sha)"
+          (keydown.enter)="onSelect(row.commit.sha)"
+          (keydown.space)="onSelect(row.commit.sha)"
+          (contextmenu)="onRowMenu($event, row)"
+        >
+          <div class="flex items-center gap-2 font-mono text-[11px]">
+            <yoru-avatar
+              [name]="row.commit.author_name"
+              [seed]="row.commit.author_email"
+              [size]="16"
+            />
+            <code class="shrink-0 text-neon-cyan">{{ row.commit.short_sha }}</code>
+            <span class="min-w-0 flex-1 truncate text-[var(--app-text-muted)]">
+              {{ row.commit.author_name }}
+            </span>
+            <span
+              class="shrink-0 tabular-nums text-[var(--app-text-faint)]"
+              [title]="row.exact"
+            >
+              {{ row.when }}
+            </span>
+          </div>
+          <div class="truncate text-xs text-[var(--app-text)]">
+            {{ row.commit.message }}
+          </div>
+        </div>
+      </cdk-virtual-scroll-viewport>
+    }
+  </aside>
+}

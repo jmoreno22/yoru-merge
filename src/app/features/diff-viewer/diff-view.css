@@ -1,0 +1,418 @@
+/* Diff renderer.
+ *
+ * The component runs with `ViewEncapsulation.None` because highlighted code is
+ * written through `[innerHTML]` and its `.hljs-*` spans never carry Angular's
+ * encapsulation attribute. Every rule below is therefore scoped under
+ * `app-diff-view` by hand.
+ *
+ * Syntax colours are tokens rather than a highlight.js stylesheet: the app has
+ * two themes and `atom-one-dark.css` would paint the light one black on black.
+ * `.dark` on <html> is what ThemeService writes, so the palette follows the
+ * resolved theme with no JavaScript.
+ */
+
+app-diff-view {
+  --dv-line-h: 20px;
+  --dv-num-w: 4ch;
+
+  --dv-add-bg: color-mix(in srgb, var(--color-git-added) 14%, transparent);
+  --dv-del-bg: color-mix(in srgb, var(--color-git-deleted) 14%, transparent);
+  --dv-sel-bg: color-mix(in srgb, var(--color-neon-cyan) 22%, transparent);
+  --dv-void-bg: color-mix(in srgb, var(--app-text-faint) 6%, transparent);
+
+  /* Syntax palette — light theme. */
+  --dv-keyword: #7c3aed;
+  --dv-string: #0f7b46;
+  --dv-number: #b45309;
+  --dv-comment: #546889;
+  --dv-function: #1d4ed8;
+  --dv-type: #0369a1;
+  --dv-literal: #be185d;
+  --dv-punct: #465a7f;
+}
+
+.dark app-diff-view {
+  --dv-add-bg: color-mix(in srgb, var(--color-git-added) 12%, transparent);
+  --dv-del-bg: color-mix(in srgb, var(--color-git-deleted) 12%, transparent);
+
+  --dv-keyword: #c792ea;
+  --dv-string: #35f2a2;
+  --dv-number: #ffd166;
+  --dv-comment: #7e93b8;
+  --dv-function: #82aaff;
+  --dv-type: #00e5ff;
+  --dv-literal: #ff9bd2;
+  --dv-punct: #afc8f7;
+}
+
+/* ── File block ────────────────────────────────────────────────────── */
+
+app-diff-view .dv-file {
+  border-bottom: 1px solid var(--app-border);
+}
+
+app-diff-view .dv-file-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--panel-head-h);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+app-diff-view .dv-chip {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+app-diff-view .dv-path {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-diff-view .dv-meta {
+  min-width: 0;
+  color: var(--app-text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+app-diff-view .dv-stats {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+app-diff-view .dv-icon-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  color: var(--app-text-muted);
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+
+app-diff-view .dv-icon-button:hover {
+  background: var(--app-panel);
+  color: var(--app-text);
+}
+
+app-diff-view .dv-notice,
+app-diff-view .dv-expand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--app-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: left;
+}
+
+app-diff-view .dv-expand:hover {
+  background: var(--app-panel);
+  color: var(--app-text);
+}
+
+/* ── Image preview ─────────────────────────────────────────────────── */
+
+app-diff-view .dv-img-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+}
+
+app-diff-view .dv-img-side {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+app-diff-view .dv-img-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Checkerboard, so a transparent PNG does not read as a white rectangle. */
+app-diff-view .dv-img-frame {
+  --dv-checker: color-mix(in srgb, var(--app-text-faint) 22%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-xs);
+  background-color: var(--app-surface);
+  background-image:
+    linear-gradient(45deg, var(--dv-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--dv-checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--dv-checker) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--dv-checker) 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+app-diff-view .dv-img {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+
+/* ── Hunks ─────────────────────────────────────────────────────────── */
+
+app-diff-view .dv-hunk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-surface-raised);
+}
+
+app-diff-view .dv-hunk-head:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: -2px;
+}
+
+app-diff-view .dv-hunk-range {
+  flex-shrink: 0;
+  color: var(--color-neon-violet);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+app-diff-view .dv-hunk-body {
+  outline: none;
+}
+
+app-diff-view .dv-gap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 0;
+  border-top: 1px dashed var(--app-border);
+  border-bottom: 1px dashed var(--app-border);
+  color: var(--app-text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+app-diff-view .dv-gap:hover {
+  background: var(--app-panel);
+  color: var(--app-text);
+}
+
+/* ── Rows ──────────────────────────────────────────────────────────── */
+
+app-diff-view .dv-row {
+  display: grid;
+  align-items: start;
+  min-height: var(--dv-line-h);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: var(--dv-line-h);
+}
+
+app-diff-view .dv-unified {
+  grid-template-columns:
+    minmax(var(--dv-num-w), auto) minmax(var(--dv-num-w), auto)
+    1.5ch minmax(0, 1fr) auto;
+}
+
+app-diff-view .dv-pair {
+  grid-template-columns:
+    minmax(var(--dv-num-w), auto) minmax(0, 1fr)
+    minmax(var(--dv-num-w), auto) minmax(0, 1fr);
+}
+
+app-diff-view .dv-row[role="option"] {
+  cursor: pointer;
+}
+
+app-diff-view .dv-row:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: -2px;
+}
+
+app-diff-view .dv-num {
+  padding: 0 6px;
+  border-right: 1px solid var(--app-border);
+  background: var(--app-surface-raised);
+  color: var(--app-text-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+}
+
+app-diff-view .dv-mark {
+  padding-left: 2px;
+  color: var(--app-text-faint);
+  user-select: none;
+}
+
+app-diff-view .dv-code {
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--app-text);
+  white-space: pre;
+  tab-size: 2;
+}
+
+app-diff-view.dv-wrap .dv-code {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+app-diff-view .dv-side {
+  border-right: 1px solid var(--app-border);
+}
+
+app-diff-view .dv-void {
+  background: var(--dv-void-bg);
+}
+
+app-diff-view .dv-nonewline {
+  padding: 0 8px;
+  color: var(--app-text-faint);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+app-diff-view .dv-add {
+  background: var(--dv-add-bg);
+}
+
+app-diff-view .dv-add .dv-mark {
+  color: var(--color-git-added);
+}
+
+app-diff-view .dv-del {
+  background: var(--dv-del-bg);
+}
+
+app-diff-view .dv-del .dv-mark {
+  color: var(--color-git-deleted);
+}
+
+app-diff-view .dv-sel {
+  background: var(--dv-sel-bg);
+  box-shadow: inset 2px 0 0 var(--color-neon-cyan);
+}
+
+app-diff-view .dv-selection-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ── Syntax tokens ─────────────────────────────────────────────────── */
+
+app-diff-view .hljs-comment,
+app-diff-view .hljs-quote {
+  color: var(--dv-comment);
+  font-style: italic;
+}
+
+app-diff-view .hljs-keyword,
+app-diff-view .hljs-selector-tag,
+app-diff-view .hljs-doctag,
+app-diff-view .hljs-formula {
+  color: var(--dv-keyword);
+}
+
+app-diff-view .hljs-string,
+app-diff-view .hljs-regexp,
+app-diff-view .hljs-addition,
+app-diff-view .hljs-meta-string {
+  color: var(--dv-string);
+}
+
+app-diff-view .hljs-number,
+app-diff-view .hljs-literal,
+app-diff-view .hljs-symbol,
+app-diff-view .hljs-bullet {
+  color: var(--dv-number);
+}
+
+app-diff-view .hljs-title,
+app-diff-view .hljs-title.class_,
+app-diff-view .hljs-title.function_,
+app-diff-view .hljs-section,
+app-diff-view .hljs-name {
+  color: var(--dv-function);
+}
+
+app-diff-view .hljs-type,
+app-diff-view .hljs-built_in,
+app-diff-view .hljs-class,
+app-diff-view .hljs-selector-id,
+app-diff-view .hljs-selector-class {
+  color: var(--dv-type);
+}
+
+app-diff-view .hljs-attr,
+app-diff-view .hljs-attribute,
+app-diff-view .hljs-property,
+app-diff-view .hljs-variable,
+app-diff-view .hljs-template-variable,
+app-diff-view .hljs-params {
+  color: var(--dv-literal);
+}
+
+app-diff-view .hljs-meta,
+app-diff-view .hljs-operator,
+app-diff-view .hljs-punctuation,
+app-diff-view .hljs-subst {
+  color: var(--dv-punct);
+}
+
+app-diff-view .hljs-emphasis {
+  font-style: italic;
+}
+
+app-diff-view .hljs-strong {
+  font-weight: 600;
+}

@@ -1,0 +1,35 @@
+<button
+  type="button"
+  role="switch"
+  [attr.aria-checked]="checked()"
+  [attr.aria-label]="label() ? null : 'Toggle'"
+  [disabled]="disabled()"
+  (click)="toggle()"
+  class="group flex items-center gap-2 rounded-sm text-left disabled:cursor-not-allowed disabled:opacity-45"
+>
+  <span
+    class="relative h-[18px] w-8 shrink-0 rounded-full border transition-colors"
+    [class]="
+      checked()
+        ? 'border-neon-cyan/60 bg-neon-cyan/25'
+        : 'border-[var(--app-border)] bg-[var(--app-surface)]'
+    "
+  >
+    <span
+      class="absolute top-[2px] h-[12px] w-[12px] rounded-full transition-all"
+      [class]="
+        checked()
+          ? 'left-[16px] bg-neon-cyan'
+          : 'left-[2px] bg-[var(--app-text-muted)]'
+      "
+    ></span>
+  </span>
+  @if (label()) {
+    <span class="flex flex-col leading-tight">
+      <span class="text-[13px] text-[var(--app-text)]">{{ label() }}</span>
+      @if (hint()) {
+        <span class="text-[11px] text-[var(--app-text-faint)]">{{ hint() }}</span>
+      }
+    </span>
+  }
+</button>

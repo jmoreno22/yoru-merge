@@ -1,0 +1,50 @@
+@if (open()) {
+  <div
+    class="yoru-fade-in fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-yoru-950/70 p-6 backdrop-blur-sm"
+    (click)="onBackdrop()"
+  >
+    <div
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="titleId"
+      [class]="panelClass()"
+      (click)="$event.stopPropagation()"
+    >
+      <header
+        class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-4"
+      >
+        @if (tone() !== 'default') {
+          <ng-icon
+            name="lucideTriangleAlert"
+            size="14px"
+            [class]="tone() === 'danger' ? 'text-git-deleted' : 'text-[var(--app-conflict-text)]'"
+            aria-hidden="true"
+          />
+        }
+        <h2 [id]="titleId" [class]="titleClass()">{{ title() }}</h2>
+        <button
+          type="button"
+          (click)="requestClose()"
+          aria-label="Close dialog"
+          class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+        >
+          <ng-icon name="lucideX" size="14px" aria-hidden="true" />
+        </button>
+      </header>
+
+      <div
+        class="neon-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-[var(--panel-pad)] text-[13px]"
+      >
+        <ng-content select="[dialog-body]" />
+      </div>
+
+      <!-- `empty:hidden` keeps a dialog without actions from growing an empty
+           bar; Angular strips the whitespace-only nodes, so :empty matches. -->
+      <footer
+        class="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--app-border)] px-4 py-3 empty:hidden"
+      ><ng-content select="[dialog-actions]" /></footer>
+    </div>
+  </div>
+}

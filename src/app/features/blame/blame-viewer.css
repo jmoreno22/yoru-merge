@@ -1,0 +1,102 @@
+/* Blame rows.
+ *
+ * Every row is exactly --bl-row-h tall: it is the CDK virtual scroll
+ * `itemSize`, and a row that grows past it would drift from the scroll
+ * position the viewport computes.
+ */
+
+:host {
+  --bl-row-h: 20px;
+  --bl-gutter-w: 250px;
+}
+
+.bl-row {
+  display: grid;
+  grid-template-columns: var(--bl-gutter-w) auto minmax(0, 1fr);
+  align-items: center;
+  height: var(--bl-row-h);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: var(--bl-row-h);
+}
+
+.bl-row:hover {
+  background: color-mix(in srgb, var(--app-panel) 60%, transparent);
+}
+
+.bl-group-start {
+  border-top: 1px solid var(--app-border);
+}
+
+.bl-gutter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 8px;
+  overflow: hidden;
+  border-right: 1px solid var(--app-border);
+  background: var(--app-surface-raised);
+}
+
+.bl-gutter-button {
+  color: var(--app-text-muted);
+  text-align: left;
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+
+.bl-gutter-button:hover {
+  background: color-mix(in srgb, var(--color-neon-cyan) 12%, transparent);
+  color: var(--app-text);
+}
+
+.bl-gutter-cont {
+  justify-content: flex-end;
+}
+
+.bl-stripe {
+  width: 1px;
+  height: 100%;
+  background: color-mix(in srgb, var(--color-neon-cyan) 35%, transparent);
+}
+
+.bl-sha {
+  flex-shrink: 0;
+  color: var(--color-neon-cyan);
+  font-size: 11px;
+}
+
+.bl-author {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bl-when {
+  flex-shrink: 0;
+  color: var(--app-text-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-lineno {
+  padding: 0 8px;
+  color: var(--app-text-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+}
+
+.bl-code {
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--app-text);
+  white-space: pre;
+  tab-size: 2;
+}

@@ -1,0 +1,74 @@
+<div class="flex items-center gap-3">
+  <span
+    class="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-pink bg-clip-text font-display text-xl tracking-widest text-transparent"
+  >
+    YoruMerge
+  </span>
+  <span
+    aria-hidden="true"
+    class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+  >
+    夜
+  </span>
+</div>
+
+<p class="max-w-[52ch] text-[13px] text-[var(--app-text-muted)]">
+  A fast Git client for Windows and Linux. Yoru Night design system.
+</p>
+
+<dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-[13px]">
+  <dt class="text-[var(--app-text-muted)]">Version</dt>
+  <dd class="font-mono text-xs text-[var(--app-text)]" data-testid="about-app-version">
+    {{ appVersion() }}
+  </dd>
+
+  <dt class="text-[var(--app-text-muted)]">Git</dt>
+  <dd class="font-mono text-xs text-[var(--app-text)]" data-testid="about-git-version">
+    {{ gitVersion() }}
+  </dd>
+
+  <dt class="text-[var(--app-text-muted)]">Platform</dt>
+  <dd class="font-mono text-xs text-[var(--app-text)]">{{ platform() }}</dd>
+
+  <dt class="text-[var(--app-text-muted)]">Licence</dt>
+  <dd class="font-mono text-xs text-[var(--app-text)]">MIT</dd>
+
+  <dt class="text-[var(--app-text-muted)]">Design</dt>
+  <dd class="font-mono text-xs text-[var(--app-text)]">DESIGN.md</dd>
+</dl>
+
+<div class="flex flex-col gap-2">
+  <div class="flex flex-wrap items-center gap-2">
+    <yoru-button
+      size="sm"
+      variant="secondary"
+      icon="lucideCopy"
+      data-testid="about-copy"
+      (click)="copyDiagnostics()"
+    >
+      Copy version details
+    </yoru-button>
+
+    <yoru-button
+      size="sm"
+      variant="secondary"
+      icon="lucideDownload"
+      [loading]="checking()"
+      [disabled]="checking()"
+      data-testid="about-check-updates"
+      (click)="onCheckUpdates()"
+    >
+      Check for updates
+    </yoru-button>
+  </div>
+
+  <!-- Always rendered: a live region added along with its text is not
+       announced reliably. -->
+  <p
+    role="status"
+    class="min-h-4 text-xs text-[var(--app-text-muted)]"
+    data-testid="about-update-status"
+  >
+    {{ updateStatus() }}
+  </p>
+</div>

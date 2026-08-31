@@ -1,0 +1,150 @@
+<yoru-dialog
+  [open]="open()"
+  title="Remotes"
+  size="lg"
+  (closed)="onClose()"
+>
+  <div dialog-body class="flex flex-col gap-3">
+    @if (error(); as message) {
+      <p
+        role="alert"
+        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-[13px] text-git-deleted"
+        data-testid="remotes-error"
+      >
+        {{ message }}
+      </p>
+    }
+
+    @if (remotes().length === 0) {
+      <p class="py-6 text-center text-[13px] text-[var(--app-text-muted)]">
+        No remotes configured. Add one to fetch and push.
+      </p>
+    } @else {
+      <ul class="neon-scroll flex max-h-[24rem] flex-col gap-1 overflow-y-auto">
+        @for (remote of remotes(); track remote.name) {
+          <li
+            class="flex items-center gap-3 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2"
+            [attr.data-testid]="'remote-' + remote.name"
+          >
+            <ng-icon
+              name="lucideGlobe"
+              size="14px"
+              aria-hidden="true"
+              class="shrink-0 text-neon-cyan"
+            />
+
+            <div class="flex min-w-0 flex-1 flex-col">
+              <span class="truncate font-mono text-xs text-[var(--app-text)]">
+                {{ remote.name }}
+              </span>
+              <span
+                class="truncate font-mono text-[11px] text-[var(--app-text-muted)]"
+                [title]="remote.fetch_url"
+              >
+                {{ remote.fetch_url }}
+              </span>
+              @if (remote.push_url !== remote.fetch_url) {
+                <span
+                  class="truncate font-mono text-[11px] text-[var(--app-text-faint)]"
+                  [title]="remote.push_url"
+                >
+                  push: {{ remote.push_url }}
+                </span>
+              }
+            </div>
+
+            <yoru-button
+              size="sm"
+              variant="ghost"
+              icon="lucideCloudDownload"
+              [loading]="fetching() === remote.name"
+              [disabled]="busy()"
+              [attr.data-testid]="'remote-fetch-' + remote.name"
+              (click)="onFetch(remote, false)"
+            >
+              Fetch
+            </yoru-button>
+
+            <button
+              type="button"
+              [attr.aria-label]="'Actions for ' + remote.name"
+              [attr.data-testid]="'remote-menu-' + remote.name"
+              (click)="openRowMenu($event, remote)"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+            >
+              <ng-icon name="lucideMoreHorizontal" size="14px" aria-hidden="true" />
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (adding()) {
+      <div
+        class="flex flex-col gap-3 rounded-sm border border-[var(--app-border)] bg-[var(--app-panel)] p-3"
+        data-testid="remote-add-form"
+      >
+        <yoru-field label="Name" [error]="nameError()">
+          <input
+            type="text"
+            cdkFocusInitial
+            autocomplete="off"
+            spellcheck="false"
+            data-testid="remote-name"
+            [value]="newName()"
+            [attr.aria-invalid]="nameError() ? 'true' : null"
+            (input)="onNameInput($event)"
+            placeholder="upstream"
+            class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+          />
+        </yoru-field>
+
+        <yoru-field label="URL" [error]="urlError()">
+          <input
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            data-testid="remote-url"
+            [value]="newUrl()"
+            [attr.aria-invalid]="urlError() ? 'true' : null"
+            (input)="onUrlInput($event)"
+            (keydown.enter)="onAdd()"
+            placeholder="https://github.com/owner/repo.git"
+            class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+          />
+        </yoru-field>
+
+        <div class="flex justify-end gap-2">
+          <yoru-button size="sm" variant="ghost" (click)="cancelAdd()">
+            Cancel
+          </yoru-button>
+          <yoru-button
+            size="sm"
+            variant="primary"
+            icon="lucidePlus"
+            [disabled]="!canAdd()"
+            data-testid="remote-add-submit"
+            (click)="onAdd()"
+          >
+            Add remote
+          </yoru-button>
+        </div>
+      </div>
+    } @else {
+      <yoru-button
+        size="sm"
+        variant="secondary"
+        icon="lucidePlus"
+        class="w-fit"
+        data-testid="remote-add"
+        (click)="startAdd()"
+      >
+        Add remote
+      </yoru-button>
+    }
+  </div>
+
+  <yoru-button dialog-actions variant="primary" (click)="onClose()">
+    Done
+  </yoru-button>
+</yoru-dialog>

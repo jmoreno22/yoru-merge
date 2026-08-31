@@ -1,0 +1,42 @@
+/* Settings has ~20 text and select controls; repeating the utility string on
+ * each one buries the markup. Plain CSS on the design tokens, no @apply, so the
+ * rule set survives without a Tailwind reference in component styles. */
+
+.s-input,
+.s-select {
+  height: 32px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--app-text);
+}
+
+.s-input {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.s-input::placeholder {
+  color: var(--app-text-faint);
+}
+
+.s-input:focus,
+.s-select:focus {
+  border-color: var(--color-neon-cyan);
+  outline: none;
+}
+
+.s-input:disabled,
+.s-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* The section body is taller than most panels so switching sections does not
+ * resize the dialog under the pointer. */
+.s-panel {
+  min-height: 22rem;
+}

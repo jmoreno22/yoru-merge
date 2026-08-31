@@ -1,0 +1,172 @@
+<yoru-dialog
+  [open]="true"
+  title="Interactive rebase"
+  size="lg"
+  [dismissible]="false"
+  (closed)="close()"
+>
+  <div dialog-body class="flex min-h-0 flex-col gap-3">
+    <p class="text-[12px] text-[var(--app-text-faint)]">
+      Replaying
+      <code class="font-mono text-[var(--app-text-muted)]">{{ shortOf(fromSha()) }}</code>
+      and everything after it, oldest first. Reorder with drag or
+      <span class="font-mono">Alt</span> + arrows.
+    </p>
+
+    @if (outcome(); as state) {
+      @if (state.kind === 'stopped') {
+        <div
+          role="status"
+          class="flex items-start gap-2 rounded-sm border border-sakura-400/40 bg-sakura-400/10 px-3 py-2"
+        >
+          <ng-icon
+            name="lucideTriangleAlert"
+            size="16px"
+            class="mt-0.5 shrink-0 text-[var(--app-conflict-text)]"
+            aria-hidden="true"
+          />
+          <div class="min-w-0">
+            <p class="text-[13px] text-[var(--app-text)]">{{ state.title }}</p>
+            <p class="text-[12px] text-[var(--app-text-muted)]">{{ state.message }}</p>
+          </div>
+        </div>
+      } @else if (state.kind === 'error') {
+        <p
+          role="alert"
+          class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-[12px] text-[var(--app-text)]"
+        >
+          {{ state.message }}
+        </p>
+      }
+    }
+
+    @if (loading()) {
+      <div class="flex items-center gap-2 py-6 text-[var(--app-text-muted)]">
+        <yoru-spinner [size]="16" label="Reading the rebase plan" />
+        <span class="text-[12px]">Reading the rebase plan…</span>
+      </div>
+    } @else if (entries().length > 0) {
+      <ul
+        cdkDropList
+        (cdkDropListDropped)="onDrop($event)"
+        class="neon-scroll flex max-h-[42vh] flex-col gap-1 overflow-y-auto pr-1"
+        aria-label="Rebase plan"
+      >
+        @for (entry of entries(); track entry.sha; let i = $index) {
+          <li
+            cdkDrag
+            [cdkDragData]="entry"
+            (keydown)="onRowKeydown($event, i)"
+            class="rebase-row flex flex-col gap-1.5 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5"
+            [class.is-dropped]="entry.action === 'drop'"
+          >
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                cdkDragHandle
+                class="inline-flex size-6 shrink-0 cursor-grab items-center justify-center rounded-xs text-[var(--app-text-faint)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+                [attr.aria-label]="'Reorder ' + shortOf(entry.sha)"
+              >
+                <ng-icon name="lucideGripVertical" size="14px" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                (click)="move(i, i - 1)"
+                [disabled]="i === 0"
+                [attr.aria-label]="'Move ' + shortOf(entry.sha) + ' up'"
+                class="inline-flex size-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:opacity-40"
+              >
+                <ng-icon name="lucideArrowUp" size="13px" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                (click)="move(i, i + 1)"
+                [disabled]="i === entries().length - 1"
+                [attr.aria-label]="'Move ' + shortOf(entry.sha) + ' down'"
+                class="inline-flex size-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:opacity-40"
+              >
+                <ng-icon name="lucideArrowDown" size="13px" aria-hidden="true" />
+              </button>
+
+              <yoru-segmented
+                class="shrink-0"
+                [options]="actions"
+                [value]="entry.action"
+                (valueChange)="onAction(i, $event)"
+                [ariaLabel]="'Action for ' + shortOf(entry.sha)"
+              />
+
+              <code
+                class="shrink-0 font-mono text-[11px] text-[var(--app-text-faint)]"
+                >{{ shortOf(entry.sha) }}</code
+              >
+              <span
+                class="rebase-subject min-w-0 flex-1 truncate text-[12px] text-[var(--app-text)]"
+                >{{ subjectOf(entry) }}</span
+              >
+            </div>
+
+            @if (editsMessage(entry.action)) {
+              <textarea
+                rows="3"
+                [value]="entry.message"
+                (input)="onMessage(i, $any($event.target).value)"
+                [attr.aria-label]="'Message for ' + shortOf(entry.sha)"
+                class="neon-scroll message-input"
+              ></textarea>
+            }
+          </li>
+        }
+      </ul>
+
+      <section class="flex flex-col gap-1">
+        <h3
+          class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+        >
+          Result — {{ preview().length }} commits
+        </h3>
+        <ul class="neon-scroll flex max-h-[18vh] flex-col overflow-y-auto">
+          @for (commit of preview(); track commit.sha) {
+            <li class="flex items-center gap-2 py-0.5 text-[12px]">
+              <ng-icon
+                name="lucideGitCommitHorizontal"
+                size="13px"
+                class="shrink-0 text-[var(--app-text-faint)]"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 flex-1 truncate text-[var(--app-text)]">{{
+                commit.message.split('\n')[0]
+              }}</span>
+              @if (commit.folded > 0) {
+                <span class="shrink-0 font-mono text-[10.5px] text-[var(--app-text-faint)]"
+                  >+{{ commit.folded }} folded</span
+                >
+              }
+              @if (commit.stops) {
+                <span class="shrink-0 font-mono text-[10.5px] text-[var(--app-conflict-text)]"
+                  >stops to edit</span
+                >
+              }
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (problem(); as reason) {
+        <p role="alert" class="text-[12px] text-git-deleted">{{ reason }}</p>
+      }
+    }
+  </div>
+
+  <yoru-button dialog-actions variant="ghost" (click)="close()">Cancel</yoru-button>
+  <yoru-button
+    dialog-actions
+    variant="primary"
+    icon="lucideGitPullRequestArrow"
+    [loading]="applying()"
+    [disabled]="loading() || problem() !== null"
+    (click)="start()"
+  >
+    Start rebase
+  </yoru-button>
+</yoru-dialog>

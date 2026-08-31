@@ -1,0 +1,13 @@
+<span
+  class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+>
+  {{ label() }}
+</span>
+@if (count() !== null) {
+  <span class="font-mono text-[10.5px] text-[var(--app-text-faint)]">
+    {{ count() }}
+  </span>
+}
+<span class="ml-auto flex items-center gap-1">
+  <ng-content select="[actions]" />
+</span>

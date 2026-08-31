@@ -1,0 +1,13 @@
+<label class="flex flex-col gap-1.5">
+  <span
+    class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+  >
+    {{ label() }}
+  </span>
+  <ng-content />
+  @if (error()) {
+    <span class="text-[11px] text-git-deleted" role="alert">{{ error() }}</span>
+  } @else if (hint()) {
+    <span class="text-[11px] text-[var(--app-text-faint)]">{{ hint() }}</span>
+  }
+</label>

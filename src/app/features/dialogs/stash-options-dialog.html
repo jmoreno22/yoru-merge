@@ -1,0 +1,59 @@
+<yoru-dialog
+  [open]="open()"
+  title="Stash changes"
+  size="sm"
+  [dismissible]="!busy()"
+  (closed)="onClose()"
+>
+  <yoru-field dialog-body label="Message" hint="Optional — git labels it for you">
+    <input
+      type="text"
+      cdkFocusInitial
+      autocomplete="off"
+      spellcheck="false"
+      data-testid="stash-message"
+      [value]="message()"
+      [disabled]="busy()"
+      (input)="onMessageInput($event)"
+      (keydown.enter)="onStash()"
+      placeholder="wip: graph lanes"
+      class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 text-[13px] text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none disabled:opacity-50"
+    />
+  </yoru-field>
+
+  <div dialog-body class="flex flex-col gap-3">
+    <yoru-switch
+      [(checked)]="includeUntracked"
+      [disabled]="busy()"
+      label="Include untracked"
+      hint="git stash push --include-untracked"
+    />
+    <yoru-switch
+      [(checked)]="keepIndex"
+      [disabled]="busy()"
+      label="Keep staged changes"
+      hint="git stash push --keep-index — the index stays as it is"
+    />
+  </div>
+
+  <yoru-button
+    dialog-actions
+    variant="ghost"
+    [disabled]="busy()"
+    data-testid="stash-options-cancel"
+    (click)="onClose()"
+  >
+    Cancel
+  </yoru-button>
+  <yoru-button
+    dialog-actions
+    variant="primary"
+    icon="lucideArchive"
+    [loading]="busy()"
+    [disabled]="busy()"
+    data-testid="stash-options-submit"
+    (click)="onStash()"
+  >
+    Stash
+  </yoru-button>
+</yoru-dialog>

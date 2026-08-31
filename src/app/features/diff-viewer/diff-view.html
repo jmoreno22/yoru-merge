@@ -1,0 +1,327 @@
+@if (unreadable()) {
+  <div class="flex h-full flex-col">
+    <yoru-empty-state
+      icon="lucideFileX"
+      title="Patch not shown"
+      hint="Git reported this change as binary or larger than 10 MB."
+    />
+  </div>
+} @else if (oversized()) {
+  <div class="flex h-full flex-col items-center justify-center gap-3 px-6">
+    <yoru-empty-state
+      icon="lucideFileDiff"
+      title="Large patch"
+      [hint]="
+        'This patch is ' +
+        sizeMb() +
+        ' MB. Rendering it takes a moment and a lot of memory.'
+      "
+    />
+    <yoru-button variant="secondary" icon="lucideEye" (click)="revealAll()">
+      Show anyway
+    </yoru-button>
+  </div>
+} @else if (parsing()) {
+  <div class="flex flex-col gap-2 p-4" aria-busy="true">
+    @for (row of skeletonRows; track row) {
+      <yoru-skeleton [width]="row % 3 === 0 ? '72%' : '94%'" height="14px" />
+    }
+  </div>
+} @else if (isEmpty()) {
+  <div class="flex h-full flex-col">
+    <yoru-empty-state
+      icon="lucideFileDiff"
+      title="No changes to show"
+      hint="This file matches the version it is compared against."
+      kanji="夜"
+    />
+  </div>
+} @else {
+  <div class="flex h-full min-h-0 flex-col">
+    <div class="neon-scroll min-h-0 flex-1 overflow-auto" data-testid="diff-content">
+      @for (file of files(); track file.path) {
+        <section class="dv-file" [style.--dv-num-w]="file.numberWidth + 'ch'">
+          <header class="dv-file-head">
+            <button
+              type="button"
+              class="dv-icon-button"
+              [attr.aria-expanded]="file.expanded"
+              [attr.aria-label]="
+                (file.expanded ? 'Collapse ' : 'Expand ') + file.path
+              "
+              (click)="toggleFile(file)"
+            >
+              <ng-icon
+                [name]="file.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
+                size="14px"
+                aria-hidden="true"
+              />
+            </button>
+
+            <ng-icon
+              [name]="statusIcon(file.status)"
+              size="14px"
+              class="shrink-0 {{ statusClass(file.status) }}"
+              aria-hidden="true"
+            />
+            <span class="dv-chip {{ statusClass(file.status) }}">
+              {{ statusLabel(file.status) }}
+            </span>
+
+            <span class="dv-path" [title]="file.path">
+              <span class="text-[var(--app-text-faint)]">{{ file.dirname }}</span
+              ><span class="text-[var(--app-text)]">{{ file.basename }}</span>
+            </span>
+
+            @if (file.lfs) {
+              <span
+                class="dv-chip text-neon-violet"
+                data-testid="diff-lfs-badge"
+                title="This patch changes a git-lfs pointer, not the file it stands for."
+              >
+                Git LFS pointer
+              </span>
+            }
+
+            @if (file.oldPath) {
+              <span class="dv-meta shrink-0" [title]="file.oldPath">
+                from {{ file.oldPath }}
+              </span>
+            }
+
+            <span class="dv-stats">
+              <span class="text-git-added">+{{ file.additions }}</span>
+              <span class="text-git-deleted">-{{ file.deletions }}</span>
+            </span>
+
+            <span class="flex-1"></span>
+
+            <button
+              type="button"
+              class="dv-icon-button"
+              aria-label="Copy path"
+              title="Copy path"
+              (click)="copyPath(file.path)"
+            >
+              <ng-icon name="lucideCopy" size="14px" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="dv-icon-button"
+              aria-label="Open file in editor"
+              title="Open in editor"
+              (click)="openFile.emit(file.path)"
+            >
+              <ng-icon name="lucideExternalLink" size="14px" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="dv-icon-button"
+              aria-label="Reveal file in file manager"
+              title="Reveal in file manager"
+              (click)="revealFile.emit(file.path)"
+            >
+              <ng-icon name="lucideFolderOpen" size="14px" aria-hidden="true" />
+            </button>
+          </header>
+
+          @if (file.imageSides; as sides) {
+            <app-image-diff
+              [file]="file.path"
+              [oldFile]="file.oldPath ?? file.path"
+              [sides]="sides"
+            />
+          } @else if (file.binary || file.image) {
+            <p class="dv-notice">
+              <ng-icon name="lucideInfo" size="14px" aria-hidden="true" />
+              {{
+                file.image
+                  ? 'Binary image. There is no revision to preview it from.'
+                  : 'Binary file. There is no text diff to show.'
+              }}
+            </p>
+          } @else if (!file.expanded) {
+            <button type="button" class="dv-expand" (click)="toggleFile(file)">
+              <ng-icon name="lucideChevronRight" size="14px" aria-hidden="true" />
+              Show {{ file.lineCount }} lines
+            </button>
+          } @else if (file.hunks.length === 0) {
+            <p class="dv-notice">
+              <ng-icon name="lucideInfo" size="14px" aria-hidden="true" />
+              No textual changes: only file mode or metadata changed.
+            </p>
+          } @else {
+            @for (hunk of file.hunks; track hunk.domId) {
+              <div class="dv-hunk-head" tabindex="-1" [attr.data-hunk]="hunk.domId">
+                <code class="dv-hunk-range">{{ hunk.header }}</code>
+                @if (hunk.section) {
+                  <span class="dv-meta truncate">{{ hunk.section }}</span>
+                }
+                <span class="flex-1"></span>
+                <button
+                  type="button"
+                  class="dv-icon-button"
+                  aria-label="Copy hunk"
+                  title="Copy hunk"
+                  (click)="copyHunk(file.index, hunk.index)"
+                >
+                  <ng-icon name="lucideClipboard" size="14px" aria-hidden="true" />
+                </button>
+                @if (interactive()) {
+                  <yoru-button
+                    size="sm"
+                    variant="ghost"
+                    [icon]="primaryKind() === 'stage' ? 'lucidePlus' : 'lucideMinus'"
+                    [disabled]="busy()"
+                    (click)="runHunkAction(primaryKind(), file.index, hunk.index)"
+                  >
+                    {{ primaryLabel() }}
+                  </yoru-button>
+                  @if (primaryKind() === 'stage') {
+                    <yoru-button
+                      size="sm"
+                      variant="ghost"
+                      icon="lucideRotateCcw"
+                      [disabled]="busy()"
+                      (click)="runHunkAction('discard', file.index, hunk.index)"
+                    >
+                      Discard
+                    </yoru-button>
+                  }
+                }
+              </div>
+
+              <div
+                class="dv-hunk-body"
+                [attr.role]="canSelectLines() ? 'listbox' : null"
+                [attr.aria-multiselectable]="canSelectLines() ? 'true' : null"
+                [attr.aria-label]="canSelectLines() ? 'Lines of ' + file.path : null"
+                (keydown)="onHunkKeydown($event, file.index, hunk)"
+              >
+                @for (row of hunk.rows; track $index) {
+                  @if (row.kind === 'gap') {
+                    <button type="button" class="dv-gap" (click)="expandGap(row.id)">
+                      <ng-icon
+                        name="lucideArrowUpDown"
+                        size="14px"
+                        aria-hidden="true"
+                      />
+                      Show {{ row.count }} unchanged lines
+                    </button>
+                  } @else if (row.kind === 'line') {
+                    <div
+                      class="dv-row dv-unified"
+                      [class.dv-add]="row.cell.line.kind === 'insert'"
+                      [class.dv-del]="row.cell.line.kind === 'delete'"
+                      [class.dv-sel]="isLineSelected(file.index, hunk.index, row.cell)"
+                      [attr.role]="
+                        canSelectLines() && row.cell.selectable ? 'option' : null
+                      "
+                      [attr.aria-selected]="
+                        canSelectLines() && row.cell.selectable
+                          ? isLineSelected(file.index, hunk.index, row.cell)
+                          : null
+                      "
+                      [attr.tabindex]="
+                        canSelectLines() && row.cell.id === activeLineId() ? 0 : -1
+                      "
+                      (click)="
+                        onLineClick($event, file.index, hunk.index, hunk, row.cell)
+                      "
+                      (contextmenu)="
+                        onRowContextMenu($event, file.index, hunk, row.cell)
+                      "
+                    >
+                      <span class="dv-num">{{ row.cell.line.oldNumber }}</span>
+                      <span class="dv-num">{{ row.cell.line.newNumber }}</span>
+                      <span class="dv-mark" aria-hidden="true">{{
+                        row.cell.line.kind === 'insert'
+                          ? '+'
+                          : row.cell.line.kind === 'delete'
+                            ? '-'
+                            : ' '
+                      }}</span>
+                      <code class="dv-code" [innerHTML]="row.cell.html"></code>
+                      @if (row.cell.line.noNewline) {
+                        <span class="dv-nonewline">no newline at end of file</span>
+                      }
+                    </div>
+                  } @else {
+                    <div class="dv-row dv-pair">
+                      @if (row.left; as left) {
+                        <span class="dv-num">{{ left.line.oldNumber }}</span>
+                        <code
+                          class="dv-code dv-side"
+                          [class.dv-del]="left.line.kind === 'delete'"
+                          [innerHTML]="left.html"
+                          (contextmenu)="
+                            onRowContextMenu($event, file.index, hunk, left)
+                          "
+                        ></code>
+                      } @else {
+                        <span class="dv-num"></span>
+                        <code class="dv-code dv-side dv-void"></code>
+                      }
+                      @if (row.right; as right) {
+                        <span class="dv-num">{{ right.line.newNumber }}</span>
+                        <code
+                          class="dv-code dv-side"
+                          [class.dv-add]="right.line.kind === 'insert'"
+                          [innerHTML]="right.html"
+                          (contextmenu)="
+                            onRowContextMenu($event, file.index, hunk, right)
+                          "
+                        ></code>
+                      } @else {
+                        <span class="dv-num"></span>
+                        <code class="dv-code dv-side dv-void"></code>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+            }
+          }
+        </section>
+      }
+    </div>
+
+    @if (selectedCount() > 0) {
+      <footer class="dv-selection-bar" role="status">
+        <span class="text-[var(--app-text)]">
+          {{ selectedCount() }}
+          {{ selectedCount() === 1 ? 'line selected' : 'lines selected' }}
+        </span>
+        <span class="flex-1"></span>
+        <yoru-button
+          size="sm"
+          variant="primary"
+          [icon]="primaryKind() === 'stage' ? 'lucidePlus' : 'lucideMinus'"
+          [disabled]="busy()"
+          (click)="runLineAction(primaryKind())"
+        >
+          {{ primaryKind() === 'stage' ? 'Stage lines' : 'Unstage lines' }}
+        </yoru-button>
+        @if (primaryKind() === 'stage') {
+          <yoru-button
+            size="sm"
+            variant="danger"
+            icon="lucideRotateCcw"
+            [disabled]="busy()"
+            (click)="runLineAction('discard')"
+          >
+            Discard lines
+          </yoru-button>
+        }
+        <yoru-button
+          size="sm"
+          variant="ghost"
+          icon="lucideX"
+          (click)="clearSelection()"
+        >
+          Clear
+        </yoru-button>
+      </footer>
+    }
+  </div>
+}

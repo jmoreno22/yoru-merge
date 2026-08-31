@@ -1,0 +1,17 @@
+# pnpm settings. Not a workspace definition — since pnpm 10 this file is also
+# where settings live that used to sit in the `pnpm` field of package.json.
+#
+# `allowBuilds` replaces the old `pnpm.onlyBuiltDependencies`, which pnpm 11 no
+# longer reads. Without it every `pnpm <script>` aborts before running anything:
+# the pre-run dependency check re-runs `pnpm install`, which fails with
+# ERR_PNPM_IGNORED_BUILDS.
+#
+# These four are the same ones the old field allowed. All are build-time
+# toolchain packages that need their install script to place a native binary:
+# esbuild (the Angular bundler), @parcel/watcher and lmdb (Angular's build
+# cache), and msgpackr-extract (lmdb's serializer).
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  lmdb: true
+  msgpackr-extract: true

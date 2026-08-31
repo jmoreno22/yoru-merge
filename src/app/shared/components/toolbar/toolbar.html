@@ -1,0 +1,236 @@
+<!-- The reason lives on the group: a disabled button fires no hover of its own. -->
+<div
+  class="flex shrink-0 items-center rounded-sm border border-[var(--app-border)]"
+  role="group"
+  aria-label="Remote"
+  [attr.title]="remoteDisabledReason()"
+  data-testid="toolbar-remote"
+>
+  <yoru-button
+    variant="ghost"
+    icon="lucideCloudDownload"
+    [disabled]="remoteDisabled()"
+    [loading]="repo.isFetching()"
+    (click)="onFetch()"
+    data-testid="toolbar-fetch"
+  >
+    Fetch
+  </yoru-button>
+  <button
+    type="button"
+    aria-label="Fetch options"
+    [yoruTooltip]="'Fetch options'"
+    [disabled]="remoteDisabled()"
+    (click)="onFetchMenu($event)"
+    data-testid="toolbar-fetch-menu"
+    class="flex h-8 w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+  >
+    <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
+  </button>
+
+  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+
+  <yoru-button
+    variant="ghost"
+    icon="lucideArrowDown"
+    [disabled]="remoteDisabled() || remoteBusy()"
+    (click)="onPull()"
+    data-testid="toolbar-pull"
+  >
+    Pull
+  </yoru-button>
+  <button
+    type="button"
+    aria-label="Pull options"
+    [yoruTooltip]="'Pull options'"
+    [disabled]="remoteDisabled()"
+    (click)="onPullMenu($event)"
+    data-testid="toolbar-pull-menu"
+    class="flex h-8 w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+  >
+    <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
+  </button>
+
+  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+
+  <yoru-button
+    variant="ghost"
+    icon="lucideArrowUp"
+    [disabled]="remoteDisabled() || remoteBusy()"
+    (click)="onPush()"
+    data-testid="toolbar-push"
+  >
+    Push
+  </yoru-button>
+  <button
+    type="button"
+    aria-label="Push options"
+    [yoruTooltip]="'Push options'"
+    [disabled]="remoteDisabled()"
+    (click)="onPushMenu($event)"
+    data-testid="toolbar-push-menu"
+    class="flex h-8 w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+  >
+    <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
+  </button>
+</div>
+
+<div
+  class="flex shrink-0 items-center rounded-sm border border-[var(--app-border)]"
+  role="group"
+  aria-label="Branch"
+  data-testid="toolbar-branch-group"
+>
+  <yoru-button
+    variant="ghost"
+    icon="lucideGitBranch"
+    [disabled]="!isOpen()"
+    (click)="onBranchMenu($event)"
+    data-testid="toolbar-branch"
+  >
+    Branch
+  </yoru-button>
+
+  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+
+  <yoru-button
+    variant="ghost"
+    icon="lucideGitMerge"
+    [disabled]="!isOpen()"
+    (click)="onMerge()"
+    data-testid="toolbar-merge"
+  >
+    Merge
+  </yoru-button>
+
+  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+
+  <yoru-button
+    variant="ghost"
+    icon="lucideArchive"
+    [disabled]="!isOpen()"
+    (click)="onStashMenu($event)"
+    data-testid="toolbar-stash"
+  >
+    Stash
+  </yoru-button>
+</div>
+
+<button
+  type="button"
+  (click)="onOpenPalette()"
+  data-testid="toolbar-command-bar"
+  class="mx-auto flex h-8 w-full max-w-100 min-w-0 items-center gap-2 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 text-left transition-colors hover:border-neon-cyan/50"
+>
+  <ng-icon
+    name="lucideSearch"
+    size="14px"
+    class="shrink-0 text-[var(--app-text-muted)]"
+    aria-hidden="true"
+  />
+  <span class="min-w-0 flex-1 truncate text-xs text-[var(--app-text-muted)]">
+    Search commands, branches and commits
+  </span>
+  <yoru-kbd combo="mod+k" />
+</button>
+
+<div class="flex shrink-0 items-center gap-1" data-testid="toolbar-status">
+  @if (currentBranch(); as branch) {
+    <button
+      type="button"
+      (click)="onCopyBranch()"
+      [yoruTooltip]="'Copy branch name'"
+      [attr.aria-label]="
+        upstream()
+          ? 'Current branch ' + branch + ', tracking ' + upstream() + ' — copy name'
+          : 'Current branch ' + branch + ' — copy name'
+      "
+      data-testid="toolbar-branch-chip"
+      class="flex h-8 max-w-72 items-center gap-1.5 rounded-sm border border-[var(--app-border)] px-2 font-mono text-xs transition-colors hover:border-neon-cyan/50"
+    >
+      <ng-icon
+        name="lucideGitBranch"
+        size="14px"
+        class="shrink-0 text-neon-cyan"
+        aria-hidden="true"
+      />
+      <span class="truncate text-[var(--app-text)]">{{ branch }}</span>
+      @if (upstream(); as tracking) {
+        <span class="truncate text-[var(--app-text-faint)]">{{ tracking }}</span>
+      }
+      @if (aheadBehind().ahead > 0) {
+        <span
+          class="flex shrink-0 items-center text-git-added"
+          [attr.aria-label]="aheadBehind().ahead + ' commits ahead'"
+        >
+          <ng-icon name="lucideArrowUp" size="12px" aria-hidden="true" />
+          {{ aheadBehind().ahead }}
+        </span>
+      }
+      @if (aheadBehind().behind > 0) {
+        <span
+          class="flex shrink-0 items-center text-git-modified"
+          [attr.aria-label]="aheadBehind().behind + ' commits behind'"
+        >
+          <ng-icon name="lucideArrowDown" size="12px" aria-hidden="true" />
+          {{ aheadBehind().behind }}
+        </span>
+      }
+    </button>
+  }
+
+  @if (updatePill(); as pill) {
+    <button
+      type="button"
+      [attr.aria-label]="pill.aria"
+      [yoruTooltip]="pill.aria"
+      (click)="onUpdate()"
+      data-testid="toolbar-update"
+      class="flex h-8 max-w-56 shrink-0 items-center gap-1.5 rounded-sm border border-neon-cyan/40 bg-neon-cyan/10 px-2 text-xs text-neon-cyan transition-colors hover:border-neon-cyan hover:bg-neon-cyan/20"
+    >
+      <ng-icon [name]="pill.icon" size="14px" class="shrink-0" aria-hidden="true" />
+      <span class="truncate">{{ pill.label }}</span>
+    </button>
+  }
+
+  <button
+    type="button"
+    [attr.aria-label]="
+      unread() > 0 ? unread() + ' new notifications' : 'Notification history'
+    "
+    [yoruTooltip]="'Notifications'"
+    (click)="onBell($event)"
+    data-testid="toolbar-bell"
+    class="relative flex size-8 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    <ng-icon name="lucideBell" size="16px" aria-hidden="true" />
+    @if (unread() > 0) {
+      <span
+        class="absolute right-1 top-1 size-1.5 rounded-full bg-neon-cyan"
+        aria-hidden="true"
+      ></span>
+    }
+  </button>
+
+  <button
+    type="button"
+    aria-label="Settings"
+    [yoruTooltip]="'Settings'"
+    (click)="onOpenSettings()"
+    data-testid="toolbar-settings"
+    class="flex size-8 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    <ng-icon name="lucideSettings2" size="16px" aria-hidden="true" />
+  </button>
+
+  <button
+    type="button"
+    [attr.aria-label]="themeLabel()"
+    [yoruTooltip]="themeLabel()"
+    (click)="onToggleTheme()"
+    data-testid="toolbar-theme"
+    class="flex size-8 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  >
+    <ng-icon [name]="themeIcon()" size="16px" aria-hidden="true" />
+  </button>
+</div>

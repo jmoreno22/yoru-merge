@@ -1,0 +1,246 @@
+@if (details(); as commit) {
+  <div class="neon-scroll min-h-0 flex-1 overflow-y-auto">
+    <header class="inspector-header">
+      <div class="flex items-start gap-2">
+        <yoru-avatar
+          class="mt-0.5 shrink-0"
+          [name]="commit.author_name"
+          [seed]="commit.author_email"
+          [size]="28"
+        />
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[13px] text-[var(--app-text)]">
+            {{ commit.author_name }}
+            <span class="text-[var(--app-text-faint)]">&lt;{{
+              commit.author_email
+            }}&gt;</span>
+          </p>
+          <p class="text-[12px] text-[var(--app-text-muted)]">
+            authored {{ authorDate().absolute }}
+            <span class="text-[var(--app-text-faint)]"
+              >· {{ authorDate().relative }}</span
+            >
+          </p>
+          @if (showCommitter()) {
+            <p class="text-[12px] text-[var(--app-text-muted)]">
+              committed by {{ commit.committer_name }} on
+              {{ committerDate().absolute }}
+            </p>
+          }
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <button
+          type="button"
+          class="sha-chip"
+          data-testid="inspector-copy-sha"
+          [title]="commit.sha"
+          aria-label="Copy the full commit SHA"
+          (click)="copySha()"
+        >
+          <ng-icon name="lucideCopy" size="13px" aria-hidden="true" />
+          <code>{{ commit.short_sha }}</code>
+        </button>
+
+        @if (commit.parents.length > 0) {
+          <span class="meta-label">{{
+            commit.parents.length > 1 ? 'parents' : 'parent'
+          }}</span>
+          @for (parent of commit.parents; track parent) {
+            <button
+              type="button"
+              class="parent-link"
+              [attr.aria-label]="'Go to parent commit ' + shortOf(parent)"
+              (click)="goToParent(parent)"
+            >
+              {{ shortOf(parent) }}
+            </button>
+          }
+        } @else {
+          <span class="meta-label">root commit</span>
+        }
+
+        <span class="signature" [style.color]="signature().color">
+          @if (signature().icon; as icon) {
+            <ng-icon [name]="icon" size="13px" aria-hidden="true" />
+          }
+          {{ signature().label }}
+        </span>
+
+        <span class="stats">
+          <span class="added">+{{ commit.additions }}</span>
+          <span class="deleted">&minus;{{ commit.deletions }}</span>
+        </span>
+      </div>
+
+      <h2 class="subject">{{ commit.subject }}</h2>
+      @if (commit.body.length > 0) {
+        <p class="body">{{ commit.body }}</p>
+      }
+
+      @if (commit.refs.length > 0) {
+        <div class="flex flex-wrap items-center gap-1">
+          @for (ref of commit.refs; track ref.ref_type + ':' + ref.name) {
+            <yoru-badge
+              [type]="ref.ref_type"
+              [label]="ref.name"
+              [solid]="ref.ref_type === 'head'"
+            />
+          }
+        </div>
+      }
+
+      <div class="flex flex-wrap items-center gap-1.5">
+        <yoru-button size="sm" icon="lucideGitBranchPlus" (click)="run('branch')">
+          Branch
+        </yoru-button>
+        <yoru-button size="sm" icon="lucideTag" (click)="run('tag')">Tag</yoru-button>
+        <yoru-button size="sm" icon="lucideCherry" (click)="run('cherry-pick')">
+          Cherry-pick
+        </yoru-button>
+        <yoru-button size="sm" icon="lucideUndo2" (click)="run('revert')">
+          Revert
+        </yoru-button>
+        <yoru-button size="sm" icon="lucideRotateCcw" (click)="openResetMenu($event)">
+          Reset
+        </yoru-button>
+        <yoru-button
+          size="sm"
+          variant="ghost"
+          icon="lucideEllipsisVertical"
+          data-testid="inspector-more"
+          (click)="openMoreMenu($event)"
+        >
+          More
+        </yoru-button>
+      </div>
+    </header>
+
+    <div class="files-header">
+      <span class="meta-label">{{ fileCountLabel() }}</span>
+      <input
+        type="search"
+        class="file-filter"
+        placeholder="Filter files"
+        aria-label="Filter the files in this commit"
+        data-testid="inspector-file-filter"
+        [value]="filter()"
+        (input)="onFilter($any($event.target).value)"
+      />
+      <button
+        type="button"
+        class="mode-button"
+        aria-label="Show files as a tree"
+        [attr.aria-pressed]="viewMode() === 'tree'"
+        [class.is-active]="viewMode() === 'tree'"
+        (click)="setViewMode('tree')"
+      >
+        <ng-icon name="lucideFolderTree" size="14px" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="mode-button"
+        aria-label="Show files as a flat list"
+        [attr.aria-pressed]="viewMode() === 'list'"
+        [class.is-active]="viewMode() === 'list'"
+        (click)="setViewMode('list')"
+      >
+        <ng-icon name="lucideList" size="14px" aria-hidden="true" />
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="flex flex-col gap-1 px-4 py-2" data-testid="inspector-skeleton">
+        @for (row of skeletonFiles; track row) {
+          <yoru-skeleton width="70%" height="10px" />
+        }
+      </div>
+    } @else if (noMatches()) {
+      <p class="px-4 py-3 text-[12px] text-[var(--app-text-muted)]">
+        No file in this commit matches "{{ filter() }}".
+      </p>
+    } @else if (commit.files.length === 0) {
+      <p class="px-4 py-3 text-[12px] text-[var(--app-text-muted)]">
+        This commit does not change any file.
+      </p>
+    } @else {
+      <ul class="file-list" data-testid="inspector-files">
+        @for (row of fileRows(); track row.path) {
+          @if (row.kind === 'folder') {
+            <li>
+              <button
+                type="button"
+                class="folder-row"
+                [style.padding-left.px]="8 + row.depth * 14"
+                [attr.aria-expanded]="!row.collapsed"
+                (click)="toggleFolder(row.path)"
+              >
+                <ng-icon
+                  [name]="row.collapsed ? 'lucideChevronRight' : 'lucideChevronDown'"
+                  size="13px"
+                  aria-hidden="true"
+                />
+                <span class="truncate">{{ row.label }}</span>
+                <span class="folder-count">{{ row.fileCount }}</span>
+              </button>
+            </li>
+          } @else if (row.file; as file) {
+            <li>
+              <button
+                type="button"
+                class="file-row"
+                [class.is-active]="activeFile() === row.path"
+                [style.padding-left.px]="8 + row.depth * 14"
+                [attr.data-testid]="'inspector-file-' + row.path"
+                [title]="fileTitle(file)"
+                (click)="openFile(row.path)"
+                (contextmenu)="onFileMenu($event, file)"
+              >
+                <span class="status-chip" [style.color]="statusStyle(file).color">
+                  <ng-icon
+                    [name]="statusStyle(file).icon"
+                    size="13px"
+                    aria-hidden="true"
+                  />
+                  <span class="sr-letter">{{ statusStyle(file).letter }}</span>
+                </span>
+                <span class="truncate">{{ row.label }}</span>
+                @if (file.old_path; as oldPath) {
+                  <span class="old-path" [title]="'Renamed from ' + oldPath"
+                    >from {{ oldPath }}</span
+                  >
+                }
+                @if (file.binary) {
+                  <span class="file-stats">binary</span>
+                } @else {
+                  <span class="file-stats">
+                    <span class="added">+{{ file.additions }}</span>
+                    <span class="deleted">&minus;{{ file.deletions }}</span>
+                  </span>
+                }
+              </button>
+            </li>
+          }
+        }
+      </ul>
+    }
+  </div>
+} @else if (loading()) {
+  <div class="flex flex-col gap-2 p-4" data-testid="inspector-loading">
+    <yoru-skeleton width="45%" height="14px" />
+    <yoru-skeleton width="70%" height="10px" />
+    <yoru-skeleton width="60%" height="10px" />
+    @for (row of skeletonFiles; track row) {
+      <yoru-skeleton width="80%" height="10px" />
+    }
+  </div>
+} @else {
+  <yoru-empty-state
+    data-testid="inspector-empty"
+    icon="lucideGitCommitHorizontal"
+    title="No commit selected"
+    hint="Pick a commit in the history to see its message, author and files."
+    kanji="夜"
+  />
+}
