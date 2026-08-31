@@ -15,3 +15,5 @@ allowBuilds:
   esbuild: true
   lmdb: true
   msgpackr-extract: true
+minimumReleaseAgeExclude:
+  - '@tauri-apps/plugin-updater@2.11.0'

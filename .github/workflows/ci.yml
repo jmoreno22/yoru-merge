@@ -161,6 +161,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Proves the desktop shell actually links and bundles on both platforms,
-      # which a frontend-only build cannot catch.
+      # which a frontend-only build cannot catch. The override disables updater
+      # artifacts so the smoke needs no signing key (forks have no secrets);
+      # release.yml is the signed path.
       - name: Build desktop bundle (debug)
-        run: pnpm tauri build --debug
+        run: pnpm tauri build --debug --config src-tauri/ci-smoke.conf.json

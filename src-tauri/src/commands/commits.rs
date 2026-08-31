@@ -96,7 +96,9 @@ pub(super) fn parse_log_output(stdout: &str) -> Vec<CommitInfo> {
         .collect();
 
     fields
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .map(|f| CommitInfo {
             sha: f[0].to_string(),
             short_sha: f[1].to_string(),
