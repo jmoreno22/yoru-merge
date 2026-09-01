@@ -390,9 +390,9 @@
               />
               <yoru-switch
                 [checked]="prefs.zenMode()"
-                (checkedChange)="prefs.setZenMode($event)"
+                (checkedChange)="onZen($event)"
                 label="Zen mode"
-                hint="Hides all of the above at once, and restores them on the way out"
+                hint="Hides all of the above at once. Ctrl+Shift+Z toggles it, and leaving it restores what you had."
               />
             </div>
           </yoru-field>

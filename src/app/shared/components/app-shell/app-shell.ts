@@ -92,7 +92,7 @@ export class AppShell {
         id: 'view.zen',
         combo: 'mod+shift+z',
         label: 'Toggle zen mode',
-        run: () => this.prefs.setZenMode(!this.prefs.zenMode()),
+        run: () => this.appearance.toggleZen(),
       }),
       this.shortcuts.register({
         id: 'repo.refresh',

@@ -88,6 +88,7 @@ function contextWith(overrides: Overrides = {}): PaletteContext {
       setShowStatusBar: vi.fn(),
       setRailView: vi.fn(),
     },
+    appearance: { toggleZen: vi.fn() },
     clipboard: { writeText: vi.fn() },
     rebase: { open: vi.fn() },
     system: {},
@@ -192,6 +193,17 @@ describe('buildPaletteCommands', () => {
         ?.run();
       expect(context.prefs.setUiDensity).toHaveBeenCalledWith(to);
     }
+  });
+
+  it('routes zen through AppearanceService, which announces the way out', () => {
+    const context = contextWith();
+    buildPaletteCommands(context)
+      .find((command) => command.id === 'view.zen')
+      ?.run();
+    expect(context.appearance.toggleZen).toHaveBeenCalledOnce();
+    // Not the raw preference: that path skips the "how to exit" toast, and zen
+    // hides the chrome that would otherwise show the way back.
+    expect(context.prefs.setZenMode).not.toHaveBeenCalled();
   });
 
   it('cycles the colour palette and wraps at the end of the list', () => {

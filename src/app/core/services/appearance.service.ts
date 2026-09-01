@@ -3,6 +3,7 @@ import { appearanceTokens, computeMetrics } from './appearance-metrics';
 import { findPalette, paletteTokens } from './color-palettes';
 import { PreferencesService } from './preferences.service';
 import { ThemeService } from './theme.service';
+import { ToastService } from './toast.service';
 
 /**
  * The appearance preferences as concrete layout numbers, and the only place
@@ -16,6 +17,7 @@ import { ThemeService } from './theme.service';
 export class AppearanceService {
   private readonly prefs = inject(PreferencesService);
   private readonly theme = inject(ThemeService);
+  private readonly toasts = inject(ToastService);
 
   /** The resolved palette, so the settings picker can label what is active. */
   readonly palette = computed(() => findPalette(this.prefs.colorPalette()));
@@ -54,6 +56,23 @@ export class AppearanceService {
   readonly showSidebar = computed(
     () => !this.prefs.zenMode() && this.prefs.refsPanelOpen(),
   );
+
+  /**
+   * Enters or leaves zen, and on the way in says how to get back out.
+   *
+   * The announcement is not a nicety: zen hides the toolbar and the status bar,
+   * which are the surfaces that would otherwise advertise the way back, so
+   * without it the only exits are a shortcut you have to already know and a
+   * settings dialog you have no visible route to.
+   */
+  setZen(on: boolean): void {
+    this.prefs.setZenMode(on);
+    if (on) this.toasts.info('Zen mode — press Ctrl+Shift+Z to exit');
+  }
+
+  toggleZen(): void {
+    this.setZen(!this.prefs.zenMode());
+  }
 
   constructor() {
     effect(() => {

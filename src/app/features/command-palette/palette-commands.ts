@@ -1,5 +1,6 @@
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import type { BranchInfo } from '../../core/models';
+import type { AppearanceService } from '../../core/services/appearance.service';
 import { COLOR_PALETTES, DEFAULT_PALETTE_ID } from '../../core/services/color-palettes';
 import type { CurrentRepoService } from '../../core/services/current-repo.service';
 import type { SystemOps } from '../../core/services/ops';
@@ -68,6 +69,7 @@ export interface PaletteContext {
   readonly settings: SettingsDialogService;
   readonly theme: ThemeService;
   readonly prefs: PreferencesService;
+  readonly appearance: AppearanceService;
   readonly workspace: WorkspaceStore;
   readonly clipboard: ClipboardService;
   readonly rebase: InteractiveRebaseService;
@@ -86,7 +88,8 @@ export interface PaletteContext {
  * arguments: each one closes over the context it needs.
  */
 export function buildPaletteCommands(ctx: PaletteContext): PaletteCommand[] {
-  const { repo, dialogs, settings, theme, prefs, workspace, clipboard } = ctx;
+  const { repo, dialogs, settings, theme, prefs, workspace, clipboard, appearance } =
+    ctx;
   const isOpen = (): boolean => repo.isOpen();
   const hasSelection = (): boolean => repo.selectedCommitSha() !== null;
 
@@ -530,7 +533,7 @@ export function buildPaletteCommands(ctx: PaletteContext): PaletteCommand[] {
       group: 'View',
       icon: 'lucideMaximize2',
       shortcutId: 'view.zen',
-      run: () => prefs.setZenMode(!prefs.zenMode()),
+      run: () => appearance.toggleZen(),
     },
     {
       id: 'view.inspectorPlacement',

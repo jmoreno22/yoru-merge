@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import type { BranchInfo } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { SystemOps } from '../../core/services/ops';
 import { PreferencesService } from '../../core/services/preferences.service';
@@ -92,6 +93,7 @@ export class CommandPalette {
   private readonly rebase = inject(InteractiveRebaseService);
   private readonly system = inject(SystemOps);
   private readonly toast = inject(ToastService);
+  private readonly appearance = inject(AppearanceService);
   private readonly updater = inject(UpdaterService);
   private readonly composerFocus = inject(CommitComposerFocus);
 
@@ -126,6 +128,7 @@ export class CommandPalette {
     rebase: this.rebase,
     system: this.system,
     toast: this.toast,
+    appearance: this.appearance,
     updater: this.updater,
     composerFocus: this.composerFocus,
     pickBranch: (label, run) => {

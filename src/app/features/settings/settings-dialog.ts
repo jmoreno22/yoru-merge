@@ -9,6 +9,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import type { PullMode, WritableConfigKey } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import type { ColorPalette } from '../../core/services/color-palettes';
 import { COLOR_PALETTES } from '../../core/services/color-palettes';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
@@ -86,6 +87,7 @@ export class SettingsDialog {
   private readonly theme = inject(ThemeService);
   private readonly shortcutsService = inject(KeyboardShortcutsService);
   protected readonly prefs = inject(PreferencesService);
+  private readonly appearance = inject(AppearanceService);
 
   protected readonly sections = SETTINGS_SECTIONS;
   protected readonly open = this.settings.isOpen;
@@ -356,6 +358,10 @@ export class SettingsDialog {
 
   protected onGraphPalette(value: string): void {
     this.prefs.setGraphPalette(value as GraphPaletteId);
+  }
+
+  protected onZen(on: boolean): void {
+    this.appearance.setZen(on);
   }
 
   protected onColorPalette(id: string): void {
