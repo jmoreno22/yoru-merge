@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The application has a logo — the neon merge "Y" over the night city. Master
+  artwork in `docs/logo.png`; the whole platform icon set (window, taskbar,
+  installers) is generated from it, and the webview gets a favicon.
+- README installation guide per platform, with CI/release badges.
+
 ### Fixed
 
 - "Check for updates" in Settings/About only reported that a new version

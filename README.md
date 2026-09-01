@@ -1,10 +1,19 @@
-# YoruMerge
+<p align="center">
+  <img src="docs/logo.png" width="140" alt="YoruMerge logo" />
+</p>
 
-A fast, keyboard-friendly Git GUI for Windows and Linux — Fork's daily workflow
-with the atmosphere of Tokyo after midnight.
+<h1 align="center">YoruMerge</h1>
 
-> **Status:** v1.0.0, unreleased — the feature set below is complete and the app
-> runs; no installers have been published yet.
+<p align="center">
+  A fast, keyboard-friendly Git GUI for Windows and Linux —<br />
+  Fork's daily workflow with the atmosphere of Tokyo after midnight.
+</p>
+
+<p align="center">
+  <a href="https://github.com/jmoreno22/yoru-merge/actions/workflows/ci.yml"><img src="https://github.com/jmoreno22/yoru-merge/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/jmoreno22/yoru-merge/releases/latest"><img src="https://img.shields.io/github/v/release/jmoreno22/yoru-merge?label=release&color=22d3ee" alt="Latest release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/jmoreno22/yoru-merge?color=ff4fb8" alt="License" /></a>
+</p>
 
 ![History view, Yoru Night theme](docs/screenshots/history-dark.png)
 
@@ -16,6 +25,49 @@ with the atmosphere of Tokyo after midnight.
 ![A merge in progress, with the repository-state banner](docs/screenshots/conflict-banner.png)
 
 </details>
+
+## Install
+
+Grab the installer for your platform from the
+[latest release](https://github.com/jmoreno22/yoru-merge/releases/latest).
+
+### Windows
+
+Download **`YoruMerge_<version>_x64-setup.exe`** (recommended) or the `.msi`
+and run it. The binaries are not code-signed yet, so SmartScreen warns on first
+run — choose **More info → Run anyway**.
+
+### Ubuntu / Debian
+
+```bash
+sudo apt install ./YoruMerge_<version>_amd64.deb
+```
+
+### Fedora / openSUSE
+
+```bash
+sudo dnf install ./YoruMerge-<version>-1.x86_64.rpm
+```
+
+### Any Linux distribution — AppImage
+
+```bash
+chmod +x YoruMerge_<version>_amd64.AppImage
+./YoruMerge_<version>_amd64.AppImage
+```
+
+AppImages need FUSE; on Ubuntu 22.04+ run `sudo apt install libfuse2` once.
+
+### Auto-updates
+
+The app checks GitHub Releases on launch and every six hours, shows the release
+notes in-app, and updates itself on confirmation. That covers the Windows
+installs and the Linux AppImage; `.deb` / `.rpm` installs still get notified,
+but install the new version through the package file from Releases.
+
+### macOS
+
+Not built or tested yet.
 
 ## What it does
 
