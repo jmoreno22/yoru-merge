@@ -140,14 +140,22 @@
                 [class.text-[var(--app-text-muted)]]="!node.current"
                 aria-hidden="true"
               />
-              <span class="min-w-0 shrink truncate">{{ node.label }}</span>
-              @if (node.branch.upstream; as upstream) {
-                <span
-                  class="min-w-0 shrink truncate text-y-xs text-[var(--app-text-faint)]"
-                >
-                  {{ upstream }}
-                </span>
-              }
+              <!--
+                The tracking branch is deliberately not printed here: it
+                duplicates the Remotes section and cost the branch name the room
+                it needs to be read. It stays in the title, where a branch whose
+                upstream is not the obvious one can still be identified.
+              -->
+              <span
+                class="min-w-0 flex-1 truncate"
+                [title]="
+                  node.branch.upstream
+                    ? node.label + ' → ' + node.branch.upstream
+                    : node.label
+                "
+              >
+                {{ node.label }}
+              </span>
               <span class="ml-auto flex shrink-0 items-center gap-1">
                 @if (node.branch.ahead > 0) {
                   <span
