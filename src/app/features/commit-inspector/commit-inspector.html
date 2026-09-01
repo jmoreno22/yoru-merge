@@ -9,20 +9,20 @@
           [size]="28"
         />
         <div class="min-w-0 flex-1">
-          <p class="truncate text-[13px] text-[var(--app-text)]">
+          <p class="truncate text-y-base text-[var(--app-text)]">
             {{ commit.author_name }}
             <span class="text-[var(--app-text-faint)]">&lt;{{
               commit.author_email
             }}&gt;</span>
           </p>
-          <p class="text-[12px] text-[var(--app-text-muted)]">
+          <p class="text-y-md text-[var(--app-text-muted)]">
             authored {{ authorDate().absolute }}
             <span class="text-[var(--app-text-faint)]"
               >· {{ authorDate().relative }}</span
             >
           </p>
           @if (showCommitter()) {
-            <p class="text-[12px] text-[var(--app-text-muted)]">
+            <p class="text-y-md text-[var(--app-text-muted)]">
               committed by {{ commit.committer_name }} on
               {{ committerDate().absolute }}
             </p>
@@ -157,11 +157,11 @@
         }
       </div>
     } @else if (noMatches()) {
-      <p class="px-4 py-3 text-[12px] text-[var(--app-text-muted)]">
+      <p class="px-4 py-3 text-y-md text-[var(--app-text-muted)]">
         No file in this commit matches "{{ filter() }}".
       </p>
     } @else if (commit.files.length === 0) {
-      <p class="px-4 py-3 text-[12px] text-[var(--app-text-muted)]">
+      <p class="px-4 py-3 text-y-md text-[var(--app-text-muted)]">
         This commit does not change any file.
       </p>
     } @else {

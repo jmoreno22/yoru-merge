@@ -44,7 +44,7 @@ const STATE_LABEL: Readonly<Record<string, string>> = {
   host: {
     'data-testid': 'status-bar',
     class:
-      'flex h-[var(--statusbar-h)] shrink-0 items-center gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-3 text-[11px] text-[var(--app-text-muted)]',
+      'flex h-[var(--statusbar-h)] shrink-0 items-center gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-3 text-y-sm text-[var(--app-text-muted)]',
   },
 })
 export class StatusBar {

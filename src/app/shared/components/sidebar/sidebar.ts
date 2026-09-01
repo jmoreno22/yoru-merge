@@ -129,10 +129,10 @@ export class Sidebar {
     const base =
       'flex w-full cursor-pointer select-none items-center transition-colors hover:bg-[var(--app-panel)]';
     if (node.kind === 'section') return base;
-    const leaf = `${base} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-[12px]`;
+    const leaf = `${base} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md`;
     // Weight, not colour: the marker icon and `aria-current` carry the state too.
     return node.kind === 'branch' && node.current
-      ? `${leaf} font-semibold text-neon-cyan`
+      ? `${leaf} font-semibold text-accent-ink`
       : `${leaf} text-[var(--app-text)]`;
   }
 

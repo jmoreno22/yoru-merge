@@ -39,7 +39,7 @@
 
 @if (untracked()) {
   <span
-    class="shrink-0 rounded-full border border-[var(--app-border)] px-1.5 font-mono text-[10px] text-[var(--app-text-faint)]"
+    class="shrink-0 rounded-full border border-[var(--app-border)] px-1.5 font-mono text-y-xs text-[var(--app-text-faint)]"
     >untracked</span
   >
 }
@@ -52,7 +52,7 @@
       type="button"
       (click)="onResolve($event)"
       [attr.aria-label]="'Resolve ' + row().name"
-      class="inline-flex h-6 items-center gap-1 rounded-xs border border-sakura-400/50 bg-sakura-400/10 px-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--app-conflict-text)] transition-colors hover:bg-sakura-400/20"
+      class="inline-flex h-6 items-center gap-1 rounded-xs border border-sakura-400/50 bg-sakura-400/10 px-1.5 font-mono text-y-xs uppercase tracking-[0.1em] text-[var(--app-conflict-text)] transition-colors hover:bg-sakura-400/20"
     >
       <ng-icon name="lucideGitMerge" size="12px" aria-hidden="true" />
       Resolve

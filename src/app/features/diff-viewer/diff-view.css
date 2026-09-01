@@ -12,12 +12,13 @@
  */
 
 app-diff-view {
-  --dv-line-h: 20px;
+  /* Code line height, driven by the code type size. */
+  --dv-line-h: var(--code-line-h);
   --dv-num-w: 4ch;
 
   --dv-add-bg: color-mix(in srgb, var(--color-git-added) 14%, transparent);
   --dv-del-bg: color-mix(in srgb, var(--color-git-deleted) 14%, transparent);
-  --dv-sel-bg: color-mix(in srgb, var(--color-neon-cyan) 22%, transparent);
+  --dv-sel-bg: color-mix(in srgb, var(--app-accent) 22%, transparent);
   --dv-void-bg: color-mix(in srgb, var(--app-text-faint) 6%, transparent);
 
   /* Syntax palette — light theme. */
@@ -67,7 +68,7 @@ app-diff-view .dv-file-head {
 app-diff-view .dv-chip {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -76,7 +77,7 @@ app-diff-view .dv-path {
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -85,7 +86,7 @@ app-diff-view .dv-meta {
   min-width: 0;
   color: var(--app-text-faint);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-y-sm);
 }
 
 app-diff-view .dv-stats {
@@ -93,7 +94,7 @@ app-diff-view .dv-stats {
   flex-shrink: 0;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-y-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -126,7 +127,7 @@ app-diff-view .dv-expand {
   padding: 10px 12px;
   color: var(--app-text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
   text-align: left;
 }
 
@@ -155,7 +156,7 @@ app-diff-view .dv-img-side {
 
 app-diff-view .dv-img-label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -202,7 +203,7 @@ app-diff-view .dv-hunk-head {
 }
 
 app-diff-view .dv-hunk-head:focus-visible {
-  outline: 2px solid var(--color-neon-cyan);
+  outline: 2px solid var(--app-accent);
   outline-offset: -2px;
 }
 
@@ -210,7 +211,7 @@ app-diff-view .dv-hunk-range {
   flex-shrink: 0;
   color: var(--color-neon-violet);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-y-sm);
 }
 
 app-diff-view .dv-hunk-body {
@@ -228,7 +229,7 @@ app-diff-view .dv-gap {
   border-bottom: 1px dashed var(--app-border);
   color: var(--app-text-faint);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-y-sm);
 }
 
 app-diff-view .dv-gap:hover {
@@ -243,7 +244,8 @@ app-diff-view .dv-row {
   align-items: start;
   min-height: var(--dv-line-h);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-code);
+  font-feature-settings: var(--code-font-features);
   line-height: var(--dv-line-h);
 }
 
@@ -264,7 +266,7 @@ app-diff-view .dv-row[role="option"] {
 }
 
 app-diff-view .dv-row:focus-visible {
-  outline: 2px solid var(--color-neon-cyan);
+  outline: 2px solid var(--app-accent);
   outline-offset: -2px;
 }
 
@@ -273,7 +275,7 @@ app-diff-view .dv-num {
   border-right: 1px solid var(--app-border);
   background: var(--app-surface-raised);
   color: var(--app-text-faint);
-  font-size: 11px;
+  font-size: var(--text-y-code-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
   user-select: none;
@@ -290,7 +292,7 @@ app-diff-view .dv-code {
   overflow: hidden;
   color: var(--app-text);
   white-space: pre;
-  tab-size: 2;
+  tab-size: var(--code-tab-width);
 }
 
 app-diff-view.dv-wrap .dv-code {
@@ -309,7 +311,7 @@ app-diff-view .dv-void {
 app-diff-view .dv-nonewline {
   padding: 0 8px;
   color: var(--app-text-faint);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -333,7 +335,7 @@ app-diff-view .dv-del .dv-mark {
 
 app-diff-view .dv-sel {
   background: var(--dv-sel-bg);
-  box-shadow: inset 2px 0 0 var(--color-neon-cyan);
+  box-shadow: inset 2px 0 0 var(--app-accent);
 }
 
 app-diff-view .dv-selection-bar {
@@ -345,7 +347,7 @@ app-diff-view .dv-selection-bar {
   border-top: 1px solid var(--app-border);
   background: var(--app-surface-raised);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
 }
 
 /* ── Syntax tokens ─────────────────────────────────────────────────── */

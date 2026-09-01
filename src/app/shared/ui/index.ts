@@ -34,6 +34,7 @@ export { YoruSectionHeader } from './yoru-section-header';
 export { type SegmentedOption, YoruSegmented } from './yoru-segmented';
 export { YoruSkeleton } from './yoru-skeleton';
 export { YoruSpinner } from './yoru-spinner';
+export { YoruStepper } from './yoru-stepper';
 export { YoruSwitch } from './yoru-switch';
 export { YoruToastHost } from './yoru-toast-host';
 export { YoruTooltip } from './yoru-tooltip.directive';

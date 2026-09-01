@@ -47,7 +47,7 @@
                   {{ entry.path }}
                 </span>
                 <span
-                  class="ml-auto shrink-0 font-mono text-[10.5px] text-[var(--app-text-faint)]"
+                  class="ml-auto shrink-0 font-mono text-y-xs text-[var(--app-text-faint)]"
                   [attr.aria-label]="
                     entry.conflict_count +
                     (entry.conflict_count === 1 ? ' block' : ' blocks')
@@ -71,7 +71,7 @@
             {{ path }}
           </span>
           <span
-            class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+            class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
             data-testid="resolver-counters"
           >
             File {{ fileIndex() }} of {{ conflicts().length }} · Block
@@ -107,18 +107,18 @@
             <yoru-spinner [size]="16" label="Loading the conflicted file" />
           </div>
         } @else if (loadError(); as message) {
-          <p role="alert" class="text-[13px] text-git-deleted">{{ message }}</p>
+          <p role="alert" class="text-y-base text-git-deleted">{{ message }}</p>
         } @else {
           <div class="grid min-h-0 shrink-0 grid-cols-2 gap-3">
             <div class="flex min-w-0 flex-col gap-1">
               <div class="flex items-center gap-2">
                 <span
-                  class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-neon-cyan"
+                  class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-accent-ink"
                 >
                   Ours
                 </span>
                 @if (oursLine() > 0) {
-                  <span class="font-mono text-[10.5px] text-[var(--app-text-faint)]">
+                  <span class="font-mono text-y-xs text-[var(--app-text-faint)]">
                     line {{ oursLine() }}
                   </span>
                 }
@@ -142,12 +142,12 @@
             <div class="flex min-w-0 flex-col gap-1">
               <div class="flex items-center gap-2">
                 <span
-                  class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
+                  class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
                 >
                   Theirs
                 </span>
                 @if (theirsLine() > 0) {
-                  <span class="font-mono text-[10.5px] text-[var(--app-text-faint)]">
+                  <span class="font-mono text-y-xs text-[var(--app-text-faint)]">
                     line {{ theirsLine() }}
                   </span>
                 }
@@ -180,7 +180,7 @@
               Keep both
             </yoru-button>
             <span
-              class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+              class="font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
             >
               n next · p previous · 1 ours · 2 theirs · 3 both
             </span>
@@ -218,7 +218,7 @@
 
           <label class="flex min-h-0 flex-1 flex-col gap-1">
             <span
-              class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+              class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
             >
               Result
             </span>
@@ -227,13 +227,13 @@
               data-testid="resolver-result"
               [value]="text()"
               (input)="onTextInput($event)"
-              class="neon-scroll min-h-40 flex-1 resize-none rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs leading-relaxed text-[var(--app-text)] focus:border-neon-cyan focus:outline-none"
+              class="neon-scroll min-h-40 flex-1 resize-none rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs leading-relaxed text-[var(--app-text)] focus:border-accent focus:outline-none"
             ></textarea>
           </label>
 
           @if (!resolved()) {
             <p
-              class="shrink-0 text-[11px] text-[var(--app-conflict-text)]"
+              class="shrink-0 text-y-sm text-[var(--app-conflict-text)]"
               role="status"
               data-testid="resolver-markers"
             >

@@ -9,9 +9,9 @@ export type ButtonSize = 'sm' | 'md';
 const VARIANTS: Readonly<Record<ButtonVariant, string>> = {
   // Glow only on hover/focus: at rest nothing in the app glows except HEAD.
   primary:
-    'bg-neon-cyan text-yoru-950 font-semibold hover:bg-moon-50 hover:shadow-neon-cyan focus-visible:shadow-neon-cyan',
+    'bg-accent text-yoru-950 font-semibold hover:bg-moon-50 hover:shadow-accent focus-visible:shadow-accent',
   secondary:
-    'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:border-neon-cyan/50 hover:bg-[var(--app-panel)]',
+    'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:border-accent/50 hover:bg-[var(--app-panel)]',
   ghost:
     'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]',
   danger:
@@ -20,7 +20,7 @@ const VARIANTS: Readonly<Record<ButtonVariant, string>> = {
 
 const SIZES: Readonly<Record<ButtonSize, string>> = {
   sm: 'h-7 gap-1.5 px-2.5 text-xs',
-  md: 'h-8 gap-2 px-3 text-[13px]',
+  md: 'h-8 gap-2 px-3 text-y-base',
 };
 
 /**

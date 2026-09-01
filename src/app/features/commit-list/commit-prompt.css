@@ -5,7 +5,7 @@
   background: var(--app-surface);
   padding: 6px 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
   color: var(--app-text);
 }
 
@@ -14,5 +14,5 @@
 }
 
 .field-input:focus {
-  border-color: var(--color-neon-cyan);
+  border-color: var(--app-accent);
 }

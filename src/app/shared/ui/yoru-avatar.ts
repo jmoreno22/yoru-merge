@@ -36,7 +36,7 @@ export class YoruAvatar {
   protected readonly hostClass = computed(() => {
     const size = this.size();
     const box = size === 16 ? 'h-4 w-4' : size === 28 ? 'h-7 w-7' : 'h-5 w-5';
-    const type = size === 28 ? 'text-[10.5px]' : 'text-[8.5px]';
+    const type = size === 28 ? 'text-y-xs' : 'text-y-2xs';
     return `inline-flex shrink-0 select-none items-center justify-center rounded-full font-mono font-bold uppercase leading-none text-yoru-950 ${box} ${type}`;
   });
 }

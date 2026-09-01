@@ -54,7 +54,7 @@ export class YoruTooltip {
     tip.textContent = text;
     tip.className =
       'yoru-fade-in pointer-events-none fixed z-[var(--z-overlay)] max-w-[18rem] rounded-xs border ' +
-      'border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2 py-1 text-[11px] ' +
+      'border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2 py-1 text-y-sm ' +
       'leading-[16px] text-[var(--app-text)] shadow-panel';
     document.body.appendChild(tip);
     this.element = tip;

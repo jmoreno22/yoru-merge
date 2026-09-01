@@ -6,7 +6,7 @@
       >
         YoruMerge
       </h1>
-      <p class="text-[13px] text-[var(--app-text-muted)]">
+      <p class="text-y-base text-[var(--app-text-muted)]">
         Open a repository to start, or bring a new one in.
       </p>
     </header>
@@ -14,7 +14,7 @@
     @if (error(); as message) {
       <p
         role="alert"
-        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-[13px] text-git-deleted"
+        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-base text-git-deleted"
         data-testid="repo-manager-error"
       >
         {{ message }}
@@ -27,16 +27,16 @@
         [disabled]="loading()"
         data-testid="repo-open"
         (click)="onOpen()"
-        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-neon-cyan/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
+        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-accent/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
       >
         <ng-icon
           name="lucideFolderOpen"
           size="18px"
           aria-hidden="true"
-          class="text-neon-cyan"
+          class="text-accent-ink"
         />
-        <span class="text-[13px] font-semibold text-[var(--app-text)]">Open folder</span>
-        <span class="text-[11px] text-[var(--app-text-faint)]">
+        <span class="text-y-base font-semibold text-[var(--app-text)]">Open folder</span>
+        <span class="text-y-sm text-[var(--app-text-faint)]">
           A repository already on this machine
         </span>
       </button>
@@ -46,16 +46,16 @@
         [disabled]="loading()"
         data-testid="repo-clone"
         (click)="onClone()"
-        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-neon-cyan/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
+        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-accent/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
       >
         <ng-icon
           name="lucideCloudDownload"
           size="18px"
           aria-hidden="true"
-          class="text-neon-cyan"
+          class="text-accent-ink"
         />
-        <span class="text-[13px] font-semibold text-[var(--app-text)]">Clone</span>
-        <span class="text-[11px] text-[var(--app-text-faint)]">
+        <span class="text-y-base font-semibold text-[var(--app-text)]">Clone</span>
+        <span class="text-y-sm text-[var(--app-text-faint)]">
           From a URL, with depth and branch options
         </span>
       </button>
@@ -65,16 +65,16 @@
         [disabled]="loading()"
         data-testid="repo-init"
         (click)="onInit()"
-        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-neon-cyan/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
+        class="flex flex-col items-start gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 text-left transition-colors hover:border-accent/60 hover:bg-[var(--app-panel)] disabled:cursor-not-allowed"
       >
         <ng-icon
           name="lucideGitBranchPlus"
           size="18px"
           aria-hidden="true"
-          class="text-neon-cyan"
+          class="text-accent-ink"
         />
-        <span class="text-[13px] font-semibold text-[var(--app-text)]">Init repo</span>
-        <span class="text-[11px] text-[var(--app-text-faint)]">
+        <span class="text-y-base font-semibold text-[var(--app-text)]">Init repo</span>
+        <span class="text-y-sm text-[var(--app-text-faint)]">
           Start git in a folder you already have
         </span>
       </button>
@@ -82,7 +82,7 @@
 
     <section class="flex min-h-0 flex-col gap-2">
       <h2
-        class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+        class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
       >
         Recent
       </h2>
@@ -116,18 +116,18 @@
                     class="shrink-0 text-[var(--app-text-muted)]"
                   />
                   <span class="flex min-w-0 flex-col">
-                    <span class="truncate text-[13px] text-[var(--app-text)]">
+                    <span class="truncate text-y-base text-[var(--app-text)]">
                       {{ entry.name }}
                     </span>
                     <span
-                      class="truncate font-mono text-[11px] text-[var(--app-text-faint)]"
+                      class="truncate font-mono text-y-sm text-[var(--app-text-faint)]"
                       [title]="entry.path"
                     >
                       {{ entry.path }}
                     </span>
                   </span>
                   <span
-                    class="ml-auto shrink-0 font-mono text-[11px] text-[var(--app-text-faint)]"
+                    class="ml-auto shrink-0 font-mono text-y-sm text-[var(--app-text-faint)]"
                   >
                     {{ lastOpened(entry) }}
                   </span>

@@ -27,7 +27,7 @@
             [attr.data-testid]="'reflog-entry-' + entry.selector"
           >
             <span class="flex w-full min-w-0 items-center gap-2">
-              <span class="shrink-0 font-mono text-[10.5px] text-neon-cyan">
+              <span class="shrink-0 font-mono text-y-xs text-accent-ink">
                 {{ entry.selector }}
               </span>
               <span class="truncate text-xs text-[var(--app-text)]">
@@ -35,7 +35,7 @@
               </span>
             </span>
             <span
-              class="flex w-full min-w-0 items-center gap-2 font-mono text-[10.5px] text-[var(--app-text-faint)]"
+              class="flex w-full min-w-0 items-center gap-2 font-mono text-y-xs text-[var(--app-text-faint)]"
             >
               <span class="shrink-0">{{ entry.short_sha }}</span>
               <span class="shrink-0">{{ entry.action }}</span>

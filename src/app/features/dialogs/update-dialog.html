@@ -13,7 +13,7 @@
           class="text-[var(--app-text-faint)]"
           aria-hidden="true"
         />
-        <span class="text-neon-cyan" data-testid="update-next-version">
+        <span class="text-accent-ink" data-testid="update-next-version">
           {{ update.version }}
         </span>
         @if (update.date; as day) {
@@ -24,7 +24,7 @@
       @if (update.notes) {
         <div class="flex min-h-0 flex-col gap-1.5">
           <span
-            class="text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+            class="text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
           >
             Release notes
           </span>
@@ -44,7 +44,7 @@
               class="h-1 w-full overflow-hidden rounded-full bg-[var(--app-panel)]"
               aria-hidden="true"
             >
-              <span class="block h-full bg-neon-cyan" [style.width.%]="done"></span>
+              <span class="block h-full bg-accent" [style.width.%]="done"></span>
             </span>
             <span class="font-mono text-xs text-[var(--app-text-muted)]">
               Downloading… {{ done }}%
@@ -59,13 +59,13 @@
           }
         </div>
       } @else if (ready()) {
-        <p class="text-[13px] text-[var(--app-text-muted)]">
+        <p class="text-y-base text-[var(--app-text-muted)]">
           Version {{ update.version }} is installed. Restart YoruMerge to start using it.
         </p>
       }
     </ng-container>
   } @else {
-    <p dialog-body class="text-[13px] text-[var(--app-text-muted)]">
+    <p dialog-body class="text-y-base text-[var(--app-text-muted)]">
       YoruMerge is up to date.
     </p>
   }

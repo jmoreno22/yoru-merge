@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { computeMetrics } from '../../core/services/appearance-metrics';
+import { DEFAULT_PREFERENCES } from '../../core/services/preferences-schema';
 import {
   COMMIT_FOOTER_HEIGHT,
   COMMIT_HEADER_HEIGHT,
@@ -7,16 +9,31 @@ import {
   CommitListLayout,
 } from './commit-list-layout';
 
+const defaultMetrics = computeMetrics({
+  uiFontSize: DEFAULT_PREFERENCES.uiFontSize,
+  monoFontSize: DEFAULT_PREFERENCES.monoFontSize,
+  density: DEFAULT_PREFERENCES.uiDensity,
+});
+
 describe('commit list geometry', () => {
-  it('keeps the row height at the density spec value', () => {
-    // The CDK `itemSize`, the graph's `rowHeight` and the `--row-h` token all
-    // read this number; a change here silently misaligns the lanes.
-    expect(COMMIT_ROW_HEIGHT).toBe(34);
+  /**
+   * These constants are only the fallback for the first paint; the live values
+   * come from `AppearanceService`. They still have to agree with what the
+   * metrics compute at the default preferences, or the list, the `--row-h`
+   * token and the graph's lanes start the session out of step — which is the
+   * exact drift the derived layout exists to prevent.
+   */
+  it('keeps the fallback row height equal to the derived default', () => {
+    expect(COMMIT_ROW_HEIGHT).toBe(defaultMetrics.rowHeight);
   });
 
-  it('makes the header and the search bar one row tall each', () => {
-    expect(COMMIT_HEADER_HEIGHT).toBe(34);
-    expect(COMMIT_SEARCH_HEIGHT).toBe(34);
+  it('keeps the header and the search bar one panel head tall each', () => {
+    expect(COMMIT_HEADER_HEIGHT).toBe(defaultMetrics.panelHeadHeight);
+    expect(COMMIT_SEARCH_HEIGHT).toBe(defaultMetrics.panelHeadHeight);
+  });
+
+  it('keeps the footer one status bar tall', () => {
+    expect(COMMIT_FOOTER_HEIGHT).toBe(defaultMetrics.statusbarHeight);
   });
 });
 

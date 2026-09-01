@@ -38,7 +38,7 @@ cdk-virtual-scroll-viewport {
 
 .column-header > * {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -60,16 +60,16 @@ cdk-virtual-scroll-viewport {
 }
 
 .commit-row.is-selected {
-  background: color-mix(in srgb, var(--color-neon-cyan) 14%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
 }
 
 .commit-row.is-current {
-  border-left-color: var(--color-neon-cyan);
+  border-left-color: var(--app-accent);
 }
 
 .commit-row:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--color-neon-cyan);
+  box-shadow: inset 0 0 0 1px var(--app-accent);
 }
 
 .col-description {
@@ -89,7 +89,7 @@ cdk-virtual-scroll-viewport {
   flex-shrink: 0;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-y-md);
   color: var(--app-text-muted);
 }
 
@@ -98,7 +98,7 @@ cdk-virtual-scroll-viewport {
   flex-shrink: 0;
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
   font-variant-numeric: tabular-nums;
   color: var(--app-text-muted);
 }
@@ -108,7 +108,7 @@ cdk-virtual-scroll-viewport {
   flex-shrink: 0;
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
   color: var(--app-text-faint);
 }
 
@@ -118,7 +118,7 @@ cdk-virtual-scroll-viewport {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--text-y-base);
   color: var(--app-text);
 }
 
@@ -134,7 +134,7 @@ cdk-virtual-scroll-viewport {
   border-radius: var(--radius-xs);
   padding: 0 4px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   line-height: 16px;
   color: var(--app-text-muted);
 }
@@ -151,7 +151,7 @@ cdk-virtual-scroll-viewport {
 
 .footer-count {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   font-variant-numeric: tabular-nums;
   color: var(--app-text-faint);
 }

@@ -68,6 +68,24 @@ function contextWith(overrides: Overrides = {}): PaletteContext {
       setDiffIgnoreWhitespace: vi.fn(),
       uiDensity: signal('comfortable'),
       setUiDensity: vi.fn(),
+      uiFontSize: signal(13),
+      setUiFontSize: vi.fn(),
+      monoFontSize: signal(12),
+      setMonoFontSize: vi.fn(),
+      colorPalette: signal('yoru'),
+      setColorPalette: vi.fn(),
+      zenMode: signal(false),
+      setZenMode: vi.fn(),
+      inspectorPlacement: signal('right'),
+      setInspectorPlacement: vi.fn(),
+      sidebarSide: signal('left'),
+      setSidebarSide: vi.fn(),
+      showGraph: signal(true),
+      setShowGraph: vi.fn(),
+      showToolbar: signal(true),
+      setShowToolbar: vi.fn(),
+      showStatusBar: signal(true),
+      setShowStatusBar: vi.fn(),
       setRailView: vi.fn(),
     },
     clipboard: { writeText: vi.fn() },
@@ -156,9 +174,49 @@ describe('buildPaletteCommands', () => {
     commands.find((command) => command.id === 'view.diffMode')?.run();
     expect(context.prefs.setDiffViewMode).toHaveBeenCalledWith('split');
     commands.find((command) => command.id === 'view.density')?.run();
-    expect(context.prefs.setUiDensity).toHaveBeenCalledWith('compact');
+    expect(context.prefs.setUiDensity).toHaveBeenCalledWith('relaxed');
     commands.find((command) => command.id === 'view.theme')?.run();
     expect(context.theme.cycle).toHaveBeenCalled();
+  });
+
+  it('cycles density through all three steps and wraps round', () => {
+    for (const [from, to] of [
+      ['compact', 'comfortable'],
+      ['comfortable', 'relaxed'],
+      ['relaxed', 'compact'],
+    ] as const) {
+      const context = contextWith();
+      context.prefs.uiDensity.set(from);
+      buildPaletteCommands(context)
+        .find((command) => command.id === 'view.density')
+        ?.run();
+      expect(context.prefs.setUiDensity).toHaveBeenCalledWith(to);
+    }
+  });
+
+  it('cycles the colour palette and wraps at the end of the list', () => {
+    const context = contextWith();
+    buildPaletteCommands(context)
+      .find((command) => command.id === 'view.colorPalette')
+      ?.run();
+    expect(context.prefs.setColorPalette).toHaveBeenCalledWith('slate');
+
+    const last = contextWith();
+    last.prefs.colorPalette.set('solarized');
+    buildPaletteCommands(last)
+      .find((command) => command.id === 'view.colorPalette')
+      ?.run();
+    expect(last.prefs.setColorPalette).toHaveBeenCalledWith('yoru');
+  });
+
+  it('steps the two type sizes independently', () => {
+    const context = contextWith();
+    const commands = buildPaletteCommands(context);
+    commands.find((command) => command.id === 'view.fontLarger')?.run();
+    expect(context.prefs.setUiFontSize).toHaveBeenCalledWith(14);
+    commands.find((command) => command.id === 'view.codeFontSmaller')?.run();
+    expect(context.prefs.setMonoFontSize).toHaveBeenCalledWith(11);
+    expect(context.prefs.setUiFontSize).toHaveBeenCalledTimes(1);
   });
 
   it('switches the central view from the palette', () => {

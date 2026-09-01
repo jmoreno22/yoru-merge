@@ -209,7 +209,7 @@ export class CommitComposer {
       case 'warn':
         return 'bg-git-modified';
       default:
-        return 'bg-neon-cyan/60';
+        return 'bg-accent/60';
     }
   });
 

@@ -71,7 +71,7 @@ export class FileRowItem {
       ? 'bg-[var(--app-panel)]'
       : 'hover:bg-[var(--app-panel)]/60';
     // The cyan edge marks the row the diff viewer is showing, not the selection.
-    const edge = this.openInDiff() ? 'border-neon-cyan' : 'border-transparent';
+    const edge = this.openInDiff() ? 'border-accent' : 'border-transparent';
     return `${base} ${fill} ${edge}`;
   });
 
@@ -105,7 +105,7 @@ export class FileRowItem {
 
   protected readonly primaryClass = computed(() =>
     this.staged()
-      ? 'border-neon-cyan/40 bg-neon-cyan/5 text-neon-cyan hover:bg-neon-cyan/20'
+      ? 'border-accent/40 bg-accent/5 text-accent-ink hover:bg-accent/20'
       : 'border-git-added/40 bg-git-added/5 text-git-added hover:bg-git-added/20',
   );
 

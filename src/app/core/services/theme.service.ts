@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { runThemeTransition } from './view-transition';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
@@ -64,7 +65,7 @@ export class ThemeService {
   }
 
   set(mode: ThemeMode): void {
-    this._current.set(mode);
+    runThemeTransition(() => this._current.set(mode));
   }
 
   /**
@@ -84,7 +85,7 @@ export class ThemeService {
         : mode === 'dark'
           ? 'light'
           : 'dark';
-    this._current.set(next);
+    runThemeTransition(() => this._current.set(next));
   }
 }
 

@@ -21,7 +21,7 @@ import {
  * - `orientation="horizontal"` → horizontal bar, drags up/down  (row-resize)
  *
  * The bar is 4 px thick and uses the design-system
- * `--app-border` colour with a neon-cyan hover so the splitter stays
+ * `--app-border` colour with an accent hover so the splitter stays
  * discoverable without becoming visually noisy.
  */
 @Component({
@@ -69,8 +69,8 @@ export class Splitter implements OnDestroy {
     // The handle stays subtle until hovered/dragged so it doesn't compete
     // with the diff viewer chrome.
     const visual = this.active()
-      ? 'bg-neon-cyan/60'
-      : 'bg-[var(--app-border)] hover:bg-neon-cyan/40 transition-colors';
+      ? 'bg-accent/60'
+      : 'bg-[var(--app-border)] hover:bg-accent/40 transition-colors';
     return `${base} shrink-0 select-none ${visual}`;
   });
 

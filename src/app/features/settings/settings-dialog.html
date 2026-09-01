@@ -18,10 +18,10 @@
           [tabindex]="section() === item.id ? 0 : -1"
           [attr.data-testid]="'settings-tab-' + item.id"
           (click)="select(item.id)"
-          class="flex h-8 items-center rounded-sm px-2.5 text-left text-[13px] transition-colors"
+          class="flex h-8 items-center rounded-sm px-2.5 text-left text-y-base transition-colors"
           [class]="
             section() === item.id
-              ? 'bg-neon-cyan/12 text-neon-cyan'
+              ? 'bg-accent/12 text-accent-ink'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]'
           "
         >
@@ -38,15 +38,6 @@
     >
       @switch (section()) {
         @case ('general') {
-          <yoru-field label="Interface density" hint="Row heights and panel padding">
-            <yoru-segmented
-              [options]="densityOptions"
-              [value]="prefs.uiDensity()"
-              (valueChange)="onDensity($event)"
-              ariaLabel="Interface density"
-            />
-          </yoru-field>
-
           <yoru-switch
             [checked]="prefs.confirmDangerous()"
             (checkedChange)="prefs.setConfirmDangerous($event)"
@@ -207,6 +198,197 @@
             />
           </yoru-field>
 
+          <yoru-field
+            label="Colour palette"
+            hint="Replaces every surface and text tone. Swatches preview the mode you are in."
+          >
+            <div
+              role="radiogroup"
+              aria-label="Colour palette"
+              class="flex flex-col gap-1.5"
+              data-testid="settings-palette"
+            >
+              @for (option of colorPalettes; track option.id) {
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="prefs.colorPalette() === option.id"
+                  [attr.data-testid]="'settings-palette-' + option.id"
+                  (click)="onColorPalette(option.id)"
+                  class="flex items-center gap-3 rounded-sm border px-2.5 py-2 text-left transition-colors"
+                  [class]="
+                    prefs.colorPalette() === option.id
+                      ? 'border-accent/60 bg-accent/10'
+                      : 'border-[var(--app-border)] hover:bg-[var(--app-panel)]'
+                  "
+                >
+                  <span class="flex shrink-0 gap-0.5" aria-hidden="true">
+                    @for (swatch of paletteSwatches(option); track $index) {
+                      <span
+                        class="block h-6 w-3 first:rounded-l-xs last:rounded-r-xs"
+                        [style.background]="swatch"
+                      ></span>
+                    }
+                  </span>
+                  <span class="flex min-w-0 flex-col leading-tight">
+                    <span class="text-y-base text-[var(--app-text)]">
+                      {{ option.label }}
+                    </span>
+                    <span class="text-y-sm text-[var(--app-text-faint)]">
+                      {{ option.description }}
+                    </span>
+                  </span>
+                </button>
+              }
+            </div>
+          </yoru-field>
+
+          <yoru-field
+            label="Accent"
+            hint="Used by the focus ring, active rows and selection."
+          >
+            <div
+              role="radiogroup"
+              aria-label="Accent"
+              class="flex items-center gap-2"
+              data-testid="settings-accent"
+            >
+              @for (option of accentOptions; track option.id) {
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="prefs.accent() === option.id"
+                  [attr.aria-label]="option.label"
+                  [attr.data-testid]="'settings-accent-' + option.id"
+                  [title]="option.label"
+                  (click)="onAccent(option.id)"
+                  class="flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors"
+                  [class]="
+                    prefs.accent() === option.id
+                      ? 'border-[var(--app-text)]'
+                      : 'border-transparent hover:border-[var(--app-border)]'
+                  "
+                >
+                  <span
+                    class="block h-4 w-4 rounded-full"
+                    [style.background]="option.swatch"
+                  ></span>
+                </button>
+              }
+            </div>
+          </yoru-field>
+
+          <div class="grid grid-cols-2 gap-4">
+            <yoru-field label="Interface text" hint="Rows, panels and chrome scale with it">
+              <yoru-stepper
+                [value]="prefs.uiFontSize()"
+                [min]="minUiFontSize"
+                [max]="maxUiFontSize"
+                suffix="px"
+                ariaLabel="interface text size"
+                (valueChange)="prefs.setUiFontSize($event)"
+              />
+            </yoru-field>
+
+            <yoru-field label="Code text" hint="Diff, blame and their line numbers">
+              <yoru-stepper
+                [value]="prefs.monoFontSize()"
+                [min]="minMonoFontSize"
+                [max]="maxMonoFontSize"
+                suffix="px"
+                ariaLabel="code text size"
+                (valueChange)="prefs.setMonoFontSize($event)"
+              />
+            </yoru-field>
+          </div>
+
+          <yoru-field label="Interface density" hint="Padding around rows and panels">
+            <yoru-segmented
+              [options]="densityOptions"
+              [value]="prefs.uiDensity()"
+              (valueChange)="onDensity($event)"
+              ariaLabel="Interface density"
+            />
+          </yoru-field>
+
+          <yoru-field
+            label="Branch graph palette"
+            hint="Independent of the accent: the six lanes have to stay apart."
+          >
+            <yoru-segmented
+              [options]="graphPaletteOptions"
+              [value]="prefs.graphPalette()"
+              (valueChange)="onGraphPalette($event)"
+              ariaLabel="Branch graph palette"
+            />
+          </yoru-field>
+
+          <yoru-field label="Inspector" hint="Where the commit and diff panels sit">
+            <yoru-segmented
+              [options]="inspectorOptions"
+              [value]="prefs.inspectorPlacement()"
+              (valueChange)="onInspectorPlacement($event)"
+              ariaLabel="Inspector placement"
+            />
+          </yoru-field>
+
+          <yoru-field label="Refs panel side">
+            <yoru-segmented
+              [options]="sidebarSideOptions"
+              [value]="prefs.sidebarSide()"
+              (valueChange)="onSidebarSide($event)"
+              ariaLabel="Refs panel side"
+            />
+          </yoru-field>
+
+          <yoru-field
+            label="Commit list columns"
+            hint="The subject column is always shown."
+          >
+            <div class="flex flex-col gap-2" data-testid="settings-columns">
+              @for (column of commitColumns; track column.id) {
+                <yoru-switch
+                  [checked]="isColumnVisible(column.id)"
+                  (checkedChange)="onColumnToggle(column.id)"
+                  [label]="column.label"
+                />
+              }
+            </div>
+          </yoru-field>
+
+          <yoru-field label="Visible chrome">
+            <div class="flex flex-col gap-2">
+              <yoru-switch
+                [checked]="prefs.showToolbar()"
+                (checkedChange)="prefs.setShowToolbar($event)"
+                label="Toolbar"
+              />
+              <yoru-switch
+                [checked]="prefs.showStatusBar()"
+                (checkedChange)="prefs.setShowStatusBar($event)"
+                label="Status bar"
+              />
+              <yoru-switch
+                [checked]="prefs.showGraph()"
+                (checkedChange)="prefs.setShowGraph($event)"
+                label="Branch graph"
+              />
+              <yoru-switch
+                [checked]="prefs.zenMode()"
+                (checkedChange)="prefs.setZenMode($event)"
+                label="Zen mode"
+                hint="Hides all of the above at once, and restores them on the way out"
+              />
+            </div>
+          </yoru-field>
+
+          <yoru-switch
+            [checked]="prefs.animations()"
+            (checkedChange)="prefs.setAnimations($event)"
+            label="Animations"
+            hint="Off skips the theme sweep and every transition. Your system's reduced-motion setting is always honoured."
+          />
+
           <yoru-field label="Diff layout" hint="Default for newly opened diffs">
             <yoru-segmented
               [options]="diffModeOptions"
@@ -224,6 +406,22 @@
               ariaLabel="Context lines"
             />
           </yoru-field>
+
+          <yoru-field label="Tab width" hint="How wide a tab renders in code">
+            <yoru-segmented
+              [options]="tabWidthOptions"
+              [value]="prefs.codeTabWidth().toString()"
+              (valueChange)="onTabWidth($event)"
+              ariaLabel="Tab width"
+            />
+          </yoru-field>
+
+          <yoru-switch
+            [checked]="prefs.codeLigatures()"
+            (checkedChange)="prefs.setCodeLigatures($event)"
+            label="Code ligatures"
+            hint="JetBrains Mono renders -> and != as single glyphs"
+          />
 
           <yoru-switch
             [checked]="prefs.diffIgnoreWhitespace()"
@@ -320,11 +518,11 @@
         }
 
         @case ('keyboard') {
-          <table class="w-full text-[13px]" data-testid="settings-shortcuts">
+          <table class="w-full text-y-base" data-testid="settings-shortcuts">
             <caption class="sr-only">Registered keyboard shortcuts</caption>
             <thead>
               <tr
-                class="border-b border-[var(--app-border)] text-left font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+                class="border-b border-[var(--app-border)] text-left font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
               >
                 <th scope="col" class="py-1.5 font-bold">Command</th>
                 <th scope="col" class="py-1.5 font-bold">Shortcut</th>

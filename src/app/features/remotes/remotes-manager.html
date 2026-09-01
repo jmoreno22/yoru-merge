@@ -8,7 +8,7 @@
     @if (error(); as message) {
       <p
         role="alert"
-        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-[13px] text-git-deleted"
+        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-base text-git-deleted"
         data-testid="remotes-error"
       >
         {{ message }}
@@ -16,7 +16,7 @@
     }
 
     @if (remotes().length === 0) {
-      <p class="py-6 text-center text-[13px] text-[var(--app-text-muted)]">
+      <p class="py-6 text-center text-y-base text-[var(--app-text-muted)]">
         No remotes configured. Add one to fetch and push.
       </p>
     } @else {
@@ -30,7 +30,7 @@
               name="lucideGlobe"
               size="14px"
               aria-hidden="true"
-              class="shrink-0 text-neon-cyan"
+              class="shrink-0 text-accent-ink"
             />
 
             <div class="flex min-w-0 flex-1 flex-col">
@@ -38,14 +38,14 @@
                 {{ remote.name }}
               </span>
               <span
-                class="truncate font-mono text-[11px] text-[var(--app-text-muted)]"
+                class="truncate font-mono text-y-sm text-[var(--app-text-muted)]"
                 [title]="remote.fetch_url"
               >
                 {{ remote.fetch_url }}
               </span>
               @if (remote.push_url !== remote.fetch_url) {
                 <span
-                  class="truncate font-mono text-[11px] text-[var(--app-text-faint)]"
+                  class="truncate font-mono text-y-sm text-[var(--app-text-faint)]"
                   [title]="remote.push_url"
                 >
                   push: {{ remote.push_url }}
@@ -95,7 +95,7 @@
             [attr.aria-invalid]="nameError() ? 'true' : null"
             (input)="onNameInput($event)"
             placeholder="upstream"
-            class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+            class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
           />
         </yoru-field>
 
@@ -110,7 +110,7 @@
             (input)="onUrlInput($event)"
             (keydown.enter)="onAdd()"
             placeholder="https://github.com/owner/repo.git"
-            class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+            class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
           />
         </yoru-field>
 

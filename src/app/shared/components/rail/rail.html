@@ -13,7 +13,7 @@
       [attr.data-rail-item]="item.id"
       [attr.data-active]="isActive(item) ? 'true' : null"
       class="relative flex size-10 items-center justify-center rounded-sm transition-colors"
-      [class.text-neon-cyan]="isActive(item)"
+      [class.text-accent-ink]="isActive(item)"
       [class.bg-[var(--app-panel)]]="isActive(item)"
       [class.text-[var(--app-text-muted)]]="!isActive(item)"
       [class.hover:bg-[var(--app-panel)]]="!isActive(item)"
@@ -21,14 +21,14 @@
     >
       @if (isActive(item)) {
         <span
-          class="pointer-events-none absolute inset-y-1 left-0 w-[2px] rounded-full bg-neon-cyan"
+          class="pointer-events-none absolute inset-y-1 left-0 w-[2px] rounded-full bg-accent"
           aria-hidden="true"
         ></span>
       }
       <ng-icon [name]="item.icon" size="18px" aria-hidden="true" />
       @if (badgeFor(item); as count) {
         <span
-          class="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-git-modified px-1 text-center font-mono text-[10.5px] font-bold leading-4 text-yoru-950"
+          class="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-git-modified px-1 text-center font-mono text-y-xs font-bold leading-4 text-yoru-950"
           [attr.aria-label]="count + ' uncommitted changes'"
           data-testid="rail-changes-badge"
         >

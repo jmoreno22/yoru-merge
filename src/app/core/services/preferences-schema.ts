@@ -1,9 +1,25 @@
 import type { PullMode } from '../models';
+import { DEFAULT_PALETTE_ID } from './color-palettes';
 
 export type DiffViewMode = 'unified' | 'split';
-export type UiDensity = 'comfortable' | 'compact';
+export type UiDensity = 'compact' | 'comfortable' | 'relaxed';
 /** Which view the icon rail shows in the centre column. */
 export type RailView = 'history' | 'changes' | 'reflog';
+
+/** Accent presets. Every id maps to a colour already in the Yoru palette. */
+export type AccentId = 'cyan' | 'violet' | 'sakura' | 'mint' | 'crimson';
+
+/**
+ * Branch-graph lane palettes. Kept apart from {@link AccentId}: the six lanes
+ * have to stay mutually distinguishable, which deriving them from one accent
+ * cannot guarantee, and 'colorblind' exists precisely to break from the accent.
+ */
+export type GraphPaletteId = 'yoru' | 'contrast' | 'colorblind';
+
+/** Where the inspector column sits relative to the centre view. */
+export type InspectorPlacement = 'right' | 'bottom';
+
+export type SidebarSide = 'left' | 'right';
 
 /**
  * Durable user preferences, stored in the Tauri plugin-store so they survive
@@ -29,6 +45,56 @@ export interface DurablePreferences {
   diffContextLines: number;
 
   uiDensity: UiDensity;
+  /**
+   * Base interface type size in px (11-17). Drives the whole UI scale: every
+   * other UI size is a ratio of it, so one value moves the interface as a set.
+   */
+  uiFontSize: number;
+  /**
+   * Code type size in px (10-18). Deliberately independent of
+   * {@link uiFontSize}: the diff and the blame gutters are numbered against
+   * the code they sit beside, and a reader who wants a dense interface around
+   * large code (or the reverse) is the common case, not the exception.
+   */
+  monoFontSize: number;
+  /** `tab-size` for code surfaces (1-8). */
+  codeTabWidth: number;
+  /** Render JetBrains Mono's programming ligatures in code surfaces. */
+  codeLigatures: boolean;
+
+  accent: AccentId;
+  graphPalette: GraphPaletteId;
+  /**
+   * Id of the full surface palette. A plain string rather than a union of the
+   * built-in ids: a palette loaded from a file has an id this build has never
+   * seen, and `findPalette` already falls back to the default for anything it
+   * cannot resolve. Validating it against a closed list here would delete the
+   * user's choice on every downgrade.
+   */
+  colorPalette: string;
+
+  /**
+   * Master switch for animation. Off also skips the theme View Transition,
+   * which is the most expensive thing the UI animates. The OS
+   * `prefers-reduced-motion` setting is honoured on top of this and cannot be
+   * overridden by turning it on.
+   */
+  animations: boolean;
+
+  inspectorPlacement: InspectorPlacement;
+  sidebarSide: SidebarSide;
+  showToolbar: boolean;
+  showStatusBar: boolean;
+  /** Show the branch-graph column beside the commit list. */
+  showGraph: boolean;
+  /**
+   * Hides every optional surface at once without touching the individual
+   * toggles, so leaving zen restores exactly the chrome the user had. The
+   * titlebar is never hidden: `decorations` is false, so it carries the only
+   * window controls there are.
+   */
+  zenMode: boolean;
+
   /** Command used by "Open in editor"; empty means $VISUAL/$EDITOR/`code`. */
   externalEditor: string;
   /** Command used by "Open in terminal"; empty means the OS default. */
@@ -54,7 +120,7 @@ export interface PreferencesSchema extends DurablePreferences {
 }
 
 /** Bumped whenever a stored shape changes; drives {@link migratePreferences}. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const SCHEMA_VERSION_KEY = 'schemaVersion';
 
@@ -71,6 +137,20 @@ export const DEFAULT_PREFERENCES: DurablePreferences = {
   diffWordWrap: false,
   diffContextLines: 3,
   uiDensity: 'comfortable',
+  uiFontSize: 13,
+  monoFontSize: 12,
+  codeTabWidth: 2,
+  codeLigatures: false,
+  accent: 'cyan',
+  graphPalette: 'yoru',
+  colorPalette: DEFAULT_PALETTE_ID,
+  animations: true,
+  inspectorPlacement: 'right',
+  sidebarSide: 'left',
+  showToolbar: true,
+  showStatusBar: true,
+  showGraph: true,
+  zenMode: false,
   externalEditor: '',
   terminal: '',
   autoFetchMinutes: 0,
@@ -90,15 +170,30 @@ const MIN_PERCENT = 5;
 const MAX_PERCENT = 80;
 
 const DIFF_VIEW_MODES: readonly DiffViewMode[] = ['unified', 'split'];
-const UI_DENSITIES: readonly UiDensity[] = ['comfortable', 'compact'];
+const UI_DENSITIES: readonly UiDensity[] = ['compact', 'comfortable', 'relaxed'];
 const PULL_MODES: readonly PullMode[] = ['merge', 'rebase', 'ff_only'];
 const RAIL_VIEWS: readonly RailView[] = ['history', 'changes', 'reflog'];
+const ACCENTS: readonly AccentId[] = ['cyan', 'violet', 'sakura', 'mint', 'crimson'];
+const GRAPH_PALETTES: readonly GraphPaletteId[] = ['yoru', 'contrast', 'colorblind'];
+const INSPECTOR_PLACEMENTS: readonly InspectorPlacement[] = ['right', 'bottom'];
+const SIDEBAR_SIDES: readonly SidebarSide[] = ['left', 'right'];
+
+/**
+ * Type-size bounds. The floors are legibility limits, not arbitrary: below
+ * 11px the ratio-derived micro labels (0.65x) fall under 7px.
+ */
+export const MIN_UI_FONT_SIZE = 11;
+export const MAX_UI_FONT_SIZE = 17;
+export const MIN_MONO_FONT_SIZE = 10;
+export const MAX_MONO_FONT_SIZE = 18;
 
 /**
  * Upgrades a stored payload to {@link SCHEMA_VERSION}.
  *
  * Version 0 is "written before the version key existed": its keys already match
- * the current names, so nothing has to move. Later migrations go here.
+ * the current names, so nothing has to move. Version 1 -> 2 only added keys
+ * (typography, accent, layout), and a missing key already falls back to its
+ * default, so there is still nothing to move. Later migrations go here.
  */
 export function migratePreferences(
   stored: Record<string, unknown>,
@@ -148,6 +243,52 @@ export function sanitizePreferences(
   const density = raw['uiDensity'];
   if (isOneOf(density, UI_DENSITIES)) out.uiDensity = density;
 
+  const uiFontSize = asNumber(raw['uiFontSize']);
+  if (uiFontSize !== null) out.uiFontSize = clampUiFontSize(uiFontSize);
+
+  const monoFontSize = asNumber(raw['monoFontSize']);
+  if (monoFontSize !== null) out.monoFontSize = clampMonoFontSize(monoFontSize);
+
+  const tabWidth = asNumber(raw['codeTabWidth']);
+  if (tabWidth !== null) out.codeTabWidth = clampTabWidth(tabWidth);
+
+  const ligatures = raw['codeLigatures'];
+  if (typeof ligatures === 'boolean') out.codeLigatures = ligatures;
+
+  const accent = raw['accent'];
+  if (isOneOf(accent, ACCENTS)) out.accent = accent;
+
+  const graphPalette = raw['graphPalette'];
+  if (isOneOf(graphPalette, GRAPH_PALETTES)) out.graphPalette = graphPalette;
+
+  const animations = raw['animations'];
+  if (typeof animations === 'boolean') out.animations = animations;
+
+  const colorPalette = raw['colorPalette'];
+  if (typeof colorPalette === 'string' && colorPalette.length > 0) {
+    out.colorPalette = colorPalette;
+  }
+
+  const inspectorPlacement = raw['inspectorPlacement'];
+  if (isOneOf(inspectorPlacement, INSPECTOR_PLACEMENTS)) {
+    out.inspectorPlacement = inspectorPlacement;
+  }
+
+  const sidebarSide = raw['sidebarSide'];
+  if (isOneOf(sidebarSide, SIDEBAR_SIDES)) out.sidebarSide = sidebarSide;
+
+  const showToolbar = raw['showToolbar'];
+  if (typeof showToolbar === 'boolean') out.showToolbar = showToolbar;
+
+  const showStatusBar = raw['showStatusBar'];
+  if (typeof showStatusBar === 'boolean') out.showStatusBar = showStatusBar;
+
+  const showGraph = raw['showGraph'];
+  if (typeof showGraph === 'boolean') out.showGraph = showGraph;
+
+  const zenMode = raw['zenMode'];
+  if (typeof zenMode === 'boolean') out.zenMode = zenMode;
+
   const editor = raw['externalEditor'];
   if (typeof editor === 'string') out.externalEditor = editor;
 
@@ -185,6 +326,21 @@ export function sanitizePreferences(
 export function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return MIN_PERCENT;
   return Math.min(MAX_PERCENT, Math.max(MIN_PERCENT, value));
+}
+
+export function clampUiFontSize(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.uiFontSize;
+  return Math.min(MAX_UI_FONT_SIZE, Math.max(MIN_UI_FONT_SIZE, Math.round(value)));
+}
+
+export function clampMonoFontSize(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.monoFontSize;
+  return Math.min(MAX_MONO_FONT_SIZE, Math.max(MIN_MONO_FONT_SIZE, Math.round(value)));
+}
+
+export function clampTabWidth(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.codeTabWidth;
+  return Math.min(8, Math.max(1, Math.round(value)));
 }
 
 export function clampContextLines(value: number): number {

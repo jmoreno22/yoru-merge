@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
+import { PreferencesService } from '../../../core/services/preferences.service';
+import { DEFAULT_PREFERENCES } from '../../../core/services/preferences-schema';
 import { ThemeService } from '../../../core/services/theme.service';
 import { WorkspaceStore } from '../../../core/services/workspace.store';
 import { DialogHost } from '../../../features/dialogs/dialog-host';
@@ -38,6 +41,8 @@ import { WorkspaceActions } from './workspace-actions.service';
 })
 export class AppShell {
   protected readonly repo = inject(CurrentRepoService);
+  protected readonly appearance = inject(AppearanceService);
+  private readonly prefs = inject(PreferencesService);
   private readonly workspace = inject(WorkspaceStore);
   private readonly actions = inject(WorkspaceActions);
   private readonly settings = inject(SettingsDialogService);
@@ -52,6 +57,42 @@ export class AppShell {
         combo: 'mod+o',
         label: 'Open repository…',
         run: () => void this.actions.openRepo(),
+      }),
+      // Two combos for "larger": `=` is the key US layouts put it on (and what
+      // browsers use for zoom), `+` is a key of its own on Spanish and German
+      // layouts, where `=` needs Shift and would never match.
+      this.shortcuts.register({
+        id: 'view.fontLarger',
+        combo: 'mod+=',
+        label: 'Increase interface font size',
+        run: () => this.prefs.setUiFontSize(this.prefs.uiFontSize() + 1),
+      }),
+      this.shortcuts.register({
+        id: 'view.fontLargerPlus',
+        combo: 'mod++',
+        label: 'Increase interface font size',
+        run: () => this.prefs.setUiFontSize(this.prefs.uiFontSize() + 1),
+      }),
+      this.shortcuts.register({
+        id: 'view.fontSmaller',
+        combo: 'mod+-',
+        label: 'Decrease interface font size',
+        run: () => this.prefs.setUiFontSize(this.prefs.uiFontSize() - 1),
+      }),
+      this.shortcuts.register({
+        id: 'view.fontReset',
+        combo: 'mod+0',
+        label: 'Reset font sizes',
+        run: () => {
+          this.prefs.setUiFontSize(DEFAULT_PREFERENCES.uiFontSize);
+          this.prefs.setMonoFontSize(DEFAULT_PREFERENCES.monoFontSize);
+        },
+      }),
+      this.shortcuts.register({
+        id: 'view.zen',
+        combo: 'mod+shift+z',
+        label: 'Toggle zen mode',
+        run: () => this.prefs.setZenMode(!this.prefs.zenMode()),
       }),
       this.shortcuts.register({
         id: 'repo.refresh',

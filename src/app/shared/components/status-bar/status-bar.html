@@ -18,7 +18,7 @@
       <ng-icon
         name="lucideGitBranch"
         size="12px"
-        class="shrink-0 text-neon-cyan"
+        class="shrink-0 text-accent-ink"
         aria-hidden="true"
       />
       <span class="truncate text-[var(--app-text)]">{{ branch }}</span>
@@ -105,7 +105,7 @@
         class="h-1 w-16 overflow-hidden rounded-full bg-[var(--app-panel)]"
         aria-hidden="true"
       >
-        <span class="block h-full bg-neon-cyan" [style.width.%]="fetchPercent()"></span>
+        <span class="block h-full bg-accent" [style.width.%]="fetchPercent()"></span>
       </span>
       <span>{{ repo.fetchProgress()?.phase }} {{ fetchPercent() }}%</span>
     </span>
@@ -130,7 +130,7 @@
 }
 
 <span
-  class="shrink-0 font-display text-[10.5px] tracking-[0.12em] text-[var(--app-text-faint)]"
+  class="shrink-0 font-display text-y-xs tracking-[0.12em] text-[var(--app-text-faint)]"
   data-testid="status-app"
 >
   YORU

@@ -101,7 +101,7 @@ export class YoruContextMenu {
 
   protected itemClass(item: MenuItem, active: boolean): string {
     const base =
-      'flex w-full items-start gap-2 px-2.5 py-1 text-left text-[13px] leading-[20px] transition-colors';
+      'flex w-full items-start gap-2 px-2.5 py-1 text-left text-y-base leading-[20px] transition-colors';
     if (item.disabled) {
       return `${base} cursor-not-allowed text-[var(--app-text-faint)]`;
     }
@@ -109,9 +109,9 @@ export class YoruContextMenu {
       item.tone === 'danger'
         ? 'text-git-deleted'
         : item.tone === 'primary'
-          ? 'text-neon-cyan'
+          ? 'text-accent-ink'
           : 'text-[var(--app-text)]';
-    const highlight = active ? 'bg-neon-cyan/10' : 'hover:bg-neon-cyan/10';
+    const highlight = active ? 'bg-accent/10' : 'hover:bg-accent/10';
     return `${base} ${tone} ${highlight}`;
   }
 

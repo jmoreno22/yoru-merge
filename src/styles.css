@@ -76,6 +76,10 @@
   --color-neon-violet: #9b5cff;
   --color-neon-pink: #ff4fb8;
 
+  /* Crimson — accent-only, deliberately far from --color-git-deleted (#ff4d5e)
+   * so a red accent does not read as "deleted". */
+  --color-crimson-500: #dc143c;
+
   /* Sakura */
   --color-sakura-300: #ff9bd2;
   --color-sakura-400: #ff6fbe;
@@ -87,6 +91,38 @@
   --color-git-deleted: #ff4d5e;
   --color-git-renamed: #00e5ff;
   --color-git-conflict: #ff4fb8;
+
+  /* Accent. Indirected through --app-accent so the preset blocks below can
+   * repoint it without every utility having to know which preset is active.
+   *
+   * Two entries, not one: `accent` is the fill / border / ring tone, `accent-ink`
+   * is the same hue calibrated for text. Use text-accent-ink for type and
+   * bg-accent / border-accent for everything else — a fill tone used as small
+   * text drops to 1.3:1 in the light theme. */
+  --color-accent: var(--app-accent);
+  --color-accent-ink: var(--app-accent-text);
+
+  /* Accent glow, following the accent instead of a baked cyan. */
+  --shadow-accent: 0 0 24px color-mix(in srgb, var(--app-accent) 28%, transparent);
+
+  /* Type scale.
+   *
+   * Every step is a ratio of --ui-font-size, so one preference moves the whole
+   * interface as a set. The ratios are the sizes the app shipped with over its
+   * 13px baseline (8.5, 10.5, 11, 12, 13, 15) — the former 10px and 10.5px
+   * collapsed into one step, being a half-pixel apart.
+   *
+   * --text-y-code* are anchored to --mono-font-size instead: code and the
+   * gutters that number it must move together, independently of the UI.
+   */
+  --text-y-2xs: calc(var(--ui-font-size) * 0.654);
+  --text-y-xs: calc(var(--ui-font-size) * 0.808);
+  --text-y-sm: calc(var(--ui-font-size) * 0.846);
+  --text-y-md: calc(var(--ui-font-size) * 0.923);
+  --text-y-base: var(--ui-font-size);
+  --text-y-lg: calc(var(--ui-font-size) * 1.154);
+  --text-y-code: var(--mono-font-size);
+  --text-y-code-sm: calc(var(--mono-font-size) * 0.917);
 
   /* Typography */
   --font-display: "Zen Dots", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -106,7 +142,6 @@
   /* Shadows. `shadow-panel` follows the theme through --app-shadow-panel, so a
    * panel does not have to know which theme it is painted in. */
   --shadow-panel: var(--app-shadow-panel);
-  --shadow-neon-cyan: 0 0 24px rgb(0 229 255 / 0.28);
   --shadow-neon-pink: 0 0 24px rgb(255 79 184 / 0.25);
   --shadow-light-panel: 0 18px 50px rgb(24 45 90 / 0.14);
 }
@@ -122,6 +157,11 @@
  *                   Calibrated to stay above WCAG AA 4.5:1 on every surface in
  *                   its own theme, which is why it is a token and not an
  *                   opacity modifier stacked on --app-text-muted.
+ * The values below are the Yoru Night palette and serve as the first-paint
+ * fallback: AppearanceService overwrites the whole --app-* set inline on <html>
+ * from `color-palettes.ts`, which is where a palette is actually defined. Edit
+ * a colour there, not here, or the two will disagree for one frame.
+ *
  * --app-conflict-text  Sakura *text* (conflict labels, banner titles, chips).
  *                   Separate from --color-git-conflict, which stays the fill
  *                   and border tone: #ff4fb8 as small text on a light surface
@@ -141,6 +181,14 @@
   --app-text-faint: #546889; /* ≥ 4.75:1 on every light surface */
   --app-conflict-text: #b0116a; /* same hue as #ff4fb8, ≥ 5.4:1 on light */
   --app-shadow-panel: 0 18px 50px rgb(24 45 90 / 0.14);
+
+  /* Accent, default preset (cyan). --app-accent is the fill and border tone;
+   * --app-accent-text is the same hue calibrated for *text*, exactly as
+   * --app-conflict-text is to --color-git-conflict. The split is not optional:
+   * #00e5ff as text on a light surface is 1.29–1.54:1, so the light theme has
+   * to darken it (#00697a ≥ 5.35:1 on every light surface). */
+  --app-accent: var(--color-neon-cyan);
+  --app-accent-text: #00697a;
 }
 
 .dark {
@@ -155,6 +203,58 @@
   --app-text-faint: #7e93b8; /* ≥ 5.16:1 on every dark surface */
   --app-conflict-text: #ff4fb8; /* ≥ 5.4:1 on every dark surface */
   --app-shadow-panel: 0 24px 80px rgb(0 0 0 / 0.45);
+
+  --app-accent: var(--color-neon-cyan);
+  --app-accent-text: #00e5ff; /* ≥ 10.4:1 on every dark surface */
+}
+
+/* ── Accent presets ───────────────────────────────────────────────────
+ *
+ * Written to <html> as data-accent by AppearanceService. Presets rather than a
+ * free colour picker: --app-accent-text carries a WCAG AA guarantee on every
+ * surface in its theme, and an arbitrary hex cannot be held to it.
+ *
+ * Worst-case text contrast per preset, measured against all four surfaces of
+ * its theme. Light: cyan 5.35, violet 5.97, sakura 5.63, mint 5.55,
+ * crimson 5.96. Dark: cyan 10.44, violet 6.23, sakura 5.40, mint 10.99,
+ * crimson 5.39.
+ */
+:root[data-accent="violet"] {
+  --app-accent: var(--color-neon-violet);
+  --app-accent-text: #6d28d9;
+}
+
+:root[data-accent="sakura"] {
+  --app-accent: var(--color-sakura-500);
+  --app-accent-text: #b0116a;
+}
+
+:root[data-accent="mint"] {
+  --app-accent: var(--color-git-added);
+  --app-accent-text: #0b6b3c;
+}
+
+:root[data-accent="crimson"] {
+  --app-accent: var(--color-crimson-500);
+  --app-accent-text: #b0102f;
+}
+
+:root.dark[data-accent="violet"] {
+  --app-accent-text: #b78bff;
+}
+
+:root.dark[data-accent="sakura"] {
+  --app-accent-text: #ff4fb8;
+}
+
+:root.dark[data-accent="mint"] {
+  --app-accent-text: #35f2a2;
+}
+
+/* The canonical #dc143c only reaches 3.22:1 on the dark surfaces, so dark
+ * lightens it rather than keeping the fill tone as text. */
+:root.dark[data-accent="crimson"] {
+  --app-accent-text: #ff5c78;
 }
 
 /* ── Z-index scale ────────────────────────────────────────────────────
@@ -178,48 +278,55 @@
   --z-toast: 1300;
 }
 
-/* ── Density ──────────────────────────────────────────────────────────
+/* ── Layout metrics ───────────────────────────────────────────────────
  *
- * The layout contract shared by the commit list, the refs panel and the
- * working-changes list. --row-h MUST match the CDK virtual scroll `itemSize`
- * and the branch graph row height, or the graph lanes drift from their rows.
+ * EVERY value below is overwritten inline on <html> by AppearanceService,
+ * which derives them from the type size and the density in one place
+ * (`appearance-metrics.ts`). They are declared here so the first paint has a
+ * layout before that effect runs, and because a token consumed by CSS should
+ * be readable in CSS.
+ *
+ * Do NOT hardcode a density override here: --row-h, --file-row-h, --ref-row-h
+ * and --history-row-h are also the CDK virtual-scroll `itemSize`, and a token
+ * that disagrees with `itemSize` misplaces every row and drifts the branch
+ * graph lanes off their commits. Change the arithmetic in the metrics module.
+ *
+ * The values are the defaults the service computes for 13px / comfortable, so
+ * the fallback and the first computed pass agree to the pixel.
  */
 :root {
+  --ui-font-size: var(--text-y-base);
+  --mono-font-size: var(--text-y-md);
+
   --row-h: 34px;
   --file-row-h: 30px;
   --ref-row-h: 30px;
+  --history-row-h: 46px;
+  --code-line-h: 20px;
   --panel-head-h: 34px;
   --panel-pad: 16px;
 
-  /* Window chrome. The shell reads these so compact mode can shrink them. */
+  /* Window chrome. */
   --titlebar-h: 38px;
   --toolbar-h: 48px;
   --rail-w: 48px;
   --statusbar-h: 26px;
-}
 
-/* Compact density, toggled by SettingsDialogService writing data-density.
- *
- * --row-h and --file-row-h stay put on purpose: both are pinned to a CDK
- * virtual-scroll `itemSize` declared in TypeScript (COMMIT_ROW_HEIGHT,
- * FILE_ROW_HEIGHT), and a token that disagrees with `itemSize` misplaces every
- * row and drifts the graph lanes off their commits.
- */
-:root[data-density="compact"] {
-  --ref-row-h: 26px;
-  --panel-head-h: 30px;
-  --panel-pad: 10px;
-
-  --titlebar-h: 32px;
-  --toolbar-h: 40px;
-  --rail-w: 44px;
-  --statusbar-h: 24px;
+  /* Code rendering. */
+  --code-tab-width: 2;
+  --code-font-features: "calt" 0, "liga" 0;
 }
 
 /* ── Branch graph lanes ───────────────────────────────────────────────
  *
- * Read once per theme by the canvas renderer (getComputedStyle is expensive
- * per frame). Lane colour is stable per branch within a session.
+ * Read by the canvas renderer (getComputedStyle is expensive per frame, so it
+ * is read on a palette or theme change, not per draw). Lane colour is stable
+ * per branch within a session.
+ *
+ * Deliberately NOT derived from --app-accent: six lanes have to stay mutually
+ * distinguishable, and rotating one accent's hue cannot guarantee that — nor
+ * could it produce the colourblind-safe set, whose whole point is to ignore
+ * the accent.
  */
 :root {
   --graph-lane-1: #00e5ff;
@@ -228,6 +335,28 @@
   --graph-lane-4: #35f2a2;
   --graph-lane-5: #ffd166;
   --graph-lane-6: #3b82ff;
+}
+
+/* Maximum hue separation, all six at high luminance: the lanes stay apart on
+ * a dark surface even when a repository puts them side by side. */
+:root[data-graph-palette="contrast"] {
+  --graph-lane-1: #00d4ff;
+  --graph-lane-2: #7dff5a;
+  --graph-lane-3: #ffd400;
+  --graph-lane-4: #ff7a00;
+  --graph-lane-5: #ff3b8b;
+  --graph-lane-6: #b06bff;
+}
+
+/* Okabe–Ito, the reference qualitative palette for deuteranopia, protanopia
+ * and tritanopia. Used verbatim: adjusting it would defeat the point. */
+:root[data-graph-palette="colorblind"] {
+  --graph-lane-1: #0072b2;
+  --graph-lane-2: #e69f00;
+  --graph-lane-3: #009e73;
+  --graph-lane-4: #cc79a7;
+  --graph-lane-5: #56b4e9;
+  --graph-lane-6: #d55e00;
 }
 
 html,
@@ -243,23 +372,103 @@ body {
 }
 
 /* Base UI size. Deliberately on <body>, not <html>: `rem` (and therefore every
- * Tailwind spacing utility) must stay anchored to the 16px root. */
+ * Tailwind spacing utility) must stay anchored to the 16px root, so changing
+ * the type size moves type and leaves the spacing system alone. */
 body {
-  font-size: 13px;
+  font-size: var(--ui-font-size);
 }
 
-/* Theme switches should read as a dim, not a cut. */
+/* Theme switches should read as a dim, not a cut. The transition below is
+ * the fallback path: engines with the View Transitions API get the diagonal
+ * sweep instead (WebView2 does, WebKitGTK does not). */
 html {
   transition:
     background-color 200ms ease,
     color 200ms ease;
 }
 
-/* Focus is always visible and always cyan — the one ring in the app. */
+/* ── Theme / palette sweep ────────────────────────────────────────────
+ *
+ * `runThemeTransition` wraps the change in `document.startViewTransition`, and
+ * these rules say what the crossfade is replaced by: the incoming theme is
+ * revealed under a diagonal wipe, while the outgoing one simply sits still
+ * underneath. The clip-path percentages run past 0–100 % on purpose — the
+ * polygon has to start and finish fully off-screen for the edge to sweep all
+ * the way across the corner.
+ *
+ * Only the new snapshot animates. Cross-fading both would show the two themes
+ * blended through each other, which is exactly the mush this replaces.
+ */
+:root {
+  --expo-out: linear(
+    0 0%,
+    0.6832 7.89%,
+    0.9171 15.16%,
+    0.9847 21.68%,
+    1.0032 27.62%,
+    1.0064 35.31%,
+    1 100%
+  );
+}
+
+::view-transition-group(root) {
+  animation-duration: 0.7s;
+  animation-timing-function: var(--expo-out);
+}
+
+::view-transition-new(root) {
+  animation-name: reveal-light;
+  animation-fill-mode: both;
+}
+
+::view-transition-old(root),
+.dark::view-transition-old(root) {
+  animation: none;
+  animation-fill-mode: both;
+  z-index: -1;
+}
+
+.dark::view-transition-new(root) {
+  animation-name: reveal-dark;
+  animation-fill-mode: both;
+}
+
+@keyframes reveal-dark {
+  from {
+    clip-path: polygon(50% -71%, -50% 71%, -50% 71%, 50% -71%);
+  }
+  to {
+    clip-path: polygon(50% -71%, -50% 71%, 50% 171%, 171% 50%);
+  }
+}
+
+@keyframes reveal-light {
+  from {
+    clip-path: polygon(171% 50%, 50% 171%, 50% 171%, 171% 50%);
+  }
+  to {
+    clip-path: polygon(171% 50%, 50% 171%, -50% 71%, 50% -71%);
+  }
+}
+
+/* Focus is always visible and always the accent — the one ring in the app. */
 :focus-visible {
-  outline: 2px solid var(--color-neon-cyan);
+  outline: 2px solid var(--app-accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ── Code surfaces ────────────────────────────────────────────────────
+ *
+ * Applied by the diff, blame and any other surface rendering file contents.
+ * Carries the three things that are code-specific rather than UI-wide: the
+ * code type size, the tab width and whether JetBrains Mono's ligatures run.
+ */
+.code-surface {
+  font-family: var(--font-mono);
+  font-size: var(--text-y-code);
+  font-feature-settings: var(--code-font-features);
+  tab-size: var(--code-tab-width);
 }
 
 /* ── Motion utilities ─────────────────────────────────────────────────
@@ -341,7 +550,7 @@ html {
 .neon-scroll {
   /* Firefox / GTK parity — thin track, soft cyan-tinted thumb. */
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-neon-cyan) 32%, var(--app-border))
+  scrollbar-color: color-mix(in srgb, var(--app-accent) 32%, var(--app-border))
     transparent;
 }
 
@@ -360,7 +569,7 @@ html {
   /* Resting: dark border tinted with a low-intensity cyan wash. The 2px
    * transparent inset border + padding-box clip narrows the visible thumb to
    * ~6px so it still reads "thin" even though the gutter is 10px. */
-  background-color: color-mix(in srgb, var(--color-neon-cyan) 18%, var(--app-border));
+  background-color: color-mix(in srgb, var(--app-accent) 18%, var(--app-border));
   border: 2px solid transparent;
   background-clip: padding-box;
   border-radius: 999px;
@@ -372,13 +581,13 @@ html {
 .neon-scroll::-webkit-scrollbar-thumb:hover {
   /* Hover: stronger cyan tint + soft inner glow. NOT full saturation — the
    * design intent is "neon but not harsh" during long sessions. */
-  background-color: color-mix(in srgb, var(--color-neon-cyan) 55%, var(--app-border));
+  background-color: color-mix(in srgb, var(--app-accent) 55%, var(--app-border));
   background-clip: padding-box;
   box-shadow: 0 0 6px rgb(0 229 255 / 0.3);
 }
 
 .neon-scroll::-webkit-scrollbar-thumb:active {
-  background-color: color-mix(in srgb, var(--color-neon-cyan) 70%, var(--app-border));
+  background-color: color-mix(in srgb, var(--app-accent) 70%, var(--app-border));
   background-clip: padding-box;
   box-shadow: 0 0 6px rgb(0 229 255 / 0.3);
 }
@@ -402,11 +611,11 @@ html {
  */
 .drag-over {
   box-shadow:
-    inset 0 0 0 1px var(--color-neon-cyan),
+    inset 0 0 0 1px var(--app-accent),
     0 0 12px 0 rgb(0 229 255 / 0.35);
   background-color: color-mix(
     in srgb,
-    var(--color-neon-cyan) 8%,
+    var(--app-accent) 8%,
     var(--app-panel)
   ) !important;
   transition:
@@ -421,6 +630,16 @@ body.yoru-dragging * {
   cursor: grabbing !important;
 }
 
+/* ── Motion off ───────────────────────────────────────────────────────
+ *
+ * Two ways in, one behaviour: the OS asking for reduced motion, and the
+ * `animations` preference (for a machine where the compositing costs more than
+ * the animation is worth). AppearanceService writes data-animations.
+ *
+ * `::view-transition-*` are listed separately because they are pseudo-elements
+ * on the document root — `*` does not reach them, so the universal override
+ * below would leave the theme sweep running on its own.
+ */
 @media (prefers-reduced-motion: reduce) {
   /* biome-ignore lint/style/noDescendingSpecificity: a universal accessibility
      override is meant to follow the rules it neutralises, and every
@@ -433,4 +652,26 @@ body.yoru-dragging * {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+
+  ::view-transition-group(root),
+  ::view-transition-new(root),
+  ::view-transition-old(root) {
+    animation: none !important;
+  }
+}
+
+/* The manual equivalent of the reduced-motion block above. */
+:root[data-animations="off"] *,
+:root[data-animations="off"] *::before,
+:root[data-animations="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+:root[data-animations="off"]::view-transition-group(root),
+:root[data-animations="off"]::view-transition-new(root),
+:root[data-animations="off"]::view-transition-old(root) {
+  animation: none !important;
 }

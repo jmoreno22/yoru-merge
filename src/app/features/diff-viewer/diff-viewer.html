@@ -14,7 +14,7 @@
         class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
       >
         <span
-          class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+          class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
           data-testid="diff-source-chip"
         >
           {{ head.chip }}
@@ -41,14 +41,14 @@
 
         @if (summary(); as stats) {
           <span
-            class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-muted)]"
+            class="shrink-0 font-mono text-y-sm tabular-nums text-[var(--app-text-muted)]"
           >
             {{ stats.files }} {{ stats.files === 1 ? "file" : "files" }}
           </span>
-          <span class="shrink-0 font-mono text-[11px] tabular-nums text-git-added">
+          <span class="shrink-0 font-mono text-y-sm tabular-nums text-git-added">
             +{{ stats.additions }}
           </span>
-          <span class="shrink-0 font-mono text-[11px] tabular-nums text-git-deleted">
+          <span class="shrink-0 font-mono text-y-sm tabular-nums text-git-deleted">
             -{{ stats.deletions }}
           </span>
         }
@@ -107,7 +107,7 @@
         class="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-xs border border-[var(--app-border)] px-2 text-xs transition-colors hover:bg-[var(--app-panel)]"
         [class]="
           ignoreWhitespace()
-            ? 'text-neon-cyan border-neon-cyan/50'
+            ? 'text-accent-ink border-accent/50'
             : 'text-[var(--app-text-muted)]'
         "
         [attr.aria-pressed]="ignoreWhitespace()"
@@ -127,7 +127,7 @@
         class="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-xs border border-[var(--app-border)] px-2 text-xs transition-colors hover:bg-[var(--app-panel)]"
         [class]="
           wordWrap()
-            ? 'text-neon-cyan border-neon-cyan/50'
+            ? 'text-accent-ink border-accent/50'
             : 'text-[var(--app-text-muted)]'
         "
         [attr.aria-pressed]="wordWrap()"
@@ -143,7 +143,7 @@
       </button>
 
       <span
-        class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+        class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
       >
         Context
       </span>
@@ -157,7 +157,7 @@
       <span class="flex-1"></span>
 
       <span
-        class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-faint)]"
+        class="shrink-0 font-mono text-y-sm tabular-nums text-[var(--app-text-faint)]"
         data-testid="diff-hunk-counter"
       >
         {{ hunkPosition() }} / {{ hunkTotal() }}

@@ -6,7 +6,7 @@
     data-testid="repo-state-banner"
   >
     <span
-      class="inline-flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
+      class="inline-flex shrink-0 items-center gap-1.5 font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-conflict-text)]"
       data-testid="repo-state-title"
     >
       <ng-icon name="lucideTriangleAlert" size="14px" aria-hidden="true" />
@@ -16,14 +16,14 @@
     <span class="h-4 w-px shrink-0 bg-git-conflict/30" aria-hidden="true"></span>
 
     <span
-      class="min-w-0 flex-1 truncate text-[11px] text-[var(--app-text-muted)]"
+      class="min-w-0 flex-1 truncate text-y-sm text-[var(--app-text-muted)]"
       data-testid="repo-state-hint"
     >
       {{ state.hint }}
     </span>
 
     @if (state.continueBlockedReason; as reason) {
-      <span class="shrink-0 font-mono text-[10.5px] text-[var(--app-text-faint)]">
+      <span class="shrink-0 font-mono text-y-xs text-[var(--app-text-faint)]">
         {{ reason }}
       </span>
     }

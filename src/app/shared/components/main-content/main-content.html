@@ -6,16 +6,22 @@
   <app-repo-state-banner />
 
   <div class="flex min-h-0 min-w-0 flex-1" data-testid="repo-workbench">
-    @if (prefs.refsPanelOpen()) {
+    @if (appearance.showSidebar()) {
+      <!-- `order` rather than flex-row-reverse: reversing the container would
+           also flip the centre column and the inspector inside it. -->
       <app-sidebar
-        class="shrink-0 border-r border-[var(--app-border)]"
+        class="shrink-0 border-[var(--app-border)]"
+        [class.border-r]="sidebarSide() === 'left'"
+        [class.border-l]="sidebarSide() === 'right'"
         [class.transition-[width]]="!sidebarDragging()"
         [class.duration-200]="!sidebarDragging()"
         [style.width.px]="sidebarPx()"
+        [style.order]="sidebarSide() === 'left' ? 1 : 3"
       />
       <app-splitter
         orientation="vertical"
         [value]="prefs.sidebarWidth()"
+        [style.order]="2"
         (resizeStart)="onSidebarDragStart()"
         (resize)="onSidebarResize($event)"
         (resizeEnd)="onSidebarDragEnd()"
@@ -23,12 +29,20 @@
       />
     }
 
-    <div #split class="flex min-h-0 min-w-0 flex-1">
+    <div
+      #split
+      class="flex min-h-0 min-w-0 flex-1"
+      [class.flex-col]="inspectorPlacement() === 'bottom'"
+      [style.order]="sidebarSide() === 'left' ? 3 : 1"
+    >
       <section
-        class="flex min-h-0 min-w-0 shrink-0 flex-col border-r border-[var(--app-border)] bg-[var(--app-surface)]"
+        class="flex min-h-0 min-w-0 shrink-0 flex-col border-[var(--app-border)] bg-[var(--app-surface)]"
+        [class.border-r]="inspectorPlacement() === 'right'"
+        [class.border-b]="inspectorPlacement() === 'bottom'"
         [class.transition-[width]]="!workbenchDragging()"
         [class.duration-200]="!workbenchDragging()"
-        [style.width.px]="centrePx()"
+        [style.width.px]="inspectorPlacement() === 'right' ? centrePx() : null"
+        [style.height.px]="inspectorPlacement() === 'bottom' ? centrePx() : null"
         data-testid="centre-column"
       >
         @switch (view()) {
@@ -51,6 +65,7 @@
                   [style.width.px]="graphWidth()"
                   [graphData]="repo.graphData()"
                   [scrollTop]="repo.listScrollTop()"
+                  [rowHeight]="appearance.rowHeight()"
                 />
               }
               <div class="flex min-w-0 flex-1 flex-col">
@@ -62,7 +77,7 @@
       </section>
 
       <app-splitter
-        orientation="vertical"
+        [orientation]="inspectorPlacement() === 'right' ? 'vertical' : 'horizontal'"
         [value]="prefs.workbenchSplit()"
         (resizeStart)="onWorkbenchDragStart()"
         (resize)="onWorkbenchResize($event)"

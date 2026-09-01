@@ -8,7 +8,7 @@
 >
   <div dialog-body class="flex flex-col gap-3">
     @if (spec().body; as body) {
-      <p class="text-[13px] leading-relaxed text-[var(--app-text)]">{{ body }}</p>
+      <p class="text-y-base leading-relaxed text-[var(--app-text)]">{{ body }}</p>
     }
 
     @for (row of spec().rows ?? []; track row.label) {
@@ -16,10 +16,10 @@
         class="flex items-baseline justify-between gap-4 border-b border-[var(--app-border)] pb-1.5 last:border-b-0"
       >
         <span
-          class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+          class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
           >{{ row.label }}</span
         >
-        <span class="truncate font-mono text-[12px] text-[var(--app-text)]">{{
+        <span class="truncate font-mono text-y-md text-[var(--app-text)]">{{
           row.value
         }}</span>
       </div>

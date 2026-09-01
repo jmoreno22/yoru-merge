@@ -7,13 +7,13 @@
 </yoru-section-header>
 
 @if (rows().length === 0) {
-  <p class="px-3 py-2 font-mono text-[11px] text-[var(--app-text-faint)]">
+  <p class="px-3 py-2 font-mono text-y-sm text-[var(--app-text-faint)]">
     {{ emptyHint() }}
   </p>
 } @else {
   <cdk-virtual-scroll-viewport
     class="neon-scroll min-h-0"
-    [itemSize]="rowHeight"
+    [itemSize]="rowHeight()"
     [class.flex-1]="viewportHeight() === null"
     [style.height.px]="viewportHeight()"
     role="listbox"
@@ -49,7 +49,7 @@
           <span class="truncate font-mono text-[var(--app-text-muted)]">{{
             row.name
           }}</span>
-          <span class="ml-auto font-mono text-[10px] text-[var(--app-text-faint)]">{{
+          <span class="ml-auto font-mono text-y-xs text-[var(--app-text-faint)]">{{
             row.count
           }}</span>
         </div>

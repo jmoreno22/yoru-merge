@@ -12,9 +12,11 @@ import {
   viewChild,
 } from '@angular/core';
 import type { CommitInfo, EdgeType, GraphData } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { COMMIT_ROW_HEIGHT, CommitListLayout } from '../commit-list/commit-list-layout';
+import { CommitListLayout } from '../commit-list/commit-list-layout';
 import { buildEdgeIndex, edgesInRange, type IndexedEdge } from './graph-edges';
 
 /** Width of a single lane column in CSS pixels. */
@@ -82,12 +84,23 @@ export class BranchGraph {
   private readonly repo = inject(CurrentRepoService);
   private readonly theme = inject(ThemeService);
   private readonly layout = inject(CommitListLayout);
+  private readonly appearance = inject(AppearanceService);
+  private readonly prefs = inject(PreferencesService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly graphData = input<GraphData | null>(null);
   readonly scrollTop = input<number>(0);
-  readonly rowHeight = input<number>(COMMIT_ROW_HEIGHT);
+  /**
+   * Row height override. `null` reads it from `AppearanceService`, which is
+   * also what feeds the list's `itemSize` and the `--row-h` token — so a lane
+   * cannot drift from its commit just because a caller forgot to pass it.
+   */
+  readonly rowHeight = input<number | null>(null);
+
+  private readonly resolvedRowHeight = computed<number>(
+    () => this.rowHeight() ?? this.appearance.rowHeight(),
+  );
 
   /**
    * Pixels of chrome the commit list draws above its first row. `null` reads
@@ -165,6 +178,11 @@ export class BranchGraph {
     // theme rather than once per frame.
     effect(() => {
       this.theme.resolved();
+      // Both palettes are token sets, so either one changing has to re-read the
+      // colours exactly like a theme flip does — the surface palette included,
+      // because the canvas paints its own background from --app-surface.
+      this.prefs.graphPalette();
+      this.prefs.colorPalette();
       this.readThemeColors();
       this.scheduleRender();
     });
@@ -172,7 +190,7 @@ export class BranchGraph {
     effect(() => {
       void this.graphData();
       void this.scrollTop();
-      void this.rowHeight();
+      void this.resolvedRowHeight();
       void this.topOffset();
       void this.cssSize();
       void this.dpr();
@@ -223,7 +241,7 @@ export class BranchGraph {
     if (!data) return null;
     const top = this.topOffset();
     if (y < top || y > this.cssSize().height - this.bottomOffset()) return null;
-    const rowH = this.rowHeight();
+    const rowH = this.resolvedRowHeight();
     const row = Math.floor((y - top + this.scrollTop()) / rowH);
     const node = data.commits[row];
     if (!node) return null;
@@ -325,7 +343,7 @@ export class BranchGraph {
     const data = this.graphData();
     if (!data || data.commits.length === 0) return;
 
-    const rowH = this.rowHeight();
+    const rowH = this.resolvedRowHeight();
     const offset = this.topOffset();
     const scrolled = this.scrollTop();
     const rowY = (row: number): number => row * rowH - scrolled + offset + rowH / 2;

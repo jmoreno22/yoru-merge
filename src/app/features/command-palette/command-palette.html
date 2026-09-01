@@ -23,7 +23,7 @@
         />
         @if (pendingLabel(); as label) {
           <span
-            class="my-3 shrink-0 rounded-xs bg-neon-cyan/12 px-2 py-1 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-neon-cyan"
+            class="my-3 shrink-0 rounded-xs bg-accent/12 px-2 py-1 font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-accent-ink"
             data-testid="palette-pending"
           >
             {{ label }}
@@ -46,11 +46,11 @@
           data-testid="palette-input"
           (input)="onInput($event)"
           (keydown)="onKeydown($event)"
-          class="my-3 h-6 min-w-0 flex-1 bg-transparent text-[13px] text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:outline-none"
+          class="my-3 h-6 min-w-0 flex-1 bg-transparent text-y-base text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:outline-none"
         />
         @if (searching()) {
           <span
-            class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+            class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
             role="status"
           >
             Searching
@@ -88,7 +88,7 @@
                 class="flex h-9 w-full items-center gap-2.5 px-3 text-left transition-colors"
                 [class]="
                   highlighted() === index
-                    ? 'bg-neon-cyan/12 text-neon-cyan'
+                    ? 'bg-accent/12 text-accent-ink'
                     : 'text-[var(--app-text)] hover:bg-[var(--app-panel)]'
                 "
               >
@@ -98,10 +98,10 @@
                   aria-hidden="true"
                   class="shrink-0"
                 />
-                <span class="truncate text-[13px]">{{ item.label }}</span>
+                <span class="truncate text-y-base">{{ item.label }}</span>
                 @if (item.hint; as meta) {
                   <span
-                    class="ml-auto shrink-0 truncate font-mono text-[10.5px] text-[var(--app-text-faint)]"
+                    class="ml-auto shrink-0 truncate font-mono text-y-xs text-[var(--app-text-faint)]"
                   >
                     {{ meta }}
                   </span>
@@ -116,7 +116,7 @@
       }
 
       <footer
-        class="flex h-8 shrink-0 items-center gap-3 border-t border-[var(--app-border)] px-3 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
+        class="flex h-8 shrink-0 items-center gap-3 border-t border-[var(--app-border)] px-3 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-faint)]"
       >
         <span>&gt; branches</span>
         <span>&#64; files</span>

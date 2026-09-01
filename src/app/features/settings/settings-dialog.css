@@ -10,13 +10,13 @@
   border: 1px solid var(--app-border);
   background: var(--app-surface);
   padding: 0 10px;
-  font-size: 13px;
+  font-size: var(--text-y-base);
   color: var(--app-text);
 }
 
 .s-input {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
 }
 
 .s-input::placeholder {
@@ -25,7 +25,7 @@
 
 .s-input:focus,
 .s-select:focus {
-  border-color: var(--color-neon-cyan);
+  border-color: var(--app-accent);
   outline: none;
 }
 

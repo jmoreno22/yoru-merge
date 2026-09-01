@@ -5,32 +5,32 @@
   (closed)="closed.emit()"
 >
   <dl dialog-body class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
-    <dt class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
+    <dt class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
       Ahead
     </dt>
-    <dd class="flex items-center gap-1.5 font-mono text-[13px] text-[var(--app-text)]">
+    <dd class="flex items-center gap-1.5 font-mono text-y-base text-[var(--app-text)]">
       <ng-icon name="lucideArrowUp" size="14px" class="text-neon-violet" aria-hidden="true" />
       <span>{{ request().result.ahead }}</span>
-      <span class="text-[11px] text-[var(--app-text-faint)]">
+      <span class="text-y-sm text-[var(--app-text-faint)]">
         commits on {{ request().head }} that {{ request().base }} does not have
       </span>
     </dd>
 
-    <dt class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
+    <dt class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
       Behind
     </dt>
-    <dd class="flex items-center gap-1.5 font-mono text-[13px] text-[var(--app-text)]">
+    <dd class="flex items-center gap-1.5 font-mono text-y-base text-[var(--app-text)]">
       <ng-icon name="lucideArrowDown" size="14px" class="text-neon-pink" aria-hidden="true" />
       <span>{{ request().result.behind }}</span>
-      <span class="text-[11px] text-[var(--app-text-faint)]">
+      <span class="text-y-sm text-[var(--app-text-faint)]">
         commits on {{ request().base }} that {{ request().head }} does not have
       </span>
     </dd>
 
-    <dt class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
+    <dt class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
       Merge base
     </dt>
-    <dd class="font-mono text-[13px] text-[var(--app-text)]">
+    <dd class="font-mono text-y-base text-[var(--app-text)]">
       @if (request().result.merge_base; as base) {
         {{ shortSha(base) }}
       } @else {

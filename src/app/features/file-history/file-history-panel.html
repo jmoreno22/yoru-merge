@@ -15,7 +15,7 @@
         aria-hidden="true"
       />
       <span
-        class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+        class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
       >
         History
       </span>
@@ -27,7 +27,7 @@
       </span>
       @if (rows().length > 0) {
         <span
-          class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-faint)]"
+          class="shrink-0 font-mono text-y-sm tabular-nums text-[var(--app-text-faint)]"
         >
           {{ rows().length }}
         </span>
@@ -50,7 +50,7 @@
       class="flex h-8 shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3 text-left text-xs transition-colors hover:bg-[var(--app-panel)]"
       [class]="
         selectedSha() === null
-          ? 'text-neon-cyan'
+          ? 'text-accent-ink'
           : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
       "
       data-testid="file-history-working-copy"
@@ -86,7 +86,7 @@
       <cdk-virtual-scroll-viewport
         class="neon-scroll min-h-0 flex-1"
         data-testid="file-history-list"
-        [itemSize]="rowHeight"
+        [itemSize]="rowHeight()"
         role="listbox"
         [attr.aria-label]="'Commits touching ' + currentFile"
       >
@@ -97,7 +97,7 @@
           class="flex h-[46px] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3 outline-none transition-colors hover:bg-[var(--app-panel)] focus-visible:bg-[var(--app-panel)]"
           [class]="
             row.commit.sha === selectedSha()
-              ? 'bg-[var(--app-panel)] border-l-2 border-l-neon-cyan'
+              ? 'bg-[var(--app-panel)] border-l-2 border-l-accent'
               : ''
           "
           [attr.aria-selected]="row.commit.sha === selectedSha()"
@@ -108,13 +108,13 @@
           (keydown.space)="onSelect(row.commit.sha)"
           (contextmenu)="onRowMenu($event, row)"
         >
-          <div class="flex items-center gap-2 font-mono text-[11px]">
+          <div class="flex items-center gap-2 font-mono text-y-sm">
             <yoru-avatar
               [name]="row.commit.author_name"
               [seed]="row.commit.author_email"
               [size]="16"
             />
-            <code class="shrink-0 text-neon-cyan">{{ row.commit.short_sha }}</code>
+            <code class="shrink-0 text-accent-ink">{{ row.commit.short_sha }}</code>
             <span class="min-w-0 flex-1 truncate text-[var(--app-text-muted)]">
               {{ row.commit.author_name }}
             </span>

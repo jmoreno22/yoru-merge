@@ -15,11 +15,11 @@
   [value]="query()"
   (input)="onInput($any($event.target).value)"
   (keydown.escape)="onEscape()"
-  class="h-[24px] min-w-0 flex-1 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-[12px] text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-neon-cyan focus:outline-none"
+  class="h-[24px] min-w-0 flex-1 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
 />
 @if (isActive()) {
   <span
-    class="shrink-0 font-mono text-[10.5px] tabular-nums text-[var(--app-text-faint)]"
+    class="shrink-0 font-mono text-y-xs tabular-nums text-[var(--app-text-faint)]"
     data-testid="commit-search-count"
     role="status"
   >

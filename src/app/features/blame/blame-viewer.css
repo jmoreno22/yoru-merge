@@ -6,7 +6,9 @@
  */
 
 :host {
-  --bl-row-h: 20px;
+  /* Code line height, so blame rows stay in step with the diff and with the
+   * code type size. Also the CDK `itemSize`, via AppearanceService. */
+  --bl-row-h: var(--code-line-h);
   --bl-gutter-w: 250px;
 }
 
@@ -16,7 +18,8 @@
   align-items: center;
   height: var(--bl-row-h);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-code);
+  font-feature-settings: var(--code-font-features);
   line-height: var(--bl-row-h);
 }
 
@@ -48,7 +51,7 @@
 }
 
 .bl-gutter-button:hover {
-  background: color-mix(in srgb, var(--color-neon-cyan) 12%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
   color: var(--app-text);
 }
 
@@ -59,20 +62,20 @@
 .bl-stripe {
   width: 1px;
   height: 100%;
-  background: color-mix(in srgb, var(--color-neon-cyan) 35%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 35%, transparent);
 }
 
 .bl-sha {
   flex-shrink: 0;
-  color: var(--color-neon-cyan);
-  font-size: 11px;
+  color: var(--app-accent-text);
+  font-size: var(--text-y-sm);
 }
 
 .bl-author {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--text-y-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -80,14 +83,14 @@
 .bl-when {
   flex-shrink: 0;
   color: var(--app-text-faint);
-  font-size: 10.5px;
+  font-size: var(--text-y-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .bl-lineno {
   padding: 0 8px;
   color: var(--app-text-faint);
-  font-size: 11px;
+  font-size: var(--text-y-code-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
   user-select: none;

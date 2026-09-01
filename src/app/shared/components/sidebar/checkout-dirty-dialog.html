@@ -6,13 +6,13 @@
   [dismissible]="false"
   (closed)="chose.emit('cancel')"
 >
-  <p dialog-body class="text-[13px] leading-relaxed text-[var(--app-text)]">
+  <p dialog-body class="text-y-base leading-relaxed text-[var(--app-text)]">
     These files differ between the two branches and have uncommitted changes:
   </p>
 
   <ul
     dialog-body
-    class="neon-scroll max-h-48 overflow-y-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-[11px] text-[var(--app-text-muted)]"
+    class="neon-scroll max-h-48 overflow-y-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-y-sm text-[var(--app-text-muted)]"
   >
     @for (file of files(); track file) {
       <li class="truncate" [title]="file">{{ file }}</li>
@@ -21,7 +21,7 @@
     }
   </ul>
 
-  <p dialog-body class="text-[12px] leading-relaxed text-[var(--app-text-faint)]">
+  <p dialog-body class="text-y-md leading-relaxed text-[var(--app-text-faint)]">
     Stashing keeps the work (untracked files included) and replays nothing —
     pop the stash when you come back. Forcing discards these changes for good;
     untracked files are left alone either way.

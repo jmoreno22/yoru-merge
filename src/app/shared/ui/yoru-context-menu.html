@@ -42,7 +42,7 @@
       <span class="flex min-w-0 flex-1 flex-col">
         <span class="truncate">{{ item.label }}</span>
         @if (item.disabled && item.disabledReason) {
-          <span class="truncate text-[11px] leading-[15px]">
+          <span class="truncate text-y-sm leading-[15px]">
             {{ item.disabledReason }}
           </span>
         }
@@ -59,7 +59,7 @@
         <span class="mt-[2px] flex shrink-0 items-center gap-1">
           @for (token of shortcutTokens(shortcut); track $index) {
             <kbd
-              class="inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-[4px] border border-[var(--app-border)] px-1 font-mono text-[10px] leading-none text-[var(--app-text-faint)]"
+              class="inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-[4px] border border-[var(--app-border)] px-1 font-mono text-y-xs leading-none text-[var(--app-text-faint)]"
             >
               {{ token }}
             </kbd>
@@ -109,7 +109,7 @@
         <span class="flex min-w-0 flex-1 flex-col">
           <span class="truncate">{{ item.label }}</span>
           @if (item.disabled && item.disabledReason) {
-            <span class="truncate text-[11px] leading-[15px]">
+            <span class="truncate text-y-sm leading-[15px]">
               {{ item.disabledReason }}
             </span>
           }

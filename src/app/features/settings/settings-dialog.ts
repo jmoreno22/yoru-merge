@@ -9,10 +9,26 @@ import {
   viewChildren,
 } from '@angular/core';
 import type { PullMode, WritableConfigKey } from '../../core/models';
+import type { ColorPalette } from '../../core/services/color-palettes';
+import { COLOR_PALETTES } from '../../core/services/color-palettes';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { PreferencesService } from '../../core/services/preferences.service';
+import type {
+  AccentId,
+  GraphPaletteId,
+  InspectorPlacement,
+  SidebarSide,
+  UiDensity,
+} from '../../core/services/preferences-schema';
+import {
+  MAX_MONO_FONT_SIZE,
+  MAX_UI_FONT_SIZE,
+  MIN_MONO_FONT_SIZE,
+  MIN_UI_FONT_SIZE,
+} from '../../core/services/preferences-schema';
 import type { ThemeMode } from '../../core/services/theme.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { runThemeTransition } from '../../core/services/view-transition';
 import type { RemoteProvider } from '../../core/utils';
 import { parseRemoteUrl } from '../../core/utils';
 import type { SegmentedOption } from '../../shared/ui';
@@ -22,9 +38,11 @@ import {
   YoruField,
   YoruKbd,
   YoruSegmented,
+  YoruStepper,
   YoruSwitch,
 } from '../../shared/ui';
 import { AboutPanel } from '../about/about-panel';
+import { COMMIT_COLUMNS, toggleColumn } from '../commit-list/commit-columns';
 import {
   CUSTOM_PRESET_ID,
   commandForPresetId,
@@ -48,7 +66,15 @@ const PROVIDER_LABELS: Readonly<Record<RemoteProvider, string>> = {
 
 @Component({
   selector: 'app-settings-dialog',
-  imports: [YoruDialog, YoruField, YoruKbd, YoruSegmented, YoruSwitch, AboutPanel],
+  imports: [
+    YoruDialog,
+    YoruField,
+    YoruKbd,
+    YoruSegmented,
+    YoruStepper,
+    YoruSwitch,
+    AboutPanel,
+  ],
   templateUrl: './settings-dialog.html',
   styleUrl: './settings-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,8 +96,9 @@ export class SettingsDialog {
 
   // ── General ──────────────────────────────────────────────────────────────
   protected readonly densityOptions: readonly SegmentedOption[] = [
-    { value: 'comfortable', label: 'Comfortable' },
     { value: 'compact', label: 'Compact' },
+    { value: 'comfortable', label: 'Comfortable' },
+    { value: 'relaxed', label: 'Relaxed' },
   ];
   protected readonly pullModeOptions: readonly SegmentedOption[] = [
     { value: 'merge', label: 'Merge' },
@@ -96,6 +123,74 @@ export class SettingsDialog {
   ];
   protected readonly themeMode = this.theme.current;
   protected readonly osTheme = this.theme.osTheme;
+
+  /** Type-size bounds, so the steppers cannot offer a value the schema clamps. */
+  protected readonly minUiFontSize = MIN_UI_FONT_SIZE;
+  protected readonly maxUiFontSize = MAX_UI_FONT_SIZE;
+  protected readonly minMonoFontSize = MIN_MONO_FONT_SIZE;
+  protected readonly maxMonoFontSize = MAX_MONO_FONT_SIZE;
+
+  protected readonly tabWidthOptions: readonly SegmentedOption[] = [
+    { value: '2', label: '2' },
+    { value: '4', label: '4' },
+    { value: '8', label: '8' },
+  ];
+
+  /**
+   * Accent swatches. The colour is the fill tone, which is what the dot shows;
+   * the text tone each preset switches to is a token, not a value the picker
+   * needs to know.
+   */
+  protected readonly accentOptions: readonly {
+    readonly id: AccentId;
+    readonly label: string;
+    readonly swatch: string;
+  }[] = [
+    { id: 'cyan', label: 'Cyan', swatch: 'var(--color-neon-cyan)' },
+    { id: 'violet', label: 'Violet', swatch: 'var(--color-neon-violet)' },
+    { id: 'sakura', label: 'Sakura', swatch: 'var(--color-sakura-500)' },
+    { id: 'mint', label: 'Mint', swatch: 'var(--color-git-added)' },
+    { id: 'crimson', label: 'Crimson', swatch: 'var(--color-crimson-500)' },
+  ];
+
+  protected readonly graphPaletteOptions: readonly SegmentedOption[] = [
+    { value: 'yoru', label: 'Yoru' },
+    { value: 'contrast', label: 'Contrast' },
+    { value: 'colorblind', label: 'Colourblind' },
+  ];
+
+  protected readonly inspectorOptions: readonly SegmentedOption[] = [
+    { value: 'right', label: 'Right', icon: 'lucideColumns2' },
+    { value: 'bottom', label: 'Bottom', icon: 'lucideRows3' },
+  ];
+
+  protected readonly sidebarSideOptions: readonly SegmentedOption[] = [
+    { value: 'left', label: 'Left' },
+    { value: 'right', label: 'Right' },
+  ];
+
+  protected readonly colorPalettes = COLOR_PALETTES;
+
+  /**
+   * Swatches for the palette cards, taken from the mode that is on screen —
+   * previewing a light palette while the app is dark would be a lie.
+   */
+  protected paletteSwatches(palette: ColorPalette): readonly string[] {
+    const surfaces = this.theme.resolved() === 'dark' ? palette.dark : palette.light;
+    return [
+      surfaces.bg,
+      surfaces.surface,
+      surfaces.panel,
+      surfaces.border,
+      surfaces.text,
+    ];
+  }
+
+  protected readonly commitColumns = COMMIT_COLUMNS;
+
+  protected isColumnVisible(id: string): boolean {
+    return this.prefs.commitsColumns().includes(id);
+  }
 
   // ── Git ──────────────────────────────────────────────────────────────────
   protected readonly scope = signal<ConfigScope>('global');
@@ -226,7 +321,7 @@ export class SettingsDialog {
 
   // ── General ──────────────────────────────────────────────────────────────
   protected onDensity(value: string): void {
-    this.prefs.setUiDensity(value === 'compact' ? 'compact' : 'comfortable');
+    this.prefs.setUiDensity(value as UiDensity);
   }
 
   protected onPullMode(value: string): void {
@@ -249,6 +344,36 @@ export class SettingsDialog {
 
   protected onContextLines(value: string): void {
     this.prefs.setDiffContextLines(Number.parseInt(value, 10));
+  }
+
+  protected onTabWidth(value: string): void {
+    this.prefs.setCodeTabWidth(Number.parseInt(value, 10));
+  }
+
+  protected onAccent(accent: AccentId): void {
+    this.prefs.setAccent(accent);
+  }
+
+  protected onGraphPalette(value: string): void {
+    this.prefs.setGraphPalette(value as GraphPaletteId);
+  }
+
+  protected onColorPalette(id: string): void {
+    // A palette swap repaints every surface, so it earns the sweep even more
+    // than a light/dark flip does.
+    runThemeTransition(() => this.prefs.setColorPalette(id));
+  }
+
+  protected onInspectorPlacement(value: string): void {
+    this.prefs.setInspectorPlacement(value as InspectorPlacement);
+  }
+
+  protected onSidebarSide(value: string): void {
+    this.prefs.setSidebarSide(value as SidebarSide);
+  }
+
+  protected onColumnToggle(id: string): void {
+    this.prefs.setCommitsColumns(toggleColumn(this.prefs.commitsColumns(), id));
   }
 
   // ── Git ──────────────────────────────────────────────────────────────────

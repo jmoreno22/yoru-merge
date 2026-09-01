@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import type { CommitInfo } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { absoluteTime, relativeTime } from '../../core/utils';
 import type { MenuItem } from '../../shared/ui';
@@ -21,9 +22,6 @@ import {
   YoruEmptyState,
   YoruSkeleton,
 } from '../../shared/ui';
-
-/** Row height, matching the CDK `itemSize`. */
-const ROW_HEIGHT = 46;
 
 const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
 
@@ -52,6 +50,7 @@ interface HistoryRow {
 })
 export class FileHistoryPanel {
   private readonly service = inject(CurrentRepoService);
+  private readonly appearance = inject(AppearanceService);
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
 
@@ -64,7 +63,7 @@ export class FileHistoryPanel {
   /** Emitted when the user asks for the whole commit, not just this file. */
   readonly selectCommit = output<string>();
 
-  protected readonly rowHeight = ROW_HEIGHT;
+  protected readonly rowHeight = this.appearance.historyRowHeight;
   protected readonly skeletonRows = SKELETON_ROWS;
 
   protected readonly error = this.service.fileHistoryError;

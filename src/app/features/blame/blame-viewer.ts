@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import type { BlameLine } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { relativeTime, shortSha } from '../../core/utils';
 import type { MenuItem } from '../../shared/ui';
@@ -21,9 +22,6 @@ import {
   YoruEmptyState,
   YoruSkeleton,
 } from '../../shared/ui';
-
-/** Row height, matching the CDK `itemSize` and the code line-height. */
-const ROW_HEIGHT = 20;
 
 const SKELETON_ROWS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
@@ -55,6 +53,7 @@ interface BlameRow {
 })
 export class BlameViewer {
   private readonly service = inject(CurrentRepoService);
+  private readonly appearance = inject(AppearanceService);
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
 
@@ -66,7 +65,8 @@ export class BlameViewer {
   /** Fired when the user closes the overlay. */
   readonly close = output<void>();
 
-  protected readonly rowHeight = ROW_HEIGHT;
+  /** Blame rows are code, so they follow the code type size, not the UI one. */
+  protected readonly rowHeight = this.appearance.codeLineHeight;
   protected readonly skeletonRows = SKELETON_ROWS;
 
   protected readonly error = this.service.blameError;

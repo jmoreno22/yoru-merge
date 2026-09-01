@@ -11,12 +11,16 @@ import {
   viewChild,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { type MenuAnchor, YoruSectionHeader } from '../../shared/ui';
 import type { ChangeRow, SectionId } from './changes-tree';
 import { FileRowItem } from './file-row';
 import { type ClickModifiers, nextIndex } from './selection';
 
-/** Must match `--file-row-h` and the CDK `itemSize`. */
+/**
+ * Default file-row height, matching `--file-row-h` and the CDK `itemSize` at
+ * the default preferences. The live value comes from `AppearanceService`.
+ */
 export const FILE_ROW_HEIGHT = 30;
 
 export interface RowSelectEvent {
@@ -45,6 +49,7 @@ export interface RowMenuEvent {
 })
 export class ChangesList {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly appearance = inject(AppearanceService);
 
   readonly section = input.required<SectionId>();
   readonly label = input.required<string>();
@@ -73,7 +78,7 @@ export class ChangesList {
   readonly activeChange = output<string>();
   readonly selectAllRequested = output<void>();
 
-  protected readonly rowHeight = FILE_ROW_HEIGHT;
+  protected readonly rowHeight = this.appearance.fileRowHeight;
 
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
@@ -94,7 +99,7 @@ export class ChangesList {
   protected readonly viewportHeight = computed<number | null>(() => {
     const max = this.maxVisibleRows();
     if (max === null) return null;
-    return Math.min(this.rows().length, max) * FILE_ROW_HEIGHT;
+    return Math.min(this.rows().length, max) * this.rowHeight();
   });
 
   constructor() {

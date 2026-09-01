@@ -1,0 +1,32 @@
+<div
+  role="group"
+  [attr.aria-label]="ariaLabel() || null"
+  class="inline-flex items-center gap-1 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-0.5"
+>
+  <button
+    type="button"
+    [disabled]="!canDecrement()"
+    [attr.aria-label]="'Decrease' + (ariaLabel() ? ' ' + ariaLabel() : '')"
+    (click)="decrement()"
+    class="flex h-6 w-6 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+  >
+    <ng-icon name="lucideMinus" size="13" />
+  </button>
+
+  <span
+    aria-live="polite"
+    class="min-w-[3.5ch] text-center font-mono text-y-md tabular-nums text-[var(--app-text)]"
+  >
+    {{ value() }}{{ suffix() }}
+  </span>
+
+  <button
+    type="button"
+    [disabled]="!canIncrement()"
+    [attr.aria-label]="'Increase' + (ariaLabel() ? ' ' + ariaLabel() : '')"
+    (click)="increment()"
+    class="flex h-6 w-6 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+  >
+    <ng-icon name="lucidePlus" size="13" />
+  </button>
+</div>

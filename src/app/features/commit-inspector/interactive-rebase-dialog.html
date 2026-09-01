@@ -6,7 +6,7 @@
   (closed)="close()"
 >
   <div dialog-body class="flex min-h-0 flex-col gap-3">
-    <p class="text-[12px] text-[var(--app-text-faint)]">
+    <p class="text-y-md text-[var(--app-text-faint)]">
       Replaying
       <code class="font-mono text-[var(--app-text-muted)]">{{ shortOf(fromSha()) }}</code>
       and everything after it, oldest first. Reorder with drag or
@@ -26,14 +26,14 @@
             aria-hidden="true"
           />
           <div class="min-w-0">
-            <p class="text-[13px] text-[var(--app-text)]">{{ state.title }}</p>
-            <p class="text-[12px] text-[var(--app-text-muted)]">{{ state.message }}</p>
+            <p class="text-y-base text-[var(--app-text)]">{{ state.title }}</p>
+            <p class="text-y-md text-[var(--app-text-muted)]">{{ state.message }}</p>
           </div>
         </div>
       } @else if (state.kind === 'error') {
         <p
           role="alert"
-          class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-[12px] text-[var(--app-text)]"
+          class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-md text-[var(--app-text)]"
         >
           {{ state.message }}
         </p>
@@ -43,7 +43,7 @@
     @if (loading()) {
       <div class="flex items-center gap-2 py-6 text-[var(--app-text-muted)]">
         <yoru-spinner [size]="16" label="Reading the rebase plan" />
-        <span class="text-[12px]">Reading the rebase plan…</span>
+        <span class="text-y-md">Reading the rebase plan…</span>
       </div>
     } @else if (entries().length > 0) {
       <ul
@@ -97,11 +97,11 @@
               />
 
               <code
-                class="shrink-0 font-mono text-[11px] text-[var(--app-text-faint)]"
+                class="shrink-0 font-mono text-y-sm text-[var(--app-text-faint)]"
                 >{{ shortOf(entry.sha) }}</code
               >
               <span
-                class="rebase-subject min-w-0 flex-1 truncate text-[12px] text-[var(--app-text)]"
+                class="rebase-subject min-w-0 flex-1 truncate text-y-md text-[var(--app-text)]"
                 >{{ subjectOf(entry) }}</span
               >
             </div>
@@ -121,13 +121,13 @@
 
       <section class="flex flex-col gap-1">
         <h3
-          class="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+          class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
         >
           Result — {{ preview().length }} commits
         </h3>
         <ul class="neon-scroll flex max-h-[18vh] flex-col overflow-y-auto">
           @for (commit of preview(); track commit.sha) {
-            <li class="flex items-center gap-2 py-0.5 text-[12px]">
+            <li class="flex items-center gap-2 py-0.5 text-y-md">
               <ng-icon
                 name="lucideGitCommitHorizontal"
                 size="13px"
@@ -138,12 +138,12 @@
                 commit.message.split('\n')[0]
               }}</span>
               @if (commit.folded > 0) {
-                <span class="shrink-0 font-mono text-[10.5px] text-[var(--app-text-faint)]"
+                <span class="shrink-0 font-mono text-y-xs text-[var(--app-text-faint)]"
                   >+{{ commit.folded }} folded</span
                 >
               }
               @if (commit.stops) {
-                <span class="shrink-0 font-mono text-[10.5px] text-[var(--app-conflict-text)]"
+                <span class="shrink-0 font-mono text-y-xs text-[var(--app-conflict-text)]"
                   >stops to edit</span
                 >
               }
@@ -153,7 +153,7 @@
       </section>
 
       @if (problem(); as reason) {
-        <p role="alert" class="text-[12px] text-git-deleted">{{ reason }}</p>
+        <p role="alert" class="text-y-md text-git-deleted">{{ reason }}</p>
       }
     }
   </div>

@@ -10,14 +10,14 @@
       aria-hidden="true"
     />
     <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-      <p class="text-[13px] leading-[18px] text-[var(--app-text)]">
+      <p class="text-y-base leading-[18px] text-[var(--app-text)]">
         {{ toast.message }}
       </p>
       @if (toast.action; as action) {
         <button
           type="button"
           (click)="runAction(toast)"
-          class="self-start rounded-xs px-1.5 py-0.5 text-[11px] font-semibold text-neon-cyan transition-colors hover:bg-neon-cyan/10"
+          class="self-start rounded-xs px-1.5 py-0.5 text-y-sm font-semibold text-accent-ink transition-colors hover:bg-accent/10"
         >
           {{ action.label }}
         </button>

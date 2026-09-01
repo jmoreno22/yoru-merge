@@ -3,27 +3,38 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Store } from '@tauri-apps/plugin-store';
 import type { PullMode } from '../models';
 import {
+  type AccentId,
   asNumber,
   clampContextLines,
   clampMinutes,
+  clampMonoFontSize,
   clampPercent,
+  clampTabWidth,
+  clampUiFontSize,
   DEFAULT_PREFERENCES,
   type DiffViewMode,
   type DurablePreferences,
+  type GraphPaletteId,
+  type InspectorPlacement,
   migratePreferences,
   type RailView,
   SCHEMA_VERSION,
   SCHEMA_VERSION_KEY,
+  type SidebarSide,
   sanitizePreferences,
   sanitizeSections,
   type UiDensity,
 } from './preferences-schema';
 
 export type {
+  AccentId,
   DiffViewMode,
   DurablePreferences,
+  GraphPaletteId,
+  InspectorPlacement,
   PreferencesSchema,
   RailView,
+  SidebarSide,
   UiDensity,
 } from './preferences-schema';
 
@@ -57,6 +68,20 @@ export class PreferencesService {
   readonly diffWordWrap = this.select('diffWordWrap');
   readonly diffContextLines = this.select('diffContextLines');
   readonly uiDensity = this.select('uiDensity');
+  readonly uiFontSize = this.select('uiFontSize');
+  readonly monoFontSize = this.select('monoFontSize');
+  readonly codeTabWidth = this.select('codeTabWidth');
+  readonly codeLigatures = this.select('codeLigatures');
+  readonly accent = this.select('accent');
+  readonly graphPalette = this.select('graphPalette');
+  readonly colorPalette = this.select('colorPalette');
+  readonly animations = this.select('animations');
+  readonly inspectorPlacement = this.select('inspectorPlacement');
+  readonly sidebarSide = this.select('sidebarSide');
+  readonly showToolbar = this.select('showToolbar');
+  readonly showStatusBar = this.select('showStatusBar');
+  readonly showGraph = this.select('showGraph');
+  readonly zenMode = this.select('zenMode');
   readonly externalEditor = this.select('externalEditor');
   readonly terminal = this.select('terminal');
   readonly autoFetchMinutes = this.select('autoFetchMinutes');
@@ -149,6 +174,62 @@ export class PreferencesService {
 
   setUiDensity(density: UiDensity): void {
     this.set('uiDensity', density);
+  }
+
+  setUiFontSize(px: number): void {
+    this.set('uiFontSize', clampUiFontSize(px));
+  }
+
+  setMonoFontSize(px: number): void {
+    this.set('monoFontSize', clampMonoFontSize(px));
+  }
+
+  setCodeTabWidth(width: number): void {
+    this.set('codeTabWidth', clampTabWidth(width));
+  }
+
+  setCodeLigatures(value: boolean): void {
+    this.set('codeLigatures', value);
+  }
+
+  setAccent(accent: AccentId): void {
+    this.set('accent', accent);
+  }
+
+  setGraphPalette(palette: GraphPaletteId): void {
+    this.set('graphPalette', palette);
+  }
+
+  setColorPalette(id: string): void {
+    this.set('colorPalette', id);
+  }
+
+  setAnimations(value: boolean): void {
+    this.set('animations', value);
+  }
+
+  setInspectorPlacement(placement: InspectorPlacement): void {
+    this.set('inspectorPlacement', placement);
+  }
+
+  setSidebarSide(side: SidebarSide): void {
+    this.set('sidebarSide', side);
+  }
+
+  setShowToolbar(value: boolean): void {
+    this.set('showToolbar', value);
+  }
+
+  setShowStatusBar(value: boolean): void {
+    this.set('showStatusBar', value);
+  }
+
+  setShowGraph(value: boolean): void {
+    this.set('showGraph', value);
+  }
+
+  setZenMode(value: boolean): void {
+    this.set('zenMode', value);
   }
 
   setExternalEditor(command: string): void {

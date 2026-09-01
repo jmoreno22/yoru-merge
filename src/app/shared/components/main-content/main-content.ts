@@ -9,6 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { BlameViewer } from '../../../features/blame/blame-viewer';
@@ -29,9 +30,17 @@ import { ReflogView } from './reflog-view';
 const MIN_SIDEBAR_PX = 180;
 const MAX_SIDEBAR_PX = 420;
 
-/** Pixel clamps for the centre column of the workbench. */
+/** Pixel clamps for the centre column when the inspector sits to the right. */
 const MIN_CENTRE_PX = 360;
 const MIN_RIGHT_PX = 320;
+
+/**
+ * The same idea with the inspector below, where the axis is height. Lower than
+ * the horizontal pair: a row of commits is useful at 200px tall, whereas a
+ * commit subject needs real width to be readable at all.
+ */
+const MIN_CENTRE_HEIGHT_PX = 200;
+const MIN_BOTTOM_PX = 220;
 
 /** Must match `LANE_WIDTH` in the branch graph, which sizes its canvas by it. */
 const LANE_WIDTH = 16;
@@ -73,8 +82,11 @@ const MIN_GRAPH_PX = 4 * LANE_WIDTH;
 export class MainContent {
   protected readonly repo = inject(CurrentRepoService);
   protected readonly prefs = inject(PreferencesService);
+  protected readonly appearance = inject(AppearanceService);
 
   protected readonly view = this.prefs.railView;
+  protected readonly sidebarSide = this.prefs.sidebarSide;
+  protected readonly inspectorPlacement = this.prefs.inspectorPlacement;
 
   protected readonly blameFile = this.repo.blameFile;
   protected readonly blameRev = this.repo.blameRev;
@@ -90,12 +102,22 @@ export class MainContent {
    * canvas clips its deepest lanes far more gracefully than the list does.
    */
   protected readonly graphWidth = computed(() => {
+    if (!this.appearance.showGraph()) return 0;
     if (this.repo.isSearchActive()) return 0;
     const lanes = this.repo.graphData()?.max_lanes ?? 0;
     if (lanes === 0) return 0;
-    const cap = Math.max(MIN_GRAPH_PX, Math.round(this.centrePx() / 3));
+    const cap = Math.max(MIN_GRAPH_PX, Math.round(this.centreWidthPx() / 3));
     return Math.min(lanes * LANE_WIDTH, cap);
   });
+
+  /**
+   * Width available to the centre column. With the inspector below, the centre
+   * spans the whole workbench and its `centrePx` is a height, so the graph cap
+   * has to come from the container instead.
+   */
+  private readonly centreWidthPx = computed(() =>
+    this.inspectorPlacement() === 'bottom' ? this.splitSize().width : this.centrePx(),
+  );
 
   // ── refs panel width ─────────────────────────────────────────────────────
 
@@ -119,7 +141,9 @@ export class MainContent {
   protected onSidebarResize(delta: number): void {
     const width = this.viewportWidth();
     if (width <= 0) return;
-    const next = clamp(this.sidebarPx() + delta, MIN_SIDEBAR_PX, MAX_SIDEBAR_PX);
+    // Dragging left has to widen a right-hand panel, so the axis flips with it.
+    const signed = this.sidebarSide() === 'right' ? -delta : delta;
+    const next = clamp(this.sidebarPx() + signed, MIN_SIDEBAR_PX, MAX_SIDEBAR_PX);
     this.prefs.setSidebarWidth((next / width) * 100);
   }
 
@@ -134,23 +158,41 @@ export class MainContent {
   // ── centre / inspector split ─────────────────────────────────────────────
 
   private readonly splitHost = viewChild<ElementRef<HTMLElement>>('split');
-  private readonly splitWidth = signal(0);
+
+  /** Both axes: which one bounds the split depends on the inspector placement. */
+  private readonly splitSize = signal<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
 
   protected readonly workbenchDragging = signal(false);
 
   /**
-   * Centre column width. Clamped against the container rather than a fixed
-   * maximum so the inspector keeps its minimum on any window size.
+   * Extent of the centre column along the split axis — width with the inspector
+   * to the right, height with it below. Clamped against the container rather
+   * than a fixed maximum so the inspector keeps its minimum on any window size.
    */
   protected readonly centrePx = computed(() => {
-    const container = this.splitWidth();
-    if (container <= 0) return MIN_CENTRE_PX;
-    const max = Math.max(MIN_CENTRE_PX, container - MIN_RIGHT_PX);
+    const bounds = this.splitBounds();
+    if (bounds.container <= 0) return bounds.min;
+    const max = Math.max(bounds.min, bounds.container - bounds.other);
     return clamp(
-      Math.round((this.prefs.workbenchSplit() / 100) * container),
-      MIN_CENTRE_PX,
+      Math.round((this.prefs.workbenchSplit() / 100) * bounds.container),
+      bounds.min,
       max,
     );
+  });
+
+  /** The container extent and the two minimums that apply on the active axis. */
+  private readonly splitBounds = computed(() => {
+    const size = this.splitSize();
+    return this.inspectorPlacement() === 'bottom'
+      ? {
+          container: size.height,
+          min: MIN_CENTRE_HEIGHT_PX,
+          other: MIN_BOTTOM_PX,
+        }
+      : { container: size.width, min: MIN_CENTRE_PX, other: MIN_RIGHT_PX };
   });
 
   constructor() {
@@ -158,10 +200,19 @@ export class MainContent {
       const element = this.splitHost()?.nativeElement;
       if (!element) return;
       // Seeded by hand: ResizeObserver does not fire on observe().
-      this.splitWidth.set(element.clientWidth);
+      this.splitSize.set({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      });
       const observer = new ResizeObserver((entries) => {
-        const width = entries[0]?.contentRect.width ?? 0;
-        if (width > 0) this.splitWidth.set(Math.round(width));
+        const rect = entries[0]?.contentRect;
+        if (!rect) return;
+        if (rect.width > 0 || rect.height > 0) {
+          this.splitSize.set({
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          });
+        }
       });
       observer.observe(element);
       onCleanup(() => observer.disconnect());
@@ -169,11 +220,11 @@ export class MainContent {
   }
 
   protected onWorkbenchResize(delta: number): void {
-    const container = this.splitWidth();
-    if (container <= 0) return;
-    const max = Math.max(MIN_CENTRE_PX, container - MIN_RIGHT_PX);
-    const next = clamp(this.centrePx() + delta, MIN_CENTRE_PX, max);
-    this.prefs.setWorkbenchSplit((next / container) * 100);
+    const bounds = this.splitBounds();
+    if (bounds.container <= 0) return;
+    const max = Math.max(bounds.min, bounds.container - bounds.other);
+    const next = clamp(this.centrePx() + delta, bounds.min, max);
+    this.prefs.setWorkbenchSplit((next / bounds.container) * 100);
   }
 
   protected onWorkbenchDragStart(): void {

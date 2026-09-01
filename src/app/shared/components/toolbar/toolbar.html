@@ -120,7 +120,7 @@
   type="button"
   (click)="onOpenPalette()"
   data-testid="toolbar-command-bar"
-  class="mx-auto flex h-8 w-full max-w-100 min-w-0 items-center gap-2 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 text-left transition-colors hover:border-neon-cyan/50"
+  class="mx-auto flex h-8 w-full max-w-100 min-w-0 items-center gap-2 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 text-left transition-colors hover:border-accent/50"
 >
   <ng-icon
     name="lucideSearch"
@@ -146,12 +146,12 @@
           : 'Current branch ' + branch + ' — copy name'
       "
       data-testid="toolbar-branch-chip"
-      class="flex h-8 max-w-72 items-center gap-1.5 rounded-sm border border-[var(--app-border)] px-2 font-mono text-xs transition-colors hover:border-neon-cyan/50"
+      class="flex h-8 max-w-72 items-center gap-1.5 rounded-sm border border-[var(--app-border)] px-2 font-mono text-xs transition-colors hover:border-accent/50"
     >
       <ng-icon
         name="lucideGitBranch"
         size="14px"
-        class="shrink-0 text-neon-cyan"
+        class="shrink-0 text-accent-ink"
         aria-hidden="true"
       />
       <span class="truncate text-[var(--app-text)]">{{ branch }}</span>
@@ -186,7 +186,7 @@
       [yoruTooltip]="pill.aria"
       (click)="onUpdate()"
       data-testid="toolbar-update"
-      class="flex h-8 max-w-56 shrink-0 items-center gap-1.5 rounded-sm border border-neon-cyan/40 bg-neon-cyan/10 px-2 text-xs text-neon-cyan transition-colors hover:border-neon-cyan hover:bg-neon-cyan/20"
+      class="flex h-8 max-w-56 shrink-0 items-center gap-1.5 rounded-sm border border-accent/40 bg-accent/10 px-2 text-xs text-accent-ink transition-colors hover:border-accent hover:bg-accent/20"
     >
       <ng-icon [name]="pill.icon" size="14px" class="shrink-0" aria-hidden="true" />
       <span class="truncate">{{ pill.label }}</span>
@@ -206,7 +206,7 @@
     <ng-icon name="lucideBell" size="16px" aria-hidden="true" />
     @if (unread() > 0) {
       <span
-        class="absolute right-1 top-1 size-1.5 rounded-full bg-neon-cyan"
+        class="absolute right-1 top-1 size-1.5 rounded-full bg-accent"
         aria-hidden="true"
       ></span>
     }

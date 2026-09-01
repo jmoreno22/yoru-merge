@@ -1,11 +1,17 @@
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import type { BranchInfo } from '../../core/models';
+import { COLOR_PALETTES, DEFAULT_PALETTE_ID } from '../../core/services/color-palettes';
 import type { CurrentRepoService } from '../../core/services/current-repo.service';
 import type { SystemOps } from '../../core/services/ops';
 import type { PreferencesService } from '../../core/services/preferences.service';
+import {
+  DEFAULT_PREFERENCES,
+  type UiDensity,
+} from '../../core/services/preferences-schema';
 import type { ThemeService } from '../../core/services/theme.service';
 import type { ToastService } from '../../core/services/toast.service';
 import type { UpdaterService } from '../../core/services/updater.service';
+import { runThemeTransition } from '../../core/services/view-transition';
 import type { WorkspaceStore } from '../../core/services/workspace.store';
 import { validateRefName } from '../../core/utils';
 import { canSkipSequencer } from '../../shared/components/repo-state-banner/repo-state.model';
@@ -15,6 +21,20 @@ import type { InteractiveRebaseService } from '../commit-inspector/interactive-r
 import type { DialogsService } from '../dialogs/dialogs.service';
 import type { SettingsDialogService } from '../settings/settings-dialog.service';
 import type { CommitComposerFocus } from '../working-changes/commit-composer-focus.service';
+
+const DENSITY_CYCLE: readonly UiDensity[] = ['compact', 'comfortable', 'relaxed'];
+
+/** Wraps round the three density steps, so the command is a plain cycle. */
+function nextDensity(current: UiDensity): UiDensity {
+  const index = DENSITY_CYCLE.indexOf(current);
+  return DENSITY_CYCLE[(index + 1) % DENSITY_CYCLE.length] ?? 'comfortable';
+}
+
+/** Same idea over the surface palettes. An unknown id starts from the first. */
+function nextPalette(current: string): string {
+  const index = COLOR_PALETTES.findIndex((palette) => palette.id === current);
+  return COLOR_PALETTES[(index + 1) % COLOR_PALETTES.length]?.id ?? DEFAULT_PALETTE_ID;
+}
 
 export type PaletteGroup =
   | 'Repository'
@@ -448,11 +468,108 @@ export function buildPaletteCommands(ctx: PaletteContext): PaletteCommand[] {
     },
     {
       id: 'view.density',
-      label: 'Toggle interface density',
+      label: 'Cycle interface density',
       group: 'View',
       icon: 'lucideRows3',
+      run: () => prefs.setUiDensity(nextDensity(prefs.uiDensity())),
+    },
+    {
+      id: 'view.fontLarger',
+      label: 'Increase interface font size',
+      group: 'View',
+      icon: 'lucidePlus',
+      shortcutId: 'view.fontLarger',
+      run: () => prefs.setUiFontSize(prefs.uiFontSize() + 1),
+    },
+    {
+      id: 'view.fontSmaller',
+      label: 'Decrease interface font size',
+      group: 'View',
+      icon: 'lucideMinus',
+      shortcutId: 'view.fontSmaller',
+      run: () => prefs.setUiFontSize(prefs.uiFontSize() - 1),
+    },
+    {
+      id: 'view.codeFontLarger',
+      label: 'Increase code font size',
+      group: 'View',
+      icon: 'lucidePlus',
+      run: () => prefs.setMonoFontSize(prefs.monoFontSize() + 1),
+    },
+    {
+      id: 'view.codeFontSmaller',
+      label: 'Decrease code font size',
+      group: 'View',
+      icon: 'lucideMinus',
+      run: () => prefs.setMonoFontSize(prefs.monoFontSize() - 1),
+    },
+    {
+      id: 'view.fontReset',
+      label: 'Reset font sizes',
+      group: 'View',
+      icon: 'lucideRotateCcw',
+      shortcutId: 'view.fontReset',
+      run: () => {
+        prefs.setUiFontSize(DEFAULT_PREFERENCES.uiFontSize);
+        prefs.setMonoFontSize(DEFAULT_PREFERENCES.monoFontSize);
+      },
+    },
+    {
+      id: 'view.colorPalette',
+      label: 'Cycle colour palette',
+      group: 'View',
+      icon: 'lucideSparkles',
       run: () =>
-        prefs.setUiDensity(prefs.uiDensity() === 'compact' ? 'comfortable' : 'compact'),
+        runThemeTransition(() =>
+          prefs.setColorPalette(nextPalette(prefs.colorPalette())),
+        ),
+    },
+    {
+      id: 'view.zen',
+      label: 'Toggle zen mode',
+      group: 'View',
+      icon: 'lucideMaximize2',
+      shortcutId: 'view.zen',
+      run: () => prefs.setZenMode(!prefs.zenMode()),
+    },
+    {
+      id: 'view.inspectorPlacement',
+      label: 'Move inspector (right / bottom)',
+      group: 'View',
+      icon: 'lucideLayers',
+      run: () =>
+        prefs.setInspectorPlacement(
+          prefs.inspectorPlacement() === 'right' ? 'bottom' : 'right',
+        ),
+    },
+    {
+      id: 'view.sidebarSide',
+      label: 'Move refs panel (left / right)',
+      group: 'View',
+      icon: 'lucidePanelLeft',
+      run: () =>
+        prefs.setSidebarSide(prefs.sidebarSide() === 'left' ? 'right' : 'left'),
+    },
+    {
+      id: 'view.graph',
+      label: 'Toggle branch graph',
+      group: 'View',
+      icon: 'lucideGitFork',
+      run: () => prefs.setShowGraph(!prefs.showGraph()),
+    },
+    {
+      id: 'view.toolbar',
+      label: 'Toggle toolbar',
+      group: 'View',
+      icon: 'lucideMonitor',
+      run: () => prefs.setShowToolbar(!prefs.showToolbar()),
+    },
+    {
+      id: 'view.statusBar',
+      label: 'Toggle status bar',
+      group: 'View',
+      icon: 'lucideInfo',
+      run: () => prefs.setShowStatusBar(!prefs.showStatusBar()),
     },
     {
       id: 'app.settings',

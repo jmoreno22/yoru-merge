@@ -20,7 +20,7 @@ const SIZES: Readonly<Record<DialogSize, string>> = {
 };
 
 const TONES: Readonly<Record<DialogTone, string>> = {
-  default: 'text-neon-cyan',
+  default: 'text-accent-ink',
   danger: 'text-git-deleted',
   conflict: 'text-[var(--app-conflict-text)]',
 };
@@ -69,7 +69,7 @@ export class YoruDialog {
   );
 
   protected readonly titleClass = computed(
-    () => `flex-1 truncate text-[15px] font-semibold ${TONES[this.tone()]}`,
+    () => `flex-1 truncate text-y-lg font-semibold ${TONES[this.tone()]}`,
   );
 
   protected onEscape(): void {

@@ -9,13 +9,13 @@
 
   <ul
     dialog-body
-    class="neon-scroll flex max-h-48 flex-col gap-0.5 overflow-y-auto rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)]/40 px-2 py-1 font-mono text-[11px] empty:hidden"
+    class="neon-scroll flex max-h-48 flex-col gap-0.5 overflow-y-auto rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)]/40 px-2 py-1 font-mono text-y-sm empty:hidden"
   >
     @for (file of files(); track file) {
       <li class="flex items-center gap-2 truncate" [title]="file">
         <span class="truncate text-[var(--app-text)]">{{ file }}</span>
         @if (isUntracked(file)) {
-          <span class="ml-auto shrink-0 text-[10px] text-[var(--app-text-faint)]">
+          <span class="ml-auto shrink-0 text-y-xs text-[var(--app-text-faint)]">
             deleted
           </span>
         }

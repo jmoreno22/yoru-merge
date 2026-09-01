@@ -15,11 +15,11 @@
       <ng-icon
         name="lucideUser"
         size="16px"
-        class="shrink-0 text-neon-cyan"
+        class="shrink-0 text-accent-ink"
         aria-hidden="true"
       />
       <span
-        class="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+        class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
       >
         Blame
       </span>
@@ -31,7 +31,7 @@
       </span>
       @if (revLabel(); as short) {
         <span
-          class="shrink-0 font-mono text-[11px] text-neon-violet"
+          class="shrink-0 font-mono text-y-sm text-neon-violet"
           data-testid="blame-rev"
           [title]="'Blamed as of ' + rev()"
         >
@@ -39,7 +39,7 @@
         </span>
       } @else {
         <span
-          class="shrink-0 font-mono text-[11px] text-[var(--app-text-faint)]"
+          class="shrink-0 font-mono text-y-sm text-[var(--app-text-faint)]"
           data-testid="blame-rev"
         >
           working tree
@@ -47,7 +47,7 @@
       }
       @if (rows().length > 0) {
         <span
-          class="shrink-0 font-mono text-[11px] tabular-nums text-[var(--app-text-faint)]"
+          class="shrink-0 font-mono text-y-sm tabular-nums text-[var(--app-text-faint)]"
         >
           {{ rows().length }} lines
         </span>
@@ -91,7 +91,7 @@
       <cdk-virtual-scroll-viewport
         class="neon-scroll min-h-0 flex-1 bg-[var(--app-surface)]"
         data-testid="blame-content"
-        [itemSize]="rowHeight"
+        [itemSize]="rowHeight()"
       >
         <div
           *cdkVirtualFor="let row of rows(); trackBy: trackRow"

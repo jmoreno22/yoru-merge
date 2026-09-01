@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { CommitInfo, RefInfo } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import type { DragPayload } from '../../core/services/drag-payload.service';
 import { PreferencesService } from '../../core/services/preferences.service';
@@ -25,12 +26,7 @@ import {
   YoruSpinner,
 } from '../../shared/ui';
 import { CommitActions } from './commit-actions.service';
-import {
-  COMMIT_HEADER_HEIGHT,
-  COMMIT_ROW_HEIGHT,
-  COMMIT_SEARCH_HEIGHT,
-  CommitListLayout,
-} from './commit-list-layout';
+import { CommitListLayout } from './commit-list-layout';
 import { describeRef, isHeadCommit, splitRefs } from './commit-refs';
 import { CommitSearch } from './commit-search';
 import {
@@ -103,12 +99,15 @@ export class CommitList {
   private readonly actions = inject(CommitActions);
   private readonly layout = inject(CommitListLayout);
   private readonly prefs = inject(PreferencesService);
+  private readonly appearance = inject(AppearanceService);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Set to false once the layout mounts `<app-commit-search>` in the header. */
   readonly showSearch = input<boolean>(true);
 
-  protected readonly rowHeight = COMMIT_ROW_HEIGHT;
+  /** Signal, not a constant: it is also the `--row-h` token, and the sibling
+   * graph offsets its lanes by the same number. */
+  protected readonly rowHeight = this.appearance.rowHeight;
   protected readonly skeletonRows = Array.from({ length: SKELETON_ROWS }, (_, i) => i);
 
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
@@ -174,9 +173,11 @@ export class CommitList {
 
   constructor() {
     effect(() => {
-      this.layout.chromeHeight.set(
-        COMMIT_HEADER_HEIGHT + (this.showSearch() ? COMMIT_SEARCH_HEIGHT : 0),
-      );
+      // The header and the search bar are each one panel head tall, so the
+      // graph's top offset follows the type size with them.
+      const head = this.appearance.panelHeadHeight();
+      this.layout.chromeHeight.set(head + (this.showSearch() ? head : 0));
+      this.layout.footerHeight.set(this.appearance.statusbarHeight());
     });
 
     // The sibling graph paints from this offset; the viewport is remounted
@@ -344,7 +345,7 @@ export class CommitList {
 
   private pageSize(): number {
     const height = this.viewport()?.getViewportSize() ?? 0;
-    return Math.max(1, Math.floor(height / this.rowHeight) - 1);
+    return Math.max(1, Math.floor(height / this.rowHeight()) - 1);
   }
 
   private maybeLoadMore(): void {

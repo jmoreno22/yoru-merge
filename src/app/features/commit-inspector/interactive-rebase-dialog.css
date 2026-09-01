@@ -13,17 +13,17 @@
   background: var(--app-panel);
   padding: 6px 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-y-md);
   color: var(--app-text);
 }
 
 .message-input:focus {
-  border-color: var(--color-neon-cyan);
+  border-color: var(--app-accent);
 }
 
 /* The row the pointer is carrying, and the gap it leaves behind. */
 .rebase-row.cdk-drag-preview {
-  border-color: var(--color-neon-cyan);
+  border-color: var(--app-accent);
   box-shadow: var(--app-shadow-panel);
 }
 
