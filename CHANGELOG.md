@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-01
+
 ### Added
 
 - **AI commit messages** — a button (and `Ctrl+Shift+Enter`) in the commit
@@ -64,6 +66,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it then opens Settings › AI, since a feature that ships turned off is a
   feature nobody finds. A repository that opted out hides it outright.
 
+- **Linux installs in one command** —
+  `curl -fsSL https://jmoreno22.github.io/yoru-merge/install.sh | sh` picks the
+  package that matches the distribution (`.deb` on Debian and Ubuntu, `.rpm` on
+  Fedora and openSUSE, the AppImage anywhere else), installs it from the latest
+  release, and updates it when run again. The script is published from this
+  repository, so what is piped into `sh` is the file in the tree.
+
 ### Changed
 
 - The commit composer prints the header it is about to write — `feat(ai)!: …` —
@@ -78,10 +87,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `pnpm lint` failed on every source file on a Windows checkout. Biome formats
-  with LF and the repository had no `.gitattributes`, so `core.autocrlf` handed
-  it CRLF; line endings are now normalised in the working tree as well as in
-  the repository.
+- The `.deb` and `.rpm` packages did not declare git. YoruMerge drives the
+  system git, so both package managers would happily install an application
+  that could not do anything; they now pull git in as a dependency.
 
 ## [1.0.2] - 2026-09-01
 

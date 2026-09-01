@@ -38,7 +38,7 @@ jobs:
 
           {
             echo 'body<<YORU_RELEASE_BODY'
-            printf '## YoruMerge %s\n\n%s\n\n### Downloads\n- **Windows**: `.msi` installer\n- **Linux**: `.AppImage` (portable) or `.deb` (Debian/Ubuntu)\n' "$TAG" "$notes"
+            printf '## YoruMerge %s\n\n%s\n\n### Downloads\n- **Windows**: `.exe` or `.msi` installer\n- **Linux**: `curl -fsSL https://jmoreno22.github.io/yoru-merge/install.sh | sh`, or the `.deb`, `.rpm` and `.AppImage` below\n' "$TAG" "$notes"
             echo 'YORU_RELEASE_BODY'
           } >> "$GITHUB_OUTPUT"
 
