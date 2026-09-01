@@ -1,6 +1,6 @@
 [package]
 name = "yoru-merge"
-version = "1.0.1"
+version = "1.0.2"
 description = "YoruMerge — a fast Git GUI"
 authors = ["jhoan"]
 edition = "2021"

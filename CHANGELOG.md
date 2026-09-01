@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-01
+
 ### Added
+
+- **Appearance** — deep customization from Settings: UI and code type scales,
+  accent colours, colour and graph palettes, code tab width and ligatures, an
+  animations toggle, inspector placement, sidebar side, and visibility of the
+  toolbar, status bar and graph. Every density-coupled surface (virtual lists,
+  the branch graph, panel chrome) follows the chosen scale through shared
+  tokens.
+- **Zen mode** (`Ctrl+Shift+Z`) — hides the window chrome for a bare
+  history+diff view, and always announces the way back out, including when a
+  session starts in zen.
 
 - The application has a logo — the neon merge "Y" over the night city. Master
   artwork in `docs/logo.png`; the whole platform icon set (window, taskbar,
@@ -24,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Check for updates" in Settings/About only reported that a new version
   exists; it now opens the update dialog so the update can actually be
   accepted or declined.
+- Field captions no longer press against the first control of their group.
 
 ## [1.0.1] - 2026-09-01
 
