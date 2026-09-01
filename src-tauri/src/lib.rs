@@ -109,6 +109,9 @@ pub fn run() {
             commands::system::init_repo,
             commands::system::remove_recent_repo,
             commands::system::get_git_version,
+            commands::ai::generate_commit_message,
+            commands::ai::test_ai_provider,
+            commands::ai::preview_ai_prompt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

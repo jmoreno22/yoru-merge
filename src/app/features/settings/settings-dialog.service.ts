@@ -5,6 +5,7 @@ export type SettingsSection =
   | 'git'
   | 'appearance'
   | 'integrations'
+  | 'ai'
   | 'keyboard'
   | 'about';
 
@@ -16,6 +17,7 @@ export const SETTINGS_SECTIONS: readonly {
   { id: 'git', label: 'Git' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'integrations', label: 'Integrations' },
+  { id: 'ai', label: 'AI' },
   { id: 'keyboard', label: 'Keyboard' },
   { id: 'about', label: 'About' },
 ];

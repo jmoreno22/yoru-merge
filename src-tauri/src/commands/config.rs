@@ -15,6 +15,9 @@ const ALLOWED_KEYS: &[&str] = &[
     "init.defaultBranch",
     "core.autocrlf",
     "fetch.prune",
+    // Not a git setting but a YoruMerge one, kept in git config so it can live
+    // in the repository the user is protecting rather than in app preferences.
+    "yoru.ai",
 ];
 
 fn value_of(cmd: GitCmd, args: &[&str]) -> Option<String> {
@@ -57,6 +60,7 @@ fn repo_config_inner(path: Option<&str>) -> RepoConfig {
         signing_format: effective("gpg.format"),
         default_branch: effective("init.defaultBranch"),
         autocrlf: effective("core.autocrlf"),
+        ai_enabled: effective("yoru.ai").map(|value| as_bool(&value)),
     }
 }
 

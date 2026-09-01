@@ -34,6 +34,7 @@ import type {
 } from '../models';
 import type { PatchApplyFlags } from '../utils/patch-builder';
 import {
+  AiOps,
   BranchOps,
   type CheckoutOptions,
   type CloneOutcome,
@@ -93,6 +94,7 @@ export class CurrentRepoService {
   private readonly sequencerOps = inject(SequencerOps);
   private readonly systemOps = inject(SystemOps);
   private readonly configOps = inject(ConfigOps);
+  private readonly aiOps = inject(AiOps);
 
   /** Stands in for the active tab so every signal stays readable with none. */
   private readonly fallbackState = new RepoState('__fallback__', '');
@@ -209,6 +211,11 @@ export class CurrentRepoService {
   readonly reflog = this.proxyWritable((state) => state.reflog);
   readonly config = this.proxyWritable((state) => state.config);
   readonly configBusy = this.proxyWritable((state) => state.configBusy);
+
+  // ── AI ─────────────────────────────────────────────────────────────────
+  /** True while a provider is drafting a commit message. */
+  readonly aiBusy = this.proxyWritable((state) => state.aiBusy);
+
   /** Global git config; readable with no repository open. */
   readonly globalConfig = this.configOps.globalConfig;
   readonly globalConfigBusy = this.configOps.globalBusy;
@@ -428,6 +435,19 @@ export class CurrentRepoService {
       ...options,
       amend,
     });
+  }
+
+  /**
+   * Whether the composer should offer an AI draft: the feature is configured
+   * and this repository has not opted out.
+   */
+  aiAvailable(): boolean {
+    return this.aiOps.isAvailable(this.activeOrFallback());
+  }
+
+  /** `null` when the draft could not be produced; the toast already said why. */
+  draftCommitMessage(): Promise<string | null> {
+    return this.aiOps.draftCommitMessage(this.activeOrFallback());
   }
 
   getHeadMessage(): Promise<string> {

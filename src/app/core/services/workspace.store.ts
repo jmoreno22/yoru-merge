@@ -126,6 +126,15 @@ function repoStateDefaults() {
     reflog: [] as ReflogEntry[],
     config: null as RepoConfig | null,
     configBusy: false,
+
+    /**
+     * True while an AI provider is drafting a commit message.
+     *
+     * Deliberately outside the `busy` computed below: drafting reads the diff
+     * and writes nothing, so there is no reason for it to disable half the UI
+     * for the seconds a provider takes to answer.
+     */
+    aiBusy: false,
   };
 }
 
@@ -223,6 +232,7 @@ export class RepoState {
   readonly reflog = this.fields.reflog;
   readonly config = this.fields.config;
   readonly configBusy = this.fields.configBusy;
+  readonly aiBusy = this.fields.aiBusy;
 
   // ── derived ────────────────────────────────────────────────────────────
   readonly isOpen = computed(() => this.repo() !== null);

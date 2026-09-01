@@ -127,6 +127,24 @@
   </p>
 }
 
+@if (headerPrefix(); as prefix) {
+  <p
+    class="flex min-w-0 items-baseline gap-1 font-mono text-y-xs"
+    data-testid="commit-header-preview"
+    [attr.aria-label]="'Commit subject will be: ' + headerPreview()"
+  >
+    <span class="shrink-0 text-[var(--app-text-faint)]">Subject</span>
+    <span class="min-w-0 truncate">
+      <span class="text-accent-ink">{{ prefix }}</span>
+      @if (subject().trim(); as text) {
+        <span class="text-[var(--app-text)]">{{ text }}</span>
+      } @else {
+        <span class="text-[var(--app-text-faint)]">…</span>
+      }
+    </span>
+  </p>
+}
+
 <div class="flex items-center gap-2">
   <p class="min-w-0 flex-1 truncate font-mono text-y-xs text-[var(--app-text-faint)]">
     {{ summaryText() }}
@@ -136,6 +154,26 @@
     <span class="shrink-0 text-y-sm text-[var(--app-text-faint)]">{{ reason }}</span>
   } @else {
     <yoru-kbd combo="mod+enter" />
+  }
+
+  @if (aiOffered()) {
+    <button
+      type="button"
+      (click)="draftMessage()"
+      [disabled]="!canDraft()"
+      [attr.aria-label]="draftLabel()"
+      [title]="draftLabel()"
+      [attr.aria-busy]="drafting()"
+      class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-accent disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)] disabled:hover:bg-transparent"
+    >
+      <ng-icon
+        [name]="drafting() ? 'lucideLoaderCircle' : 'lucideSparkles'"
+        [class.animate-spin]="drafting()"
+        [class.opacity-50]="!aiConfigured()"
+        size="14px"
+        aria-hidden="true"
+      />
+    </button>
   }
 
   <button

@@ -62,6 +62,20 @@ export function buildCommitMessage(draft: CommitDraft): string {
   return formatConventionalCommit(commit);
 }
 
+/**
+ * The `feat(scope)!: ` git will store ahead of the subject, or `''` when no type
+ * is picked and the subject is stored verbatim.
+ *
+ * Exists so the composer can show what the chips and the scope field actually
+ * add: they sit above the subject input and their effect appears in neither.
+ */
+export function headerPrefix(draft: CommitDraft): string {
+  const type = draft.type.trim();
+  if (type.length === 0) return '';
+  const scope = draft.scope.trim();
+  return `${type}${scope.length > 0 ? `(${scope})` : ''}${draft.breaking ? '!' : ''}: `;
+}
+
 /** Message → draft, for Amend and for reusing a recent message. */
 export function draftFromMessage(message: string): CommitDraft {
   const parsed = parseConventionalCommit(message);

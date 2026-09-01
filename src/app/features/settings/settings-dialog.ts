@@ -22,11 +22,17 @@ import type {
   UiDensity,
 } from '../../core/services/preferences-schema';
 import {
+  MAX_AI_DIFF_KB,
+  MAX_AI_INSTRUCTIONS,
+  MAX_AI_TIMEOUT_SECONDS,
   MAX_MONO_FONT_SIZE,
   MAX_UI_FONT_SIZE,
+  MIN_AI_DIFF_KB,
+  MIN_AI_TIMEOUT_SECONDS,
   MIN_MONO_FONT_SIZE,
   MIN_UI_FONT_SIZE,
 } from '../../core/services/preferences-schema';
+import { TauriGitService } from '../../core/services/tauri-git.service';
 import type { ThemeMode } from '../../core/services/theme.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { runThemeTransition } from '../../core/services/view-transition';
@@ -35,6 +41,7 @@ import { parseRemoteUrl } from '../../core/utils';
 import type { SegmentedOption } from '../../shared/ui';
 import {
   KeyboardShortcutsService,
+  YoruButton,
   YoruDialog,
   YoruField,
   YoruKbd,
@@ -44,6 +51,17 @@ import {
 } from '../../shared/ui';
 import { AboutPanel } from '../about/about-panel';
 import { COMMIT_COLUMNS, toggleColumn } from '../commit-list/commit-columns';
+import {
+  AI_PRESETS,
+  commandForPresetId as aiCommandForPresetId,
+  presetIdForCommand as aiPresetIdForCommand,
+  DEFAULT_AI_INSTRUCTIONS,
+  PROVIDER_DEFAULT_ID,
+  providerCommandError,
+  readFlagValue,
+  sendsPromptAsArgument,
+  withFlagValue,
+} from './ai-presets';
 import {
   CUSTOM_PRESET_ID,
   commandForPresetId,
@@ -68,6 +86,7 @@ const PROVIDER_LABELS: Readonly<Record<RemoteProvider, string>> = {
 @Component({
   selector: 'app-settings-dialog',
   imports: [
+    YoruButton,
     YoruDialog,
     YoruField,
     YoruKbd,
@@ -88,6 +107,7 @@ export class SettingsDialog {
   private readonly shortcutsService = inject(KeyboardShortcutsService);
   protected readonly prefs = inject(PreferencesService);
   private readonly appearance = inject(AppearanceService);
+  private readonly git = inject(TauriGitService);
 
   protected readonly sections = SETTINGS_SECTIONS;
   protected readonly open = this.settings.isOpen;
@@ -271,6 +291,96 @@ export class SettingsDialog {
       : '{dir} is replaced with the repository root.',
   );
 
+  // ── AI ──────────────────────────────────────────────────────────────────
+
+  protected readonly aiPresets = AI_PRESETS;
+  protected readonly minAiDiffKb = MIN_AI_DIFF_KB;
+  protected readonly maxAiDiffKb = MAX_AI_DIFF_KB;
+  protected readonly minAiTimeout = MIN_AI_TIMEOUT_SECONDS;
+  protected readonly maxAiTimeout = MAX_AI_TIMEOUT_SECONDS;
+  protected readonly maxAiInstructions = MAX_AI_INSTRUCTIONS;
+
+  protected readonly aiPresetId = computed(() =>
+    aiPresetIdForCommand(this.prefs.aiProvider()),
+  );
+
+  /**
+   * The preset whose pickers apply to the command on screen.
+   *
+   * Matched on the program name rather than the whole command, so changing the
+   * model or adding a flag by hand does not make the pickers vanish — they are
+   * editors of this command, and they should keep working on it.
+   */
+  private readonly aiPresetForCommand = computed(() => {
+    const program = this.prefs.aiProvider().trim().split(/\s+/)[0];
+    if (!program) return undefined;
+    return AI_PRESETS.find(
+      (preset) =>
+        preset.command.split(/\s+/)[0] === program && preset.command.length > 0,
+    );
+  });
+
+  /** Model options for the current command, empty when there are none to offer. */
+  protected readonly aiModels = computed(() => this.aiPresetForCommand()?.models ?? []);
+  protected readonly aiModel = computed(() => {
+    const flag = this.aiPresetForCommand()?.modelFlag;
+    if (!flag) return PROVIDER_DEFAULT_ID;
+    return readFlagValue(this.prefs.aiProvider(), flag) ?? PROVIDER_DEFAULT_ID;
+  });
+
+  protected readonly aiEfforts = computed(
+    () => this.aiPresetForCommand()?.efforts ?? [],
+  );
+  protected readonly aiEffort = computed(() => {
+    const flag = this.aiPresetForCommand()?.effortFlag;
+    if (!flag) return PROVIDER_DEFAULT_ID;
+    return readFlagValue(this.prefs.aiProvider(), flag) ?? PROVIDER_DEFAULT_ID;
+  });
+  protected readonly aiError = computed(() =>
+    this.prefs.aiProvider().trim().length === 0
+      ? ''
+      : providerCommandError(this.prefs.aiProvider()),
+  );
+
+  /**
+   * What the chosen preset says about itself. A custom command gets the generic
+   * explanation of the placeholder instead, which is the only thing the app can
+   * say about a CLI it has never heard of.
+   */
+  protected readonly aiHint = computed(() => {
+    const preset = AI_PRESETS.find((candidate) => candidate.id === this.aiPresetId());
+    if (preset && preset.hint.length > 0) return preset.hint;
+    return sendsPromptAsArgument(this.prefs.aiProvider())
+      ? 'The prompt goes in the {prompt} argument, so the diff sent is capped at 16 KB.'
+      : 'The prompt is piped to stdin. Add {prompt} as an argument if your CLI needs it there instead.';
+  });
+
+  /** The prompt that would be sent, once the user asks to see it. */
+  protected readonly aiPromptPreview = signal<string>('');
+  protected readonly aiPreviewError = signal<string>('');
+
+  protected readonly aiInstructionsLeft = computed(
+    () => MAX_AI_INSTRUCTIONS - this.prefs.aiInstructions().length,
+  );
+
+  /** Result of the last Test run: the drafted message, or the failure. */
+  protected readonly aiTestResult = signal<string>('');
+  protected readonly aiTestError = signal<string>('');
+  protected readonly aiTesting = signal(false);
+
+  /** Test needs a command that at least parses, and one run at a time. */
+  protected readonly aiTestDisabled = computed(
+    () =>
+      this.aiTesting() ||
+      this.aiError().length > 0 ||
+      this.prefs.aiProvider().trim().length === 0,
+  );
+
+  /** `yoru.ai=false` in the open repository, which overrides the preference. */
+  protected readonly aiBlockedByRepo = computed(
+    () => this.currentRepo.config()?.ai_enabled === false,
+  );
+
   /** Which hosting provider "open on remote" will use, read from origin. */
   protected readonly remoteProvider = computed(() => {
     const remotes = this.currentRepo.remotes();
@@ -400,6 +510,127 @@ export class SettingsDialog {
   }
 
   // ── Integrations ─────────────────────────────────────────────────────────
+  protected onAiPreset(event: Event): void {
+    const id = (event.target as HTMLSelectElement).value;
+    const command = aiCommandForPresetId(id);
+    if (command !== null) this.prefs.setAiProvider(command);
+    // Nobody should meet an empty box wondering what belongs in it; anything
+    // already written is theirs and is left alone.
+    if (command !== null && this.prefs.aiInstructions().trim().length === 0) {
+      this.prefs.setAiInstructions(DEFAULT_AI_INSTRUCTIONS);
+    }
+    this.clearAiTest();
+  }
+
+  /** Writes the picked model back into the command, which stays the source of truth. */
+  protected onAiModel(event: Event): void {
+    const flag = this.aiPresetForCommand()?.modelFlag;
+    if (!flag) return;
+    const value = (event.target as HTMLSelectElement).value;
+    this.prefs.setAiProvider(withFlagValue(this.prefs.aiProvider(), flag, value));
+    this.clearAiTest();
+  }
+
+  protected onAiEffort(event: Event): void {
+    const flag = this.aiPresetForCommand()?.effortFlag;
+    if (!flag) return;
+    const value = (event.target as HTMLSelectElement).value;
+    this.prefs.setAiProvider(withFlagValue(this.prefs.aiProvider(), flag, value));
+    this.clearAiTest();
+  }
+
+  protected restoreDefaultInstructions(): void {
+    this.prefs.setAiInstructions(DEFAULT_AI_INSTRUCTIONS);
+    this.aiPromptPreview.set('');
+  }
+
+  protected onAiCommand(event: Event): void {
+    this.prefs.setAiProvider((event.target as HTMLInputElement).value.trim());
+    this.clearAiTest();
+  }
+
+  protected onAiInstructions(event: Event): void {
+    this.prefs.setAiInstructions((event.target as HTMLTextAreaElement).value);
+    // The preview on screen describes the old wording; drop it rather than lie.
+    this.aiPromptPreview.set('');
+    this.aiPreviewError.set('');
+  }
+
+  /**
+   * Loads the exact prompt that would be sent for the staged changes.
+   *
+   * Needs a repository with something staged — the prompt is mostly the diff,
+   * and a preview without one would show none of what actually matters.
+   */
+  protected async previewAiPrompt(): Promise<void> {
+    const repo = this.currentRepo.repo();
+    if (!repo) return;
+    this.aiPreviewError.set('');
+    try {
+      this.aiPromptPreview.set(
+        await this.git.previewAiPrompt(repo.path, this.prefs.aiProvider().trim(), {
+          instructions: this.prefs.aiInstructions(),
+          maxDiffKb: this.prefs.aiMaxDiffKb(),
+        }),
+      );
+    } catch (error: unknown) {
+      this.aiPromptPreview.set('');
+      this.aiPreviewError.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  protected onAiMaxDiffKb(event: Event): void {
+    this.prefs.setAiMaxDiffKb(Number((event.target as HTMLInputElement).value));
+  }
+
+  protected onAiTimeout(event: Event): void {
+    this.prefs.setAiTimeoutSeconds(Number((event.target as HTMLInputElement).value));
+  }
+
+  /**
+   * Turns the per-repository opt-out on or off by writing `yoru.ai`.
+   *
+   * Kept in git config rather than in app preferences so it travels with the
+   * repository it is protecting: a clone of a client's code stays opted out on
+   * every machine that has the setting, not just the one that made it.
+   */
+  protected onAiRepoOptOut(allowed: boolean): void {
+    void this.currentRepo.setConfigAction('yoru.ai', allowed ? null : 'false', false);
+  }
+
+  /**
+   * Runs the configured command against a fixed one-line diff.
+   *
+   * The probe diff is invented, so the answer proves the CLI is installed,
+   * authenticated and returning something usable without showing anyone a line
+   * of the user's code.
+   */
+  protected async testAiProvider(): Promise<void> {
+    if (this.aiTesting() || this.aiError().length > 0) return;
+    const command = this.prefs.aiProvider().trim();
+    if (command.length === 0) return;
+
+    this.aiTesting.set(true);
+    this.aiTestResult.set('');
+    this.aiTestError.set('');
+    try {
+      const message = await this.git.testAiProvider(
+        command,
+        this.prefs.aiTimeoutSeconds(),
+      );
+      this.aiTestResult.set(message);
+    } catch (error: unknown) {
+      this.aiTestError.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.aiTesting.set(false);
+    }
+  }
+
+  private clearAiTest(): void {
+    this.aiTestResult.set('');
+    this.aiTestError.set('');
+  }
+
   protected onEditorPreset(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     this.editorCustom.set(id === CUSTOM_PRESET_ID);

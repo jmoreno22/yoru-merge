@@ -1,4 +1,6 @@
 pub mod advanced;
+pub mod ai;
+pub mod ai_message;
 pub mod branch_ops;
 pub mod branches;
 pub mod changes;

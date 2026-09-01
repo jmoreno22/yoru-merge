@@ -95,6 +95,26 @@ export interface DurablePreferences {
    */
   zenMode: boolean;
 
+  /**
+   * Command of the AI CLI used to draft commit messages; empty means the
+   * feature is unconfigured. Never a key or a token — YoruMerge runs the CLI
+   * the user has already authenticated and stores nothing else.
+   */
+  aiProvider: string;
+  /** Master switch for AI commit messages. Off until the user opts in. */
+  aiEnabled: boolean;
+  /**
+   * The user's own layer of the prompt: house style, a language, a ticket
+   * convention. Appended after the built-in rules rather than replacing them,
+   * so it can refine the message without breaking the format the composer has
+   * to read back. Capped in the backend by `sanitize_instructions`.
+   */
+  aiInstructions: string;
+  /** Kilobytes of staged diff sent to the provider (1-256). */
+  aiMaxDiffKb: number;
+  /** Seconds before a provider that has not answered is killed (5-300). */
+  aiTimeoutSeconds: number;
+
   /** Command used by "Open in editor"; empty means $VISUAL/$EDITOR/`code`. */
   externalEditor: string;
   /** Command used by "Open in terminal"; empty means the OS default. */
@@ -120,7 +140,7 @@ export interface PreferencesSchema extends DurablePreferences {
 }
 
 /** Bumped whenever a stored shape changes; drives {@link migratePreferences}. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const SCHEMA_VERSION_KEY = 'schemaVersion';
 
@@ -151,6 +171,11 @@ export const DEFAULT_PREFERENCES: DurablePreferences = {
   showStatusBar: true,
   showGraph: true,
   zenMode: false,
+  aiProvider: '',
+  aiEnabled: false,
+  aiInstructions: '',
+  aiMaxDiffKb: 48,
+  aiTimeoutSeconds: 60,
   externalEditor: '',
   terminal: '',
   autoFetchMinutes: 0,
@@ -182,6 +207,14 @@ const SIDEBAR_SIDES: readonly SidebarSide[] = ['left', 'right'];
  * Type-size bounds. The floors are legibility limits, not arbitrary: below
  * 11px the ratio-derived micro labels (0.65x) fall under 7px.
  */
+/** Mirrors `MAX_INSTRUCTIONS_CHARS` in `ai_message.rs`. */
+export const MAX_AI_INSTRUCTIONS = 2000;
+
+export const MIN_AI_DIFF_KB = 1;
+export const MAX_AI_DIFF_KB = 256;
+export const MIN_AI_TIMEOUT_SECONDS = 5;
+export const MAX_AI_TIMEOUT_SECONDS = 300;
+
 export const MIN_UI_FONT_SIZE = 11;
 export const MAX_UI_FONT_SIZE = 17;
 export const MIN_MONO_FONT_SIZE = 10;
@@ -191,9 +224,10 @@ export const MAX_MONO_FONT_SIZE = 18;
  * Upgrades a stored payload to {@link SCHEMA_VERSION}.
  *
  * Version 0 is "written before the version key existed": its keys already match
- * the current names, so nothing has to move. Version 1 -> 2 only added keys
- * (typography, accent, layout), and a missing key already falls back to its
- * default, so there is still nothing to move. Later migrations go here.
+ * the current names, so nothing has to move. Every bump since has only added
+ * keys — 1 -> 2 typography, accent and layout, 2 -> 3 the AI provider — and a
+ * missing key already falls back to its default, so there is still nothing to
+ * move. Later migrations go here.
  */
 export function migratePreferences(
   stored: Record<string, unknown>,
@@ -289,6 +323,26 @@ export function sanitizePreferences(
   const zenMode = raw['zenMode'];
   if (typeof zenMode === 'boolean') out.zenMode = zenMode;
 
+  // A provider command is free-form (it names a program the app does not know
+  // about), so only its type is checked here; `parse_provider_command` in the
+  // backend is what refuses one it cannot run.
+  const aiProvider = raw['aiProvider'];
+  if (typeof aiProvider === 'string') out.aiProvider = aiProvider;
+
+  const aiEnabled = raw['aiEnabled'];
+  if (typeof aiEnabled === 'boolean') out.aiEnabled = aiEnabled;
+
+  const aiInstructions = raw['aiInstructions'];
+  if (typeof aiInstructions === 'string') {
+    out.aiInstructions = aiInstructions.slice(0, MAX_AI_INSTRUCTIONS);
+  }
+
+  const aiMaxDiffKb = asNumber(raw['aiMaxDiffKb']);
+  if (aiMaxDiffKb !== null) out.aiMaxDiffKb = clampAiDiffKb(aiMaxDiffKb);
+
+  const aiTimeout = asNumber(raw['aiTimeoutSeconds']);
+  if (aiTimeout !== null) out.aiTimeoutSeconds = clampAiTimeout(aiTimeout);
+
   const editor = raw['externalEditor'];
   if (typeof editor === 'string') out.externalEditor = editor;
 
@@ -321,6 +375,19 @@ export function sanitizePreferences(
   if (isStringArray(columns) && columns.length > 0) out.commitsColumns = columns;
 
   return out;
+}
+
+export function clampAiDiffKb(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.aiMaxDiffKb;
+  return Math.min(MAX_AI_DIFF_KB, Math.max(MIN_AI_DIFF_KB, Math.round(value)));
+}
+
+export function clampAiTimeout(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.aiTimeoutSeconds;
+  return Math.min(
+    MAX_AI_TIMEOUT_SECONDS,
+    Math.max(MIN_AI_TIMEOUT_SECONDS, Math.round(value)),
+  );
 }
 
 export function clampPercent(value: number): number {

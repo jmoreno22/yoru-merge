@@ -52,7 +52,17 @@ separators for anything that can contain a path.
 `src-tauri/src/commands/` is one module per domain: `repo`, `commits`,
 `changes`, `staging`, `hunks`, `diff`, `branches`, `branch_ops`, `tags`,
 `merge`, `stash`, `remote`, `search`, `history`, `commit_details`, `repo_state`,
-`sequencer`, `reflog`, `config`, `system`, `watcher`, `git_auth`, `advanced`.
+`sequencer`, `reflog`, `config`, `system`, `watcher`, `git_auth`, `advanced`,
+`ai` + `ai_message`.
+
+`ai` is the one module that spawns something other than git: the AI CLI the
+user configured, for drafting commit messages. It follows `GitCmd`'s rules —
+no shell, fixed environment, hidden window, AppImage library paths stripped —
+and adds a hard timeout, because a CLI can sit on a login prompt forever where
+`git log` cannot. Everything decidable without a subprocess (parsing the
+provider command, building the prompt, truncating the diff, cleaning up the
+answer) lives in `ai_message` as pure functions, which is what lets the whole
+contract be tested with no provider installed.
 
 Commands are `async fn` and run their blocking work inside
 `tauri::async_runtime::spawn_blocking`, so a slow `git log` on a large
@@ -107,7 +117,7 @@ Switching tabs swaps which `RepoState` the UI reads; nothing is re-fetched.
 `CurrentRepoService` is a thin facade over the active `RepoState`. The actual
 work lives in `core/services/ops/` — one service per domain (`repo-ops`,
 `staging-ops`, `branch-ops`, `remote-ops`, `merge-ops`, `stash-ops`,
-`history-ops`, `sequencer-ops`, `system-ops`), each taking the `RepoState` it
+`history-ops`, `sequencer-ops`, `system-ops`, `ai-ops`), each taking the `RepoState` it
 operates on explicitly, so an action started on one tab cannot land on another
 after an await.
 

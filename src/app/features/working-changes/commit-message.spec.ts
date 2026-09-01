@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { commitSubject } from '../../core/utils/conventional-commit';
 import {
   amendWarning,
   buildCommitMessage,
@@ -8,6 +9,7 @@ import {
   draftFromMessage,
   EMPTY_DRAFT,
   headerLength,
+  headerPrefix,
   isDraftEmpty,
   recentScopes,
   SUBJECT_MAX,
@@ -21,6 +23,48 @@ describe('subjectStatus', () => {
     expect(subjectStatus(SUBJECT_WARN + 1)).toBe('warn');
     expect(subjectStatus(SUBJECT_MAX)).toBe('warn');
     expect(subjectStatus(SUBJECT_MAX + 1)).toBe('error');
+  });
+});
+
+describe('headerPrefix', () => {
+  it('is empty without a type, since the subject is then stored verbatim', () => {
+    expect(headerPrefix(EMPTY_DRAFT)).toBe('');
+    expect(headerPrefix({ ...EMPTY_DRAFT, subject: 'plain message' })).toBe('');
+    // A scope with no type is not a header either.
+    expect(headerPrefix({ ...EMPTY_DRAFT, scope: 'ai' })).toBe('');
+  });
+
+  it('carries the type, the scope and the breaking marker', () => {
+    expect(headerPrefix({ ...EMPTY_DRAFT, type: 'feat' })).toBe('feat: ');
+    expect(headerPrefix({ ...EMPTY_DRAFT, type: 'feat', scope: 'ai' })).toBe(
+      'feat(ai): ',
+    );
+    expect(
+      headerPrefix({ ...EMPTY_DRAFT, type: 'feat', scope: 'ai', breaking: true }),
+    ).toBe('feat(ai)!: ');
+    expect(headerPrefix({ ...EMPTY_DRAFT, type: 'fix', breaking: true })).toBe(
+      'fix!: ',
+    );
+  });
+
+  it('ignores whitespace the user is still typing', () => {
+    expect(headerPrefix({ ...EMPTY_DRAFT, type: 'feat', scope: '  ai  ' })).toBe(
+      'feat(ai): ',
+    );
+    expect(headerPrefix({ ...EMPTY_DRAFT, type: '  ' })).toBe('');
+  });
+
+  /** What it shows has to be what git will store, or it is worse than nothing. */
+  it('agrees with buildCommitMessage', () => {
+    for (const draft of [
+      { ...EMPTY_DRAFT, type: 'feat', scope: 'ai', subject: 'draft messages' },
+      { ...EMPTY_DRAFT, type: 'fix', breaking: true, subject: 'drop the old API' },
+      { ...EMPTY_DRAFT, type: 'chore', subject: 'bump deps' },
+    ]) {
+      expect(commitSubject(buildCommitMessage(draft))).toBe(
+        headerPrefix(draft) + draft.subject,
+      );
+    }
   });
 });
 

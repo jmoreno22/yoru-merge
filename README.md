@@ -121,6 +121,15 @@ outside the repositories you open.
 - **Working tree** — stage and unstage by file, hunk or line selection, discard,
   ignore, assume-unchanged, and a commit composer with conventional-commit
   chips, amend, sign-off and GPG signing.
+- **AI commit messages** *(opt-in)* — drafts a message from the staged diff
+  using the AI CLI you already have installed and signed in — Claude Code,
+  Codex, Gemini, Qwen Code, Copilot, Cursor, Kiro, opencode, a local Ollama
+  model, `llm`, or any other command that reads a prompt and prints an answer.
+  It runs on **your** subscription — a provider is just a command string in
+  Settings › AI, so there is no API key to enter and none is stored. Your own **house rules** ("write in Spanish",
+  "never use a scope") layer on top of the built-in prompt, and *Show the
+  prompt* displays exactly what would be sent. Off by default; a repository can
+  refuse it outright with `git config yoru.ai false`.
 - **Branches and refs** — create, rename, delete, checkout (including a dirty
   tree), set upstream, compare, plus tags, stashes and remote branches in one
   filterable panel.

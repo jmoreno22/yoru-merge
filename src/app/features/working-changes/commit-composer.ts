@@ -24,6 +24,7 @@ import {
   YoruKbd,
   YoruSwitch,
 } from '../../shared/ui';
+import { SettingsDialogService } from '../settings/settings-dialog.service';
 import { CommitComposerFocus } from './commit-composer-focus.service';
 import {
   amendWarning,
@@ -34,6 +35,7 @@ import {
   countDiffStats,
   draftFromMessage,
   headerLength,
+  headerPrefix,
   isDraftEmpty,
   recentScopes,
   SUBJECT_MAX,
@@ -79,6 +81,7 @@ export class CommitComposer {
   private readonly shortcuts = inject(KeyboardShortcutsService);
   private readonly toasts = inject(ToastService);
   private readonly focusRequests = inject(CommitComposerFocus);
+  private readonly settings = inject(SettingsDialogService);
 
   private readonly subjectInput =
     viewChild<ElementRef<HTMLInputElement>>('subjectInput');
@@ -121,6 +124,16 @@ export class CommitComposer {
     subject: this.subject(),
     body: this.body(),
   }));
+
+  /**
+   * The `feat(scope)!: ` the chips and the scope field add, empty without a
+   * type. Those controls sit above the subject input and nothing else showed
+   * their effect, so the header they build is printed under the composer.
+   */
+  protected readonly headerPrefix = computed(() => headerPrefix(this.draft()));
+  protected readonly headerPreview = computed(
+    () => this.headerPrefix() + this.subject().trim(),
+  );
 
   protected readonly headerLength = computed(() => headerLength(this.draft()));
   protected readonly subjectState = computed(() => subjectStatus(this.headerLength()));
@@ -215,6 +228,37 @@ export class CommitComposer {
 
   protected readonly commitLabel = computed(() => (this.amend() ? 'Amend' : 'Commit'));
 
+  // ── AI draft ────────────────────────────────────────────────────────────
+
+  protected readonly aiConfigured = computed(() => this.service.aiAvailable());
+  protected readonly drafting = this.service.aiBusy;
+
+  /**
+   * Whether to show the button at all.
+   *
+   * Shown even when unconfigured — pressing it then opens Settings › AI, which
+   * is the only way anyone finds a feature that ships turned off. The one case
+   * that hides it is a repository that opted out: there the answer is no, and
+   * offering a way to turn it on would be answering a different question.
+   */
+  protected readonly aiOffered = computed(
+    () => this.service.isOpen() && this.service.config()?.ai_enabled !== false,
+  );
+
+  /** Same bar as Commit: a draft needs a staged diff to describe. */
+  protected readonly canDraft = computed(
+    () =>
+      !this.aiConfigured() ||
+      (!this.drafting() && !this.busy() && this.stagedCount() > 0),
+  );
+
+  protected readonly draftLabel = computed(() => {
+    if (!this.aiConfigured()) return 'Set up AI commit messages…';
+    if (this.drafting()) return 'Drafting a commit message…';
+    if (this.stagedCount() === 0) return 'Stage something to draft a message';
+    return 'Draft a commit message from the staged diff';
+  });
+
   constructor() {
     const off = this.shortcuts.register({
       id: 'working-changes.commit',
@@ -224,7 +268,18 @@ export class CommitComposer {
       when: () => this.readiness().canCommit,
       run: () => void this.commit('commit'),
     });
-    inject(DestroyRef).onDestroy(off);
+    const offDraft = this.shortcuts.register({
+      id: 'working-changes.draft-message',
+      combo: 'mod+shift+enter',
+      label: 'Draft a commit message with AI',
+      allowInInputs: true,
+      when: () => this.aiConfigured() && this.canDraft(),
+      run: () => void this.draftMessage(),
+    });
+    inject(DestroyRef).onDestroy(() => {
+      off();
+      offDraft();
+    });
 
     effect(() => {
       if (!this.focusRequests.requested()) return;
@@ -321,6 +376,38 @@ export class CommitComposer {
     const message = await this.service.getHeadMessage();
     if (message.length === 0 || !isDraftEmpty(this.draft())) return;
     this.applyDraft(draftFromMessage(message));
+  }
+
+  /**
+   * Replaces the composer with a message drafted from the staged diff.
+   *
+   * Whatever was typed is offered back through the toast rather than guarded by
+   * a confirmation: the common case is an empty composer, and one undo beats a
+   * dialog on every use.
+   */
+  protected async draftMessage(): Promise<void> {
+    // Unconfigured, the button is a way in rather than an action.
+    if (!this.aiConfigured()) {
+      this.settings.open('ai');
+      return;
+    }
+    if (!this.canDraft()) return;
+
+    const previous = this.draft();
+    const message = await this.service.draftCommitMessage();
+    // A failure has already raised its own toast; leave the composer alone.
+    if (message === null) return;
+
+    this.applyDraft(draftFromMessage(message));
+    this.subjectInput()?.nativeElement.focus();
+    this.toasts.show({
+      kind: 'success',
+      message: 'Commit message drafted',
+      key: 'commit-drafted',
+      action: isDraftEmpty(previous)
+        ? undefined
+        : { label: 'Undo', run: () => this.applyDraft(previous) },
+    });
   }
 
   protected async openCommitMenu(event: MouseEvent): Promise<void> {

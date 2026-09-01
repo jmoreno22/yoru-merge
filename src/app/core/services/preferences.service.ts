@@ -5,6 +5,8 @@ import type { PullMode } from '../models';
 import {
   type AccentId,
   asNumber,
+  clampAiDiffKb,
+  clampAiTimeout,
   clampContextLines,
   clampMinutes,
   clampMonoFontSize,
@@ -16,6 +18,7 @@ import {
   type DurablePreferences,
   type GraphPaletteId,
   type InspectorPlacement,
+  MAX_AI_INSTRUCTIONS,
   migratePreferences,
   type RailView,
   SCHEMA_VERSION,
@@ -82,6 +85,11 @@ export class PreferencesService {
   readonly showStatusBar = this.select('showStatusBar');
   readonly showGraph = this.select('showGraph');
   readonly zenMode = this.select('zenMode');
+  readonly aiProvider = this.select('aiProvider');
+  readonly aiEnabled = this.select('aiEnabled');
+  readonly aiInstructions = this.select('aiInstructions');
+  readonly aiMaxDiffKb = this.select('aiMaxDiffKb');
+  readonly aiTimeoutSeconds = this.select('aiTimeoutSeconds');
   readonly externalEditor = this.select('externalEditor');
   readonly terminal = this.select('terminal');
   readonly autoFetchMinutes = this.select('autoFetchMinutes');
@@ -230,6 +238,27 @@ export class PreferencesService {
 
   setZenMode(value: boolean): void {
     this.set('zenMode', value);
+  }
+
+  setAiProvider(command: string): void {
+    this.set('aiProvider', command.trim());
+  }
+
+  setAiEnabled(enabled: boolean): void {
+    this.set('aiEnabled', enabled);
+  }
+
+  /** Trimmed, not trained: the backend caps and cleans it before it is sent. */
+  setAiInstructions(instructions: string): void {
+    this.set('aiInstructions', instructions.slice(0, MAX_AI_INSTRUCTIONS));
+  }
+
+  setAiMaxDiffKb(kilobytes: number): void {
+    this.set('aiMaxDiffKb', clampAiDiffKb(kilobytes));
+  }
+
+  setAiTimeoutSeconds(seconds: number): void {
+    this.set('aiTimeoutSeconds', clampAiTimeout(seconds));
   }
 
   setExternalEditor(command: string): void {

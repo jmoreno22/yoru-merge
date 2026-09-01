@@ -56,6 +56,16 @@ export interface CloneOptions {
   cloneId?: string | null;
 }
 
+/** Options accepted by {@link TauriGitService.generateCommitMessage}. */
+export interface AiProviderOptions {
+  /** The user's own prompt layer; the backend caps and cleans it. */
+  instructions?: string;
+  /** Kilobytes of staged diff to send; the backend clamps it to 1-256. */
+  maxDiffKb?: number;
+  /** Seconds before the provider is killed; the backend clamps it to 5-300. */
+  timeoutSecs?: number;
+}
+
 /** Options accepted by {@link TauriGitService.stashSave}. */
 export interface StashSaveOptions {
   message?: string | null;
@@ -632,6 +642,55 @@ export class TauriGitService {
   }
 
   /** `terminal` is the user's preferred command; `null` uses the OS default. */
+  // ── AI commit messages ──────────────────────────────────────────────────
+
+  /**
+   * A commit message for what is staged, drafted by the CLI named in
+   * `command`.
+   *
+   * The command is the whole configuration: no key, token or account of any
+   * kind crosses this boundary, because the CLI is already authenticated on
+   * the user's machine with the user's own subscription.
+   */
+  generateCommitMessage(
+    path: string,
+    command: string,
+    options: AiProviderOptions = {},
+  ): Promise<string> {
+    return invoke<string>('generate_commit_message', {
+      path,
+      command,
+      instructions: options.instructions ?? null,
+      maxDiffKb: options.maxDiffKb ?? null,
+      timeoutSecs: options.timeoutSecs ?? null,
+    });
+  }
+
+  /**
+   * The exact prompt {@link generateCommitMessage} would send, without sending
+   * it — what Settings shows behind "See what gets sent".
+   */
+  previewAiPrompt(
+    path: string,
+    command: string,
+    options: AiProviderOptions = {},
+  ): Promise<string> {
+    return invoke<string>('preview_ai_prompt', {
+      path,
+      command,
+      instructions: options.instructions ?? null,
+      maxDiffKb: options.maxDiffKb ?? null,
+    });
+  }
+
+  /** Runs the provider against a fixed one-line diff, for the Test button. */
+  testAiProvider(command: string, timeoutSecs?: number): Promise<string> {
+    return invoke<string>('test_ai_provider', {
+      command,
+      timeoutSecs: timeoutSecs ?? null,
+    });
+  }
+
   openInTerminal(dir: string, terminal: string | null = null): Promise<void> {
     return invoke<void>('open_in_terminal', { dir, terminal });
   }

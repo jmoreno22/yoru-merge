@@ -1,3 +1,4 @@
+export * from './ai-ops';
 export * from './branch-ops';
 export * from './config-ops';
 export * from './history-ops';

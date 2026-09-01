@@ -14,4 +14,8 @@ pub struct RepoConfig {
     pub signing_format: Option<String>,
     pub default_branch: Option<String>,
     pub autocrlf: Option<String>,
+    /// `yoru.ai`: the per-repository AI opt-out. `None` when unset (allowed),
+    /// `Some(false)` when this repository refuses to have its diffs sent to a
+    /// provider.
+    pub ai_enabled: Option<bool>,
 }

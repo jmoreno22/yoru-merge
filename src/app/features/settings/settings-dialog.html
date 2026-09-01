@@ -535,6 +535,252 @@
           </yoru-field>
         }
 
+        @case ('ai') {
+          <p class="text-y-sm text-[var(--app-text-muted)]">
+            YoruMerge does not talk to any AI service. It runs the CLI you have
+            already installed and signed in to, on your own subscription, and
+            reads a commit message back. No key or account is stored here.
+          </p>
+
+          <yoru-switch
+            [checked]="prefs.aiEnabled()"
+            (checkedChange)="prefs.setAiEnabled($event)"
+            label="Draft commit messages with AI"
+            hint="Adds a button to the commit composer. Off by default."
+          />
+
+          @if (prefs.aiEnabled()) {
+            <p
+              class="rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 text-y-xs text-[var(--app-text-muted)]"
+              data-testid="settings-ai-privacy"
+            >
+              When you press the button, the staged diff, the current branch and
+              your last 10 commit subjects are sent to the CLI below — and from
+              there to whichever provider it uses. Nothing is sent until you
+              press it. Pick a local model to keep everything on this machine.
+            </p>
+
+            <yoru-field label="Provider" [hint]="aiHint()">
+              <select
+                class="s-select"
+                data-testid="settings-ai-preset"
+                [value]="aiPresetId()"
+                (change)="onAiPreset($event)"
+              >
+                @for (preset of aiPresets; track preset.id) {
+                  <option [value]="preset.id">{{ preset.label }}</option>
+                }
+              </select>
+            </yoru-field>
+
+            @if (aiModels().length > 0 || aiEfforts().length > 0) {
+              <div class="grid grid-cols-2 gap-4">
+                @if (aiModels().length > 0) {
+                  <yoru-field
+                    label="Model"
+                    hint="A commit message needs the small one."
+                  >
+                    <select
+                      class="s-select"
+                      data-testid="settings-ai-model"
+                      [value]="aiModel()"
+                      (change)="onAiModel($event)"
+                    >
+                      <option value="">Provider default</option>
+                      @for (model of aiModels(); track model.id) {
+                        <option [value]="model.id">{{ model.label }}</option>
+                      }
+                    </select>
+                  </yoru-field>
+                }
+
+                @if (aiEfforts().length > 0) {
+                  <yoru-field
+                    label="Thinking"
+                    hint="Reasoning spent before answering — the biggest lever on cost."
+                  >
+                    <select
+                      class="s-select"
+                      data-testid="settings-ai-effort"
+                      [value]="aiEffort()"
+                      (change)="onAiEffort($event)"
+                    >
+                      <option value="">Provider default</option>
+                      @for (effort of aiEfforts(); track effort.id) {
+                        <option [value]="effort.id">{{ effort.label }}</option>
+                      }
+                    </select>
+                  </yoru-field>
+                }
+              </div>
+            }
+
+            <yoru-field
+              label="Command"
+              hint="Every choice above is written into this line; edit it freely."
+              [error]="aiError()"
+            >
+              <input
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                class="s-input"
+                data-testid="settings-ai-command"
+                [value]="prefs.aiProvider()"
+                [attr.aria-invalid]="aiError() ? 'true' : null"
+                placeholder="claude -p --model haiku"
+                (change)="onAiCommand($event)"
+              />
+            </yoru-field>
+
+            <yoru-field
+              label="House rules"
+              hint="Your own instructions, added on top of the built-in ones. They cannot break the format, so the composer can always read the answer back."
+            >
+              <div class="flex flex-col gap-1">
+                <textarea
+                  rows="4"
+                  spellcheck="false"
+                  class="s-input resize-y"
+                  data-testid="settings-ai-instructions"
+                  [attr.maxlength]="maxAiInstructions"
+                  [value]="prefs.aiInstructions()"
+                  placeholder="Write in Spanish.&#10;Never use a scope.&#10;If the branch name starts with a ticket id, put it at the end of the subject."
+                  (change)="onAiInstructions($event)"
+                ></textarea>
+                <div class="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    class="text-y-xs text-[var(--app-text-faint)] underline decoration-dotted transition-colors hover:text-accent-ink"
+                    data-testid="settings-ai-instructions-restore"
+                    (click)="restoreDefaultInstructions()"
+                  >
+                    Restore the defaults
+                  </button>
+                  <p class="font-mono text-y-xs text-[var(--app-text-faint)]">
+                    {{ aiInstructionsLeft() }} left
+                  </p>
+                </div>
+              </div>
+            </yoru-field>
+
+            <div class="grid grid-cols-2 gap-4">
+              <yoru-field
+                label="Diff sent"
+                hint="Kilobytes of the staged diff. Larger costs more; smaller loses context."
+              >
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  class="s-input"
+                  data-testid="settings-ai-diff-kb"
+                  [min]="minAiDiffKb"
+                  [max]="maxAiDiffKb"
+                  [value]="prefs.aiMaxDiffKb()"
+                  (change)="onAiMaxDiffKb($event)"
+                />
+              </yoru-field>
+
+              <yoru-field
+                label="Timeout"
+                hint="Seconds before the CLI is given up on and killed."
+              >
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  class="s-input"
+                  data-testid="settings-ai-timeout"
+                  [min]="minAiTimeout"
+                  [max]="maxAiTimeout"
+                  [value]="prefs.aiTimeoutSeconds()"
+                  (change)="onAiTimeout($event)"
+                />
+              </yoru-field>
+            </div>
+
+            <yoru-field
+              label="Test"
+              hint="Runs your command on an invented one-line diff. None of your code is sent."
+            >
+              <div class="flex flex-col gap-2">
+                <yoru-button
+                  class="self-start"
+                  size="sm"
+                  icon="lucideSparkles"
+                  data-testid="settings-ai-test"
+                  [loading]="aiTesting()"
+                  [disabled]="aiTestDisabled()"
+                  (click)="testAiProvider()"
+                >
+                  {{ aiTesting() ? 'Testing…' : 'Test provider' }}
+                </yoru-button>
+
+                @if (aiTestResult(); as result) {
+                  <pre
+                    class="whitespace-pre-wrap rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 font-mono text-y-xs text-[var(--app-text)]"
+                    data-testid="settings-ai-test-result"
+                    >{{ result }}</pre
+                  >
+                }
+                @if (aiTestError(); as error) {
+                  <p
+                    class="font-mono text-y-xs text-git-deleted"
+                    data-testid="settings-ai-test-error"
+                  >
+                    {{ error }}
+                  </p>
+                }
+              </div>
+            </yoru-field>
+
+            @if (hasRepo()) {
+              <yoru-field
+                label="What gets sent"
+                hint="The exact text handed to the CLI for what is staged right now — our rules, your house rules, and your diff."
+              >
+                <div class="flex flex-col gap-2">
+                  <yoru-button
+                    class="self-start"
+                    size="sm"
+                    icon="lucideEye"
+                    data-testid="settings-ai-preview"
+                    (click)="previewAiPrompt()"
+                  >
+                    Show the prompt
+                  </yoru-button>
+
+                  @if (aiPromptPreview(); as preview) {
+                    <pre
+                      class="max-h-64 overflow-auto whitespace-pre-wrap rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 font-mono text-y-xs text-[var(--app-text-muted)]"
+                      data-testid="settings-ai-preview-text"
+                      >{{ preview }}</pre
+                    >
+                  }
+                  @if (aiPreviewError(); as error) {
+                    <p
+                      class="font-mono text-y-xs text-git-deleted"
+                      data-testid="settings-ai-preview-error"
+                    >
+                      {{ error }}
+                    </p>
+                  }
+                </div>
+              </yoru-field>
+            }
+
+            @if (hasRepo()) {
+              <yoru-switch
+                [checked]="!aiBlockedByRepo()"
+                [disabled]="configBusy()"
+                (checkedChange)="onAiRepoOptOut($event)"
+                label="Allow AI in this repository"
+                hint="yoru.ai — turn it off for code that must never leave your machine."
+              />
+            }
+          }
+        }
+
+
         @case ('keyboard') {
           <table class="w-full text-y-base" data-testid="settings-shortcuts">
             <caption class="sr-only">Registered keyboard shortcuts</caption>

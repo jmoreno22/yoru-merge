@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **AI commit messages** — a button (and `Ctrl+Shift+Enter`) in the commit
+  composer drafts a message from the staged diff, then fills the composer's
+  fields so it can be edited like anything typed by hand.
+
+  YoruMerge talks to no AI service of its own. It runs the CLI already
+  installed and signed in on the machine — Claude Code, Codex, Gemini, Copilot,
+  Cursor, a local Ollama model or anything else that reads a prompt and prints
+  an answer — on the user's own subscription. A provider is a command string in
+  Settings › AI, in the same spirit as the editor and terminal commands: there
+  is no API key to enter and none is stored.
+
+  What is sent, only when the button is pressed: the staged diff (capped, whole
+  files dropped rather than half a hunk), the current branch, and the last ten
+  commit subjects, which is what makes a drafted message match the repository's
+  own style and language. Conventional Commits are detected from that history
+  rather than configured. A repository can refuse the whole thing with
+  `git config yoru.ai false`, enforced in the backend and not just hidden in
+  the UI.
+
+  The prompt has two layers. Ours carries the format rules the composer has to
+  read back, and is not editable. Yours — **House rules** in Settings — is
+  appended after it and takes precedence, so "write in Spanish", "never use a
+  scope" or a ticket convention work without being able to break the format.
+  **Show the prompt** displays the exact text that would be sent for what is
+  staged right now.
+
+  The diff itself is fenced and announced as content, because a staged diff can
+  carry anyone's text — a vendored dependency, a patch off a pull request — and
+  a line in it that reads like an instruction is not one.
+
+  The answer is never trusted either: ANSI, code fences, preambles and any
+  co-author or "generated with" trailer are stripped, and the subject and body
+  are capped, before it reaches the composer.
+
+  Presets ship for Claude Code, Codex, Gemini, Qwen Code, GitHub Copilot,
+  Cursor, Kiro (Amazon), opencode, a local Ollama model and `llm` — each with
+  the flags its own documentation specifies for one-shot use, with agent tools
+  off where the CLI allows it. Aider and Goose are deliberately absent: both act
+  on the repository by default, and a preset that might commit while writing a
+  commit message is not one to ship.
+
+  Setup is meant to take one choice: picking a provider fills in a working
+  command *and* a starting set of house rules — English by default, read the
+  whole diff before choosing a type, lead with the change that carries the most
+  weight, and never invent a motive the diff does not show. Where the vendor
+  publishes names that will outlive the next release there are **Model** and
+  **Thinking** pickers — both of which simply edit that command, so the field
+  stays the one place the truth lives. They appear only where they are known to
+  work: `copilot --effort` is refused by Copilot's own default model, and opencode
+  only lists the providers each user has logged into, so neither gets a picker.
+
+  The composer's button is there even before anything is configured; pressing
+  it then opens Settings › AI, since a feature that ships turned off is a
+  feature nobody finds. A repository that opted out hides it outright.
+
+### Changed
+
+- The commit composer prints the header it is about to write — `feat(ai)!: …` —
+  under the fields. The type chips and the scope field sit above the subject
+  input and their effect appeared nowhere; now the line git will store is
+  visible while it is being typed.
+
+- The refs panel no longer prints a local branch's tracking branch beside its
+  name. It duplicated the Remotes section and cost the branch name the room it
+  needs to be read; the branch name now takes the full width, and the upstream
+  is still in the row's tooltip.
+
+### Fixed
+
+- `pnpm lint` failed on every source file on a Windows checkout. Biome formats
+  with LF and the repository had no `.gitattributes`, so `core.autocrlf` handed
+  it CRLF; line endings are now normalised in the working tree as well as in
+  the repository.
+
 ## [1.0.2] - 2026-09-01
 
 ### Added

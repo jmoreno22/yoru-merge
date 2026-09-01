@@ -9,6 +9,11 @@ export interface RepoConfig {
   signing_format: string | null;
   default_branch: string | null;
   autocrlf: string | null;
+  /**
+   * `yoru.ai`: the per-repository AI opt-out. `null` when unset (allowed),
+   * `false` when this repository refuses to have its diffs sent to a provider.
+   */
+  ai_enabled: boolean | null;
 }
 
 /** Keys `set_config_value` accepts; anything else is rejected by the backend. */
@@ -21,6 +26,7 @@ export const WRITABLE_CONFIG_KEYS = [
   'init.defaultBranch',
   'core.autocrlf',
   'fetch.prune',
+  'yoru.ai',
 ] as const;
 
 export type WritableConfigKey = (typeof WRITABLE_CONFIG_KEYS)[number];
