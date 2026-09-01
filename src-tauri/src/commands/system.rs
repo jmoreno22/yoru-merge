@@ -38,6 +38,7 @@ fn spawn_detached(mut command: Command) -> Result<(), String> {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    super::git::strip_appimage_libs(&mut command);
     command
         .spawn()
         .map(|_child| ())
@@ -121,6 +122,7 @@ fn terminal_candidates(dir: &str) -> Vec<(String, Vec<String>)> {
 /// Unlike every other helper here, a terminal owns a console and a tty, so its
 /// stdio is left alone: redirecting it to null breaks console-based terminals.
 fn spawn_terminal(mut command: Command) -> std::io::Result<()> {
+    super::git::strip_appimage_libs(&mut command);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

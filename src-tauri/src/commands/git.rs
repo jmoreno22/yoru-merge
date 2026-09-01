@@ -16,6 +16,42 @@ pub struct GitCmd {
     cmd: Command,
 }
 
+/// Drops the AppImage's bundled library paths from a child's environment.
+///
+/// The AppImage runtime prepends `$APPDIR/usr/lib` to `LD_LIBRARY_PATH` and
+/// children inherit it; the system `git-remote-https` then resolves the
+/// bundle's older libnghttp2 against the system libcurl and aborts with a
+/// symbol lookup error. Outside an AppImage this is a no-op.
+#[cfg(target_os = "linux")]
+pub(super) fn strip_appimage_libs(cmd: &mut Command) {
+    let Ok(appdir) = std::env::var("APPDIR") else {
+        return;
+    };
+    if appdir.is_empty() {
+        return;
+    }
+    if let Ok(path) = std::env::var("LD_LIBRARY_PATH") {
+        let kept = without_appdir_entries(&path, &appdir);
+        if kept.is_empty() {
+            cmd.env_remove("LD_LIBRARY_PATH");
+        } else {
+            cmd.env("LD_LIBRARY_PATH", kept);
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub(super) fn strip_appimage_libs(_cmd: &mut Command) {}
+
+/// The pure filter behind [`strip_appimage_libs`], split out for tests.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn without_appdir_entries(path: &str, appdir: &str) -> String {
+    path.split(':')
+        .filter(|entry| !entry.is_empty() && !entry.starts_with(appdir))
+        .collect::<Vec<_>>()
+        .join(":")
+}
+
 impl GitCmd {
     /// A git command without repository context (`clone`, `init`, `--version`).
     pub fn bare() -> Self {
@@ -31,6 +67,7 @@ impl GitCmd {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        strip_appimage_libs(&mut cmd);
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -617,6 +654,23 @@ mod tests {
         assert!(
             lines.iter().any(|l| l.contains("Cloning into")),
             "got: {lines:?}"
+        );
+    }
+
+    #[test]
+    fn appdir_entries_are_filtered_from_ld_library_path() {
+        assert_eq!(
+            without_appdir_entries("/tmp/.mount_x/usr/lib:/usr/lib", "/tmp/.mount_x"),
+            "/usr/lib"
+        );
+        assert_eq!(
+            without_appdir_entries("/tmp/.mount_x/usr/lib", "/tmp/.mount_x"),
+            ""
+        );
+        assert_eq!(without_appdir_entries("", "/tmp/.mount_x"), "");
+        assert_eq!(
+            without_appdir_entries("/usr/lib:/opt/lib", "/tmp/.mount_x"),
+            "/usr/lib:/opt/lib"
         );
     }
 

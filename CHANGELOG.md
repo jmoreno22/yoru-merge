@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- AppImage only: pushing (or any operation reaching the system
+  `git-remote-https`) failed with a libcurl/nghttp2 symbol lookup error. The
+  AppImage's bundled library paths leaked into child processes through
+  `LD_LIBRARY_PATH`; they are now stripped before spawning git, editors,
+  terminals and URL handlers.
 - "Check for updates" in Settings/About only reported that a new version
   exists; it now opens the update dialog so the update can actually be
   accepted or declined.

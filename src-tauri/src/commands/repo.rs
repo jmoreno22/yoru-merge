@@ -126,6 +126,7 @@ fn clone_command() -> Command {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
+    super::git::strip_appimage_libs(&mut cmd);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
