@@ -1,4 +1,4 @@
-<label class="flex flex-col gap-1.5">
+<ng-template #body>
   <span
     class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
   >
@@ -10,4 +10,14 @@
   } @else if (hint()) {
     <span class="text-y-sm text-[var(--app-text-faint)]">{{ hint() }}</span>
   }
-</label>
+</ng-template>
+
+@if (group()) {
+  <div class="flex flex-col gap-1.5">
+    <ng-container [ngTemplateOutlet]="body" />
+  </div>
+} @else {
+  <label class="flex flex-col gap-1.5">
+    <ng-container [ngTemplateOutlet]="body" />
+  </label>
+}

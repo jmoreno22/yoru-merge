@@ -62,6 +62,7 @@
           </yoru-field>
 
           <yoru-field
+            group
             label="Default pull mode"
             hint="Used when Pull is run without picking a mode"
           >
@@ -76,6 +77,7 @@
 
         @case ('git') {
           <yoru-field
+            group
             label="Scope"
             [hint]="
               hasRepo()
@@ -149,7 +151,8 @@
             hint="commit.gpgsign"
           />
 
-          <yoru-field label="Signing format" hint="gpg.format">
+          <yoru-field
+            group label="Signing format" hint="gpg.format">
             <yoru-segmented
               [options]="signingFormatOptions"
               [value]="signingFormat()"
@@ -175,7 +178,8 @@
             />
           </yoru-field>
 
-          <yoru-field label="Line endings" hint="core.autocrlf">
+          <yoru-field
+            group label="Line endings" hint="core.autocrlf">
             <yoru-segmented
               [options]="autocrlfOptions"
               [value]="autocrlf()"
@@ -187,6 +191,7 @@
 
         @case ('appearance') {
           <yoru-field
+            group
             label="Theme"
             [hint]="'System currently resolves to ' + osTheme() + '.'"
           >
@@ -199,6 +204,7 @@
           </yoru-field>
 
           <yoru-field
+            group
             label="Colour palette"
             hint="Replaces every surface and text tone. Swatches preview the mode you are in."
           >
@@ -244,6 +250,7 @@
           </yoru-field>
 
           <yoru-field
+            group
             label="Accent"
             hint="Used by the focus ring, active rows and selection."
           >
@@ -279,7 +286,8 @@
           </yoru-field>
 
           <div class="grid grid-cols-2 gap-4">
-            <yoru-field label="Interface text" hint="Rows, panels and chrome scale with it">
+            <yoru-field
+            group label="Interface text" hint="Rows, panels and chrome scale with it">
               <yoru-stepper
                 [value]="prefs.uiFontSize()"
                 [min]="minUiFontSize"
@@ -290,7 +298,8 @@
               />
             </yoru-field>
 
-            <yoru-field label="Code text" hint="Diff, blame and their line numbers">
+            <yoru-field
+            group label="Code text" hint="Diff, blame and their line numbers">
               <yoru-stepper
                 [value]="prefs.monoFontSize()"
                 [min]="minMonoFontSize"
@@ -302,7 +311,8 @@
             </yoru-field>
           </div>
 
-          <yoru-field label="Interface density" hint="Padding around rows and panels">
+          <yoru-field
+            group label="Interface density" hint="Padding around rows and panels">
             <yoru-segmented
               [options]="densityOptions"
               [value]="prefs.uiDensity()"
@@ -312,6 +322,7 @@
           </yoru-field>
 
           <yoru-field
+            group
             label="Branch graph palette"
             hint="Independent of the accent: the six lanes have to stay apart."
           >
@@ -323,7 +334,8 @@
             />
           </yoru-field>
 
-          <yoru-field label="Inspector" hint="Where the commit and diff panels sit">
+          <yoru-field
+            group label="Inspector" hint="Where the commit and diff panels sit">
             <yoru-segmented
               [options]="inspectorOptions"
               [value]="prefs.inspectorPlacement()"
@@ -332,7 +344,8 @@
             />
           </yoru-field>
 
-          <yoru-field label="Refs panel side">
+          <yoru-field
+            group label="Refs panel side">
             <yoru-segmented
               [options]="sidebarSideOptions"
               [value]="prefs.sidebarSide()"
@@ -342,6 +355,7 @@
           </yoru-field>
 
           <yoru-field
+            group
             label="Commit list columns"
             hint="The subject column is always shown."
           >
@@ -356,7 +370,8 @@
             </div>
           </yoru-field>
 
-          <yoru-field label="Visible chrome">
+          <yoru-field
+            group label="Visible chrome">
             <div class="flex flex-col gap-2">
               <yoru-switch
                 [checked]="prefs.showToolbar()"
@@ -389,7 +404,8 @@
             hint="Off skips the theme sweep and every transition. Your system's reduced-motion setting is always honoured."
           />
 
-          <yoru-field label="Diff layout" hint="Default for newly opened diffs">
+          <yoru-field
+            group label="Diff layout" hint="Default for newly opened diffs">
             <yoru-segmented
               [options]="diffModeOptions"
               [value]="prefs.diffViewMode()"
@@ -398,7 +414,8 @@
             />
           </yoru-field>
 
-          <yoru-field label="Context lines">
+          <yoru-field
+            group label="Context lines">
             <yoru-segmented
               [options]="contextOptions"
               [value]="prefs.diffContextLines().toString()"
@@ -407,7 +424,8 @@
             />
           </yoru-field>
 
-          <yoru-field label="Tab width" hint="How wide a tab renders in code">
+          <yoru-field
+            group label="Tab width" hint="How wide a tab renders in code">
             <yoru-segmented
               [options]="tabWidthOptions"
               [value]="prefs.codeTabWidth().toString()"
