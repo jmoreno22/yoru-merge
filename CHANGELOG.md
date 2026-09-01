@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- "Check for updates" in Settings/About only reported that a new version
+  exists; it now opens the update dialog so the update can actually be
+  accepted or declined.
+
 ## [1.0.1] - 2026-09-01
 
 ### Fixed

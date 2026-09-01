@@ -10,6 +10,8 @@ import { getVersion } from '@tauri-apps/api/app';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { UpdaterService } from '../../core/services/updater.service';
 import { ClipboardService, YoruButton } from '../../shared/ui';
+import { DialogsService } from '../dialogs/dialogs.service';
+import { SettingsDialogService } from '../settings/settings-dialog.service';
 
 /**
  * About content, shared by the standalone About dialog and the About section of
@@ -26,6 +28,8 @@ export class AboutPanel implements OnInit {
   private readonly currentRepo = inject(CurrentRepoService);
   private readonly clipboard = inject(ClipboardService);
   private readonly updater = inject(UpdaterService);
+  private readonly dialogs = inject(DialogsService);
+  private readonly settings = inject(SettingsDialogService);
 
   protected readonly appVersion = signal('—');
   protected readonly gitVersion = signal('—');
@@ -72,6 +76,13 @@ export class AboutPanel implements OnInit {
     this.checked.set(false);
     await this.updater.checkForUpdates(true);
     this.checked.set(true);
+    if (this.updater.state() === 'available') {
+      // The update dialog renders below Settings in the dialog host, so the
+      // container (About dialog or Settings) has to go before it opens.
+      this.dialogs.closeAbout();
+      this.settings.close();
+      this.dialogs.openUpdate();
+    }
   }
 
   /** One paste-ready block for a bug report. */
