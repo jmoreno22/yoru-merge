@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The window close button (and every other close path) did nothing: the
+  preferences close hook reroutes closing through `destroy()`, which was
+  missing its capability. Preferences are now also flushed to disk before the
+  window is destroyed instead of racing process exit.
+
 ## [1.0.0] - 2026-08-31
 
 First release. YoruMerge is a Git GUI for Windows and Linux built on Tauri 2,

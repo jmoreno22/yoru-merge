@@ -246,6 +246,11 @@ export class PreferencesService {
    * Persists on the way out. `beforeunload` covers a browser reload; the Tauri
    * close hook covers the window's X button, which does not fire `beforeunload`
    * reliably on WebView2.
+   *
+   * The close handler must be awaited AND must never reject: once a JS
+   * close-requested listener exists, Tauri only destroys the window after the
+   * handler resolves (`flush` swallows its own errors, so it cannot block the
+   * close). Destroying also needs `core:window:allow-destroy` in capabilities.
    */
   private registerFlushHooks(): void {
     if (typeof window !== 'undefined') {
@@ -253,7 +258,9 @@ export class PreferencesService {
     }
     try {
       void getCurrentWindow()
-        .onCloseRequested(() => void this.flush())
+        .onCloseRequested(async () => {
+          await this.flush();
+        })
         .catch(() => undefined);
     } catch {
       // Not running inside Tauri — `beforeunload` is the only hook available.
