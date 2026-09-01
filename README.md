@@ -47,6 +47,17 @@ in YoruMerge.
 
 Launch it from the Start menu. Uninstall from *Settings → Apps* as usual.
 
+### Linux — one command
+
+```bash
+curl -fsSL https://jmoreno22.github.io/yoru-merge/install.sh | sh
+```
+
+It picks the right package for your distribution from the latest release and
+installs it — `.deb` on Debian and Ubuntu, `.rpm` on Fedora and openSUSE, the
+AppImage anywhere else. Run the same command again to update. The sections
+below do the same by hand.
+
 ### Ubuntu / Debian
 
 ```bash
@@ -84,8 +95,9 @@ Not built or tested yet.
 The app checks GitHub Releases on launch and every six hours. When a new
 version exists, an **Update available** pill appears in the toolbar: it shows
 the release notes and updates in place after confirmation (Windows installs
-and the Linux AppImage). `.deb` / `.rpm` installs get the same notification
-but are updated by installing the new package from Releases. You can always
+and the Linux AppImage). `.deb` / `.rpm` installs get the same notification;
+update them by re-running the one-line installer above, or by installing the
+new package from Releases. You can always
 check manually from **Settings → About → Check for updates** or the command
 palette.
 

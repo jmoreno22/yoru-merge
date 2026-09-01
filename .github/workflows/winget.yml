@@ -1,0 +1,25 @@
+name: WinGet
+
+# The manifest for the first version is submitted by hand with
+# `wingetcreate new <installer-url>`; this action only bumps an identifier that
+# already exists in microsoft/winget-pkgs, and fails loudly if it does not.
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Submit to winget-pkgs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create the winget-pkgs pull request
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: jmoreno22.YoruMerge
+          # The NSIS installer only: the .msi is a second flavour of the same
+          # package, and the .sig files are updater signatures, not installers.
+          installers-regex: '_x64-setup\.exe$'
+          # A classic PAT with `public_repo`; GITHUB_TOKEN cannot fork and open
+          # a pull request against another repository.
+          token: ${{ secrets.WINGET_TOKEN }}
