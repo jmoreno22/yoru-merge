@@ -28,14 +28,24 @@
 
 ## Install
 
-Grab the installer for your platform from the
+Every installer comes from the
 [latest release](https://github.com/jmoreno22/yoru-merge/releases/latest).
 
-### Windows
+**Requirements on every platform:** [Git](https://git-scm.com) **2.25 or
+newer** available on `PATH` — YoruMerge drives your own `git`, it does not
+bundle one. Authentication reuses whatever git already uses on your machine
+(Git Credential Manager, an SSH agent, a credential helper); the app never
+asks for or stores passwords, so if `git push` works in your terminal it works
+in YoruMerge.
 
-Download **`YoruMerge_<version>_x64-setup.exe`** (recommended) or the `.msi`
-and run it. The binaries are not code-signed yet, so SmartScreen warns on first
-run — choose **More info → Run anyway**.
+### Windows 10 / 11 (x64)
+
+1. Download **`YoruMerge_<version>_x64-setup.exe`** (or the `.msi` if your
+   organisation prefers MSI deployment) and run it.
+2. The binaries are not code-signed yet, so SmartScreen warns on first run —
+   choose **More info → Run anyway**.
+
+Launch it from the Start menu. Uninstall from *Settings → Apps* as usual.
 
 ### Ubuntu / Debian
 
@@ -43,11 +53,16 @@ run — choose **More info → Run anyway**.
 sudo apt install ./YoruMerge_<version>_amd64.deb
 ```
 
+Dependencies (WebKitGTK 4.1) are resolved by `apt`. Launch **YoruMerge** from
+your app menu or run `yoru-merge`. Uninstall with `sudo apt remove yoru-merge`.
+
 ### Fedora / openSUSE
 
 ```bash
 sudo dnf install ./YoruMerge-<version>-1.x86_64.rpm
 ```
+
+Uninstall with `sudo dnf remove yoru-merge`.
 
 ### Any Linux distribution — AppImage
 
@@ -56,18 +71,35 @@ chmod +x YoruMerge_<version>_amd64.AppImage
 ./YoruMerge_<version>_amd64.AppImage
 ```
 
-AppImages need FUSE; on Ubuntu 22.04+ run `sudo apt install libfuse2` once.
-
-### Auto-updates
-
-The app checks GitHub Releases on launch and every six hours, shows the release
-notes in-app, and updates itself on confirmation. That covers the Windows
-installs and the Linux AppImage; `.deb` / `.rpm` installs still get notified,
-but install the new version through the package file from Releases.
+The AppImage is self-contained; it only needs FUSE to mount itself — on
+Ubuntu 22.04+ run `sudo apt install libfuse2` once. To "uninstall", delete the
+file.
 
 ### macOS
 
 Not built or tested yet.
+
+### Updates
+
+The app checks GitHub Releases on launch and every six hours. When a new
+version exists, an **Update available** pill appears in the toolbar: it shows
+the release notes and updates in place after confirmation (Windows installs
+and the Linux AppImage). `.deb` / `.rpm` installs get the same notification
+but are updated by installing the new package from Releases. You can always
+check manually from **Settings → About → Check for updates** or the command
+palette.
+
+### First run
+
+- `Ctrl+O` opens a local repository; the welcome screen also clones.
+- `Ctrl+K` opens the command palette — every feature is reachable from it,
+  and it shows the real keyboard shortcut next to each command.
+- Settings (`Ctrl+,`) cover themes, type scale, accent colours, layout,
+  external editor/terminal and git identity.
+
+Settings live in the platform app-data directory under `com.jhoan.yorumerge`
+(`%APPDATA%` on Windows, `~/.config` on Linux); nothing else is written
+outside the repositories you open.
 
 ## What it does
 
@@ -186,6 +218,11 @@ Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' `
 ```
 
 The registry change needs a sign-out (or reboot) to take effect.
+
+**Reporting a bug.** *Settings → About → Copy diagnostics* puts the app
+version, git version and platform on your clipboard — paste that into a
+[GitHub issue](https://github.com/jmoreno22/yoru-merge/issues) together with
+what you did and what you expected.
 
 ## Documentation
 
