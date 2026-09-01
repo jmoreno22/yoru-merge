@@ -2,11 +2,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runThemeTransition } from './view-transition';
 
-interface DocumentWithTransition extends Document {
+// `lib.dom` now ships `startViewTransition` with a stricter signature, so the
+// test double overrides it through Omit instead of extending Document.
+type DocumentWithTransition = Omit<Document, 'startViewTransition'> & {
   startViewTransition?: (callback: () => void) => unknown;
-}
+};
 
-const doc = document as DocumentWithTransition;
+const doc = document as unknown as DocumentWithTransition;
 
 function setMatchMedia(reduced: boolean): void {
   window.matchMedia = ((query: string) => ({

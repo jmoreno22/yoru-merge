@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { signal, type WritableSignal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
 import type { RepoStateKind } from '../../core/models';
 import { CLEAN_REPO_STATE } from '../../core/models';
@@ -187,7 +187,7 @@ describe('buildPaletteCommands', () => {
       ['relaxed', 'compact'],
     ] as const) {
       const context = contextWith();
-      context.prefs.uiDensity.set(from);
+      (context.prefs.uiDensity as WritableSignal<string>).set(from);
       buildPaletteCommands(context)
         .find((command) => command.id === 'view.density')
         ?.run();
@@ -214,7 +214,7 @@ describe('buildPaletteCommands', () => {
     expect(context.prefs.setColorPalette).toHaveBeenCalledWith('slate');
 
     const last = contextWith();
-    last.prefs.colorPalette.set('solarized');
+    (last.prefs.colorPalette as WritableSignal<string>).set('solarized');
     buildPaletteCommands(last)
       .find((command) => command.id === 'view.colorPalette')
       ?.run();
