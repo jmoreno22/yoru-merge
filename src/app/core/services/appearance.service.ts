@@ -67,7 +67,7 @@ export class AppearanceService {
    */
   setZen(on: boolean): void {
     this.prefs.setZenMode(on);
-    if (on) this.toasts.info('Zen mode — press Ctrl+Shift+Z to exit');
+    if (on) this.toasts.info(ZEN_EXIT_HINT);
   }
 
   toggleZen(): void {
@@ -75,6 +75,14 @@ export class AppearanceService {
   }
 
   constructor() {
+    // Zen is durable, so a session can START with the chrome hidden; the exit
+    // hint has to repeat once the stored preferences have loaded.
+    const zenOnStartup = effect(() => {
+      if (!this.prefs.storeReady()) return;
+      if (this.prefs.zenMode()) this.toasts.info(ZEN_EXIT_HINT);
+      zenOnStartup.destroy();
+    });
+
     effect(() => {
       const tokens = appearanceTokens({
         uiFontSize: this.prefs.uiFontSize(),
@@ -106,3 +114,5 @@ export class AppearanceService {
     });
   }
 }
+
+const ZEN_EXIT_HINT = 'Zen mode — press Ctrl+Shift+Z to exit';

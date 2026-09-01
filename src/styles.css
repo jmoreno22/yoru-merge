@@ -295,8 +295,8 @@
  * the fallback and the first computed pass agree to the pixel.
  */
 :root {
-  --ui-font-size: var(--text-y-base);
-  --mono-font-size: var(--text-y-md);
+  --ui-font-size: 13px;
+  --mono-font-size: 12px;
 
   --row-h: 34px;
   --file-row-h: 30px;

@@ -94,7 +94,7 @@
           *cdkVirtualFor="let row of rows(); trackBy: trackRow"
           role="option"
           tabindex="0"
-          class="flex h-[46px] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3 outline-none transition-colors hover:bg-[var(--app-panel)] focus-visible:bg-[var(--app-panel)]"
+          class="flex h-[var(--history-row-h)] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3 outline-none transition-colors hover:bg-[var(--app-panel)] focus-visible:bg-[var(--app-panel)]"
           [class]="
             row.commit.sha === selectedSha()
               ? 'bg-[var(--app-panel)] border-l-2 border-l-accent'

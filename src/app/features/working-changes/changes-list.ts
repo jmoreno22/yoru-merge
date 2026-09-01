@@ -17,12 +17,6 @@ import type { ChangeRow, SectionId } from './changes-tree';
 import { FileRowItem } from './file-row';
 import { type ClickModifiers, nextIndex } from './selection';
 
-/**
- * Default file-row height, matching `--file-row-h` and the CDK `itemSize` at
- * the default preferences. The live value comes from `AppearanceService`.
- */
-export const FILE_ROW_HEIGHT = 30;
-
 export interface RowSelectEvent {
   readonly path: string;
   readonly modifiers: ClickModifiers;

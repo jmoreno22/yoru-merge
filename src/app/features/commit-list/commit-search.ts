@@ -26,7 +26,7 @@ import { KeyboardShortcutsService } from '../../shared/ui';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class:
-      'flex h-[34px] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface-raised)]/40 px-2',
+      'flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface-raised)]/40 px-2',
   },
 })
 export class CommitSearch {

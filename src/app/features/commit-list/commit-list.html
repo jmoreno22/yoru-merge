@@ -19,7 +19,7 @@
   @if (showSkeleton()) {
     <div class="flex flex-col" data-testid="commit-list-skeleton">
       @for (row of skeletonRows; track row) {
-        <div class="flex h-[34px] items-center gap-2 px-2">
+        <div class="flex h-[var(--row-h)] items-center gap-2 px-2">
           <yoru-skeleton width="55%" height="10px" />
           <yoru-skeleton class="ml-auto" width="90px" height="10px" />
           <yoru-skeleton width="60px" height="10px" />
