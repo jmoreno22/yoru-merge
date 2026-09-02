@@ -1,6 +1,6 @@
 # ANGULAR FRONTEND (`src/app/`)
 
-Angular 20 frontend for YoruMerge. Standalone components, Signals for state,
+Angular 22 frontend for YoruMerge. Standalone components, Signals for state,
 OnPush everywhere, **zoneless** change detection. No NgModules, no router.
 (Stack / commands / IPC overview → repo-root `AGENTS.md`.)
 

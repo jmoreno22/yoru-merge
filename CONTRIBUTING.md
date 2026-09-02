@@ -2,7 +2,7 @@
 
 ## Setup
 
-1. Install the prerequisites in [README.md](README.md#prerequisites) — Node ≥ 22,
+1. Install the prerequisites in [README.md](README.md#prerequisites) — Node 24 LTS (22.22.3+),
    pnpm 11 (`corepack enable`), Rust stable, and the WebKitGTK packages on Linux.
 2. `pnpm install`
 3. `pnpm tauri dev`

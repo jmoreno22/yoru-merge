@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Nothing changes in the app itself.** This is the same YoruMerge, rebuilt on
+  Angular 22 and TypeScript 6 with the rest of its dependencies brought up to
+  date. It closes every security advisory the build toolchain was carrying that
+  could be closed from here, the critical one included; none of them ever
+  reached the binary you install. It also moves the app off an Angular version
+  whose active support ends in November 2026.
+
+- **Building from source now expects Node 24.** Angular 22 refuses anything
+  below 22.22.3, so an older Node 22 no longer builds the app. pnpm 11 and a
+  stable Rust toolchain remain the other two requirements.
+
+- **CI and releases run on GitHub Actions' Node 24 runtime**, with the release
+  bundles built by `tauri-action` 1.0. It writes `github.com` download URLs into
+  `latest.json` rather than the browser download URLs — the same files, and the
+  endpoint the updater checks is unchanged.
+
 ## [1.0.4] - 2026-09-02
 
 ### Changed

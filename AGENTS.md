@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 YoruMerge — cross-platform Git GUI desktop client (Windows / Linux). Tauri 2
-shell, Angular 20 frontend (TypeScript, Signals, zoneless), Rust backend driving
+shell, Angular 22 frontend (TypeScript, Signals, zoneless), Rust backend driving
 the `git` CLI, Tailwind CSS 4. pnpm-managed.
 
 ## STRUCTURE
@@ -85,7 +85,7 @@ cd src-tauri && cargo test --all-features
 ```
 
 ## NOTES
-- CI (`ci.yml`) runs lint / test / frontend build / `cargo fmt --check` / clippy / cargo test on Ubuntu and Windows, plus a `bundle-smoke` job that runs `pnpm tauri build --debug` on both. Node 22, pnpm pinned by `packageManager`. The bundling jobs pin `ubuntu-22.04` on purpose — an AppImage links against the builder's glibc.
+- CI (`ci.yml`) runs lint / test / frontend build / `cargo fmt --check` / clippy / cargo test on Ubuntu and Windows, plus a `bundle-smoke` job that runs `pnpm tauri build --debug` on both. Node 24, pnpm pinned by `packageManager`. The bundling jobs pin `ubuntu-22.04` on purpose — an AppImage links against the builder's glibc.
 - Linux builds need system packages: `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `patchelf`, `libgtk-3-dev`, `libssl-dev`, `build-essential`.
 - The Tauri updater IS wired: `createUpdaterArtifacts` + `plugins.updater` in `tauri.conf.json` (endpoint = GitHub Releases `latest.json`), signed in CI with the `TAURI_SIGNING_*` secrets. Releases are built by `release.yml` via `tauri-apps/tauri-action`, with the release body extracted from the tag's `CHANGELOG.md` section.
 - `.agents/`, `.claude/` and `.sisyphus/` are agent/workflow metadata, not app code, and are untracked.

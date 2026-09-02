@@ -4,7 +4,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  Angular 20 frontend — src/                                │
+│  Angular 22 frontend — src/                                │
 │  standalone components · signals · Tailwind CSS 4          │
 └───────────────────────────┬───────────────────────────────┘
                             │  invoke() / Channel / emit()

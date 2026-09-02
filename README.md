@@ -161,7 +161,7 @@ repository that arrived as a folder or a zip the way you would before running
 | Layer | Technology |
 | --- | --- |
 | Desktop shell | Tauri 2 |
-| Frontend | Angular 20, Signals, standalone components |
+| Frontend | Angular 22, Signals, standalone components |
 | Styling | Tailwind CSS 4, Lucide icons via `@ng-icons` |
 | Backend | Rust, driving the `git` CLI |
 | Tooling | pnpm, Biome, Vitest |
@@ -170,7 +170,7 @@ repository that arrived as a folder or a zip the way you would before running
 
 ### Prerequisites
 
-- **Node.js ≥ 22**
+- **Node.js 24 LTS** — 22.22.3 or newer also works
 - **pnpm 11** — `corepack enable` picks up the version pinned in
   `package.json` (`packageManager`)
 - **Rust stable** — via [rustup](https://rustup.rs)
