@@ -2,6 +2,7 @@
 
 use super::git::{blocking, validate_ref, validate_repo_path, validate_revision, GitCmd};
 use super::git_auth::{auth_error_message, is_auth_error};
+use super::repo::head_branch;
 use crate::models::{BranchInfo, BranchList, CheckoutResult, FastForwardResult, TagInfo};
 
 /// Parse `[ahead N, behind M]` / `[ahead N]` / `[behind M]` / `[gone]` / empty.
@@ -235,19 +236,12 @@ fn fast_forward_inner(path: &str, branch: &str) -> FastForwardResult {
 fn list_branches_inner(path: &str) -> Result<BranchList, String> {
     validate_repo_path(path)?;
 
-    let current = GitCmd::in_repo(path)
-        .args(["branch", "--show-current"])
-        .run()
-        .ok()
-        .map(|s| s.trim_end_matches(['\r', '\n']).to_string())
-        .filter(|s| !s.is_empty());
-
     let output = GitCmd::in_repo(path)
         .args([
             "for-each-ref",
             "refs/heads",
             "refs/remotes",
-            "--format=%(refname:short)%00%(refname)%00%(upstream:short)%00%(upstream:track)%00%(objectname)",
+            "--format=%(refname:short)%00%(refname)%00%(upstream:short)%00%(upstream:track)%00%(objectname)%00%(HEAD)",
         ])
         .output()?;
 
@@ -262,10 +256,11 @@ fn list_branches_inner(path: &str) -> Result<BranchList, String> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut local: Vec<BranchInfo> = Vec::new();
     let mut remote: Vec<BranchInfo> = Vec::new();
+    let mut current: Option<String> = None;
 
     for line in stdout.lines() {
         let fields: Vec<&str> = line.split('\u{0}').collect();
-        if fields.len() < 5 {
+        if fields.len() < 6 {
             continue;
         }
         let short_name = fields[0].trim();
@@ -276,6 +271,11 @@ fn list_branches_inner(path: &str) -> Result<BranchList, String> {
         }
 
         let is_remote = fields[1].starts_with("refs/remotes/");
+        // `%(HEAD)` is `*` on the checked-out branch and a space on every other
+        // ref, so a detached HEAD simply leaves `current` unset.
+        if !is_remote && fields[5].trim() == "*" {
+            current = Some(short_name.to_string());
+        }
         let (ahead, behind) = parse_ahead_behind(fields[3]);
         let info = BranchInfo {
             name: short_name.to_string(),
@@ -291,6 +291,12 @@ fn list_branches_inner(path: &str) -> Result<BranchList, String> {
         } else {
             local.push(info);
         }
+    }
+
+    // An unborn HEAD has no branch ref for `%(HEAD)` to mark, so with no local
+    // rows at all the name has to come from HEAD itself.
+    if local.is_empty() {
+        current = head_branch(path);
     }
 
     Ok(BranchList {
@@ -385,7 +391,7 @@ pub async fn list_tags(path: String) -> Result<Vec<TagInfo>, String> {
 mod tests {
     use super::*;
     use crate::commands::git::test_support::{
-        clone_repo, git_ok, init_remote_and_clone, init_repo, write_file,
+        clone_repo, git_ok, init_empty_repo, init_remote_and_clone, init_repo, write_file,
     };
     use std::path::Path;
 
@@ -434,6 +440,54 @@ mod tests {
         assert!(names.contains(&"main"), "got: {names:?}");
         assert!(names.contains(&"feature/añadir"), "got: {names:?}");
         assert!(branches.local.iter().all(|b| b.sha.len() == 40));
+        assert!(branches.remote.is_empty());
+    }
+
+    #[test]
+    fn the_checked_out_branch_is_marked_and_detaching_leaves_none() {
+        let (_remote, _clone, path) = init_remote_and_clone();
+        branch_with_commit(&path, "feature", "b.txt", "b\n");
+
+        assert_eq!(
+            list_branches_inner(&path).unwrap().current.as_deref(),
+            Some("main")
+        );
+        git_ok(&path, &["checkout", "feature"]);
+        assert_eq!(
+            list_branches_inner(&path).unwrap().current.as_deref(),
+            Some("feature")
+        );
+
+        git_ok(&path, &["checkout", "--detach", "HEAD"]);
+        let detached = list_branches_inner(&path).unwrap();
+
+        assert_eq!(detached.current, None);
+        // The marker is one more %x00 field: every field before it must still
+        // land in its own slot.
+        let main = detached.local.iter().find(|b| b.name == "main").unwrap();
+        assert!(!main.is_remote);
+        assert_eq!(main.sha.len(), 40);
+        assert_eq!(main.upstream.as_deref(), Some("origin/main"));
+        assert_eq!((main.ahead, main.behind), (0, 0));
+        assert!(detached.local.iter().any(|b| b.name == "feature"));
+        assert!(detached.remote.iter().any(|b| b.name == "origin/main"));
+    }
+
+    #[test]
+    fn a_repo_without_commits_reports_the_branch_head_points_at() {
+        let (_dir, path) = init_empty_repo();
+        // Pinned here so the assertion does not depend on the machine's
+        // `init.defaultBranch`.
+        let unborn = "trabajo-ñ";
+        git_ok(
+            &path,
+            &["symbolic-ref", "HEAD", &format!("refs/heads/{unborn}")],
+        );
+
+        let branches = list_branches_inner(&path).unwrap();
+
+        assert_eq!(branches.current.as_deref(), Some(unborn));
+        assert!(branches.local.is_empty());
         assert!(branches.remote.is_empty());
     }
 

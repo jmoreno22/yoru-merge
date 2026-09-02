@@ -1,7 +1,7 @@
 //! Filesystem watching: one debounced watcher per open repository.
 
-use notify_debouncer_full::notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, RecommendedCache};
+use notify_debouncer_full::notify::{Config, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Mutex;
@@ -16,7 +16,12 @@ const DEBOUNCE: Duration = Duration::from_millis(400);
 
 const IGNORED_DIRS: &[&str] = &["node_modules", "target", "dist", ".angular"];
 
-type RepoWatcher = Debouncer<RecommendedWatcher, RecommendedCache>;
+/// `NoCache` instead of the recommended cache: on Windows and macOS the latter
+/// is a `FileIdMap`, whose `add_path` walks the whole worktree — `node_modules`,
+/// `target` and `.git/objects` included — to read a file id per entry. Its only
+/// use is stitching rename events back together, and we classify paths, not
+/// event kinds.
+type RepoWatcher = Debouncer<RecommendedWatcher, NoCache>;
 
 #[derive(Default)]
 pub struct WatcherState(pub Mutex<HashMap<String, RepoWatcher>>);
@@ -112,28 +117,34 @@ pub async fn watch_repo(
     }
 
     let repo_path = path.clone();
-    let mut debouncer = new_debouncer(DEBOUNCE, None, move |result: DebounceEventResult| {
-        let Ok(events) = result else {
-            return;
-        };
-        // One event per kind per batch: a rebase touches hundreds of files
-        // but the UI only needs to know "refs changed" once.
-        let kinds: HashSet<ChangeKind> = events
-            .iter()
-            .flat_map(|event| event.paths.iter())
-            .filter_map(|p| classify(&repo_path, &p.to_string_lossy()))
-            .collect();
+    let mut debouncer = new_debouncer_opt::<_, RecommendedWatcher, NoCache>(
+        DEBOUNCE,
+        None,
+        move |result: DebounceEventResult| {
+            let Ok(events) = result else {
+                return;
+            };
+            // One event per kind per batch: a rebase touches hundreds of files
+            // but the UI only needs to know "refs changed" once.
+            let kinds: HashSet<ChangeKind> = events
+                .iter()
+                .flat_map(|event| event.paths.iter())
+                .filter_map(|p| classify(&repo_path, &p.to_string_lossy()))
+                .collect();
 
-        for kind in kinds {
-            let _ = app.emit(
-                "repo-changed",
-                RepoChangedPayload {
-                    path: repo_path.clone(),
-                    kind: kind.as_str(),
-                },
-            );
-        }
-    })
+            for kind in kinds {
+                let _ = app.emit(
+                    "repo-changed",
+                    RepoChangedPayload {
+                        path: repo_path.clone(),
+                        kind: kind.as_str(),
+                    },
+                );
+            }
+        },
+        NoCache::new(),
+        Config::default(),
+    )
     .map_err(|e| e.to_string())?;
 
     debouncer

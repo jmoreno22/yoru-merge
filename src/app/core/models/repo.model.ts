@@ -2,7 +2,6 @@ export interface RepoInfo {
   path: string;
   name: string;
   current_branch: string | null;
-  is_clean: boolean;
   is_bare: boolean;
 }
 

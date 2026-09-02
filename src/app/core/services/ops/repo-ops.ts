@@ -12,6 +12,14 @@ export type CloneOutcome = 'cloned' | 'canceled' | 'failed';
 /** Substring the backend puts in the error of a clone the user cancelled. */
 const CLONE_CANCELED = 'clone canceled';
 
+/** True while the diff on screen is still the one this file asked for. */
+function isSelectedFile(state: RepoState, file: string, staged: boolean): boolean {
+  const source = state.diffSource();
+  return (
+    source.kind === 'workingFile' && source.file === file && source.staged === staged
+  );
+}
+
 /** Opening a repository and keeping its aggregate state fresh. */
 @Injectable({ providedIn: 'root' })
 export class RepoOps {
@@ -35,7 +43,12 @@ export class RepoOps {
       // directory the user picked; everything downstream keys off that.
       const repo = await this.ops.git.openRepo(state.path);
       state.repo.set(repo);
-      await this.ops.git.addRecentRepo(repo.path);
+      // Bookkeeping the workbench never reads back, so it does not delay the
+      // first paint; the catch is what keeps it from becoming an unhandled
+      // rejection in a zoneless app.
+      void this.ops.git.addRecentRepo(repo.path).catch(() => {
+        // A missing recent entry is not worth interrupting the open for.
+      });
       return true;
     } catch (error: unknown) {
       const message = messageFromUnknown(error);
@@ -142,6 +155,9 @@ export class RepoOps {
       this.ops.git.getCommitDiff(repo.path, sha),
       this.history.loadCommitDetails(state, sha),
     ]);
+    // Arrowing down the list leaves several of these in flight; a slow answer
+    // for an earlier row must not land on the row now selected.
+    if (state.selectedCommitSha() !== sha) return;
     if (diff.status === 'fulfilled') {
       state.diffText.set(diff.value);
     } else {
@@ -159,8 +175,11 @@ export class RepoOps {
     if (!repo) return;
     state.diffSource.set({ kind: 'workingFile', file, staged });
     try {
-      state.diffText.set(await this.ops.git.getDiff(repo.path, file, staged));
+      const diff = await this.ops.git.getDiff(repo.path, file, staged);
+      if (!isSelectedFile(state, file, staged)) return;
+      state.diffText.set(diff);
     } catch (error: unknown) {
+      if (!isSelectedFile(state, file, staged)) return;
       state.diffText.set('');
       this.ops.reportError(error, 'Could not load the diff');
     }

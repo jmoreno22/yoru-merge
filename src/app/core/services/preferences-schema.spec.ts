@@ -9,11 +9,67 @@ import {
   clampTabWidth,
   clampUiFontSize,
   DEFAULT_PREFERENCES,
+  type DurablePreferences,
   MAX_AI_INSTRUCTIONS,
   migratePreferences,
+  PREFERENCES_KEY,
+  SCHEMA_VERSION,
+  SCHEMA_VERSION_KEY,
   sanitizePreferences,
   sanitizeSections,
 } from './preferences-schema';
+
+/**
+ * Every durable key at a non-default value, so a field lost in transit fails
+ * the round trip instead of quietly matching the default.
+ */
+const USER_PREFERENCES: DurablePreferences = {
+  workspaceTabs: ['C:/repos/one', '/home/me/two'],
+  activeTabPath: '/home/me/two',
+  sidebarWidth: 24,
+  workbenchSplit: 55,
+  diffViewMode: 'split',
+  diffIgnoreWhitespace: true,
+  diffWordWrap: true,
+  diffContextLines: 8,
+  uiDensity: 'relaxed',
+  uiFontSize: 15,
+  monoFontSize: 14,
+  codeTabWidth: 4,
+  codeLigatures: true,
+  accent: 'violet',
+  graphPalette: 'colorblind',
+  colorPalette: 'kyoto-dawn',
+  animations: false,
+  inspectorPlacement: 'bottom',
+  sidebarSide: 'right',
+  showToolbar: false,
+  showStatusBar: false,
+  showGraph: false,
+  zenMode: true,
+  aiProvider: 'claude -p',
+  aiEnabled: true,
+  aiInstructions: 'Write in Spanish.',
+  aiMaxDiffKb: 96,
+  aiTimeoutSeconds: 120,
+  externalEditor: 'code -w',
+  terminal: 'wt.exe',
+  autoFetchMinutes: 15,
+  pullMode: 'rebase',
+  confirmDangerous: false,
+  showRemoteBranchesPerRemote: false,
+  railView: 'reflog',
+  refsPanelOpen: false,
+  commitsColumns: ['message', 'date'],
+};
+
+/** What `initStore` does with whatever the migration hands back. */
+function load(stored: Record<string, unknown>, version: number): DurablePreferences {
+  return {
+    ...DEFAULT_PREFERENCES,
+    ...sanitizePreferences(migratePreferences(stored, version)),
+  };
+}
 
 describe('sanitizePreferences', () => {
   it('keeps values that match the schema', () => {
@@ -151,6 +207,60 @@ describe('migratePreferences', () => {
     expect(migratePreferences(stored, 1)).toEqual(stored);
     expect(sanitizePreferences(migratePreferences(stored, 1))).not.toHaveProperty(
       'uiFontSize',
+    );
+  });
+
+  it('has a fixture that differs from every default', () => {
+    for (const key of Object.keys(
+      DEFAULT_PREFERENCES,
+    ) as (keyof DurablePreferences)[]) {
+      expect(USER_PREFERENCES[key]).not.toEqual(DEFAULT_PREFERENCES[key]);
+    }
+  });
+
+  it('folds the loose keys of a v3 store into one object, losing nothing', () => {
+    const v3Store = { [SCHEMA_VERSION_KEY]: 3, ...USER_PREFERENCES };
+    expect(load(v3Store, 3)).toEqual(USER_PREFERENCES);
+  });
+
+  it('reads a migrated store from the single key, ignoring the loose leftovers', () => {
+    const v4Store = {
+      [SCHEMA_VERSION_KEY]: SCHEMA_VERSION,
+      [PREFERENCES_KEY]: USER_PREFERENCES,
+      // The v3 keys are never deleted, so they linger with stale values.
+      ...DEFAULT_PREFERENCES,
+      uiFontSize: 11,
+    };
+    expect(load(v4Store, SCHEMA_VERSION)).toEqual(USER_PREFERENCES);
+  });
+
+  it('is idempotent: what it writes back reads identically', () => {
+    const once = migratePreferences(
+      { [SCHEMA_VERSION_KEY]: SCHEMA_VERSION, [PREFERENCES_KEY]: USER_PREFERENCES },
+      SCHEMA_VERSION,
+    );
+    const twice = migratePreferences(
+      { [SCHEMA_VERSION_KEY]: SCHEMA_VERSION, [PREFERENCES_KEY]: once },
+      SCHEMA_VERSION,
+    );
+    expect(twice).toEqual(once);
+    expect(sanitizePreferences(twice)).toEqual(USER_PREFERENCES);
+  });
+
+  it('starts a first launch on the defaults', () => {
+    expect(migratePreferences({}, 0)).toEqual({});
+    expect(load({}, 0)).toEqual(DEFAULT_PREFERENCES);
+    expect(load({ [SCHEMA_VERSION_KEY]: SCHEMA_VERSION }, SCHEMA_VERSION)).toEqual(
+      DEFAULT_PREFERENCES,
+    );
+  });
+
+  it('falls back to the defaults when the single key is not an object', () => {
+    expect(load({ [PREFERENCES_KEY]: 'nope' }, SCHEMA_VERSION)).toEqual(
+      DEFAULT_PREFERENCES,
+    );
+    expect(load({ [PREFERENCES_KEY]: ['nope'] }, SCHEMA_VERSION)).toEqual(
+      DEFAULT_PREFERENCES,
     );
   });
 });

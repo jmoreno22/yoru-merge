@@ -51,6 +51,18 @@ fn repo_name(root: &str) -> String {
     last.strip_suffix(".git").unwrap_or(last).to_string()
 }
 
+/// Branch HEAD points at, or `None` when HEAD is detached.
+///
+/// HEAD is read as a symbolic ref instead of being resolved, so a branch that
+/// has no commits yet is still reported — same as `branch --show-current`.
+pub(super) fn head_branch(root: &str) -> Option<String> {
+    let repo = git2::Repository::open(root).ok()?;
+    let head = repo.find_reference("HEAD").ok()?;
+    head.symbolic_target()
+        .and_then(|name| name.strip_prefix("refs/heads/"))
+        .map(str::to_string)
+}
+
 pub(super) fn open_repo_inner(path: &str) -> Result<RepoInfo, String> {
     validate_repo_path(path)?;
 
@@ -77,28 +89,10 @@ pub(super) fn open_repo_inner(path: &str) -> Result<RepoInfo, String> {
         return Err("not a git repository".to_string());
     }
 
-    let current_branch = GitCmd::in_repo(&root)
-        .args(["branch", "--show-current"])
-        .run()
-        .ok()
-        .map(|s| s.trim_end_matches(['\r', '\n']).to_string())
-        .filter(|s| !s.is_empty());
-
-    let is_clean = if is_bare {
-        true
-    } else {
-        GitCmd::in_repo(&root)
-            .args(["status", "--porcelain"])
-            .run()
-            .map(|s| s.trim().is_empty())
-            .unwrap_or(false)
-    };
-
     Ok(RepoInfo {
         name: repo_name(&root),
+        current_branch: head_branch(&root),
         path: root,
-        current_branch,
-        is_clean,
         is_bare,
     })
 }
@@ -386,7 +380,6 @@ mod tests {
         let info = open_repo_inner(&sub).unwrap();
 
         assert_eq!(info.current_branch.as_deref(), Some("main"));
-        assert!(info.is_clean);
         assert!(!info.is_bare);
         // The reported root is the work tree, not the subdirectory we opened.
         assert!(!info.path.replace('\\', "/").ends_with("nested/deep"));
@@ -415,15 +408,16 @@ mod tests {
 
         let info = open_repo_inner(path.to_str().unwrap()).unwrap();
         assert!(info.is_bare);
-        assert!(info.is_clean);
         assert_eq!(info.name, "thing");
+        assert_eq!(info.current_branch.as_deref(), Some("main"));
     }
 
     #[test]
-    fn a_dirty_work_tree_is_not_clean() {
+    fn a_detached_head_reports_no_branch() {
         let (_dir, path) = init_repo();
-        std::fs::write(Path::new(&path).join("a.txt"), "dirty\n").unwrap();
-        assert!(!open_repo_inner(&path).unwrap().is_clean);
+        git_ok(&path, &["checkout", "--detach"]);
+
+        assert!(open_repo_inner(&path).unwrap().current_branch.is_none());
     }
 
     #[test]

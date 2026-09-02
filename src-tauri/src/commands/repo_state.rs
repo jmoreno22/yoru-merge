@@ -5,33 +5,39 @@
 
 use std::path::{Path, PathBuf};
 
-use super::git::{validate_repo_path, GitCmd};
+use git2::Repository;
+
+use super::git::validate_repo_path;
 use crate::models::{RepoState, RepoStateInfo};
 
-/// Split a `-z` / `%x00` separated git payload into non-empty entries.
-pub(crate) fn split_nul(raw: &str) -> Vec<String> {
-    raw.split('\0')
-        .map(|s| s.trim_end_matches(['\r', '\n']))
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .collect()
-}
-
 /// Absolute path of the git dir, which is not `<repo>/.git` in linked worktrees.
-pub(crate) fn git_dir(path: &str) -> Result<PathBuf, String> {
-    let out = GitCmd::in_repo(path)
-        .args(["rev-parse", "--absolute-git-dir"])
-        .run()?;
-    Ok(PathBuf::from(out.trim_end_matches(['\r', '\n', ' '])))
+///
+/// libgit2 keeps a trailing separator that `rev-parse --absolute-git-dir` does
+/// not print; strip it so the value reads the same in errors and assertions.
+fn git_dir(repo: &Repository) -> PathBuf {
+    let dir = repo.path();
+    match dir.to_str() {
+        Some(text) => PathBuf::from(text.trim_end_matches(std::path::is_separator)),
+        None => dir.to_path_buf(),
+    }
 }
 
 /// Paths git reports as unmerged (conflicted) right now.
-pub(crate) fn conflicted_files(path: &str) -> Vec<String> {
-    GitCmd::in_repo(path)
-        .args(["diff", "--name-only", "--diff-filter=U", "-z"])
-        .run()
-        .map(|out| split_nul(&out))
-        .unwrap_or_default()
+///
+/// Index paths are raw bytes on Linux, so they get the same lossy decode the
+/// `git` CLI output went through before.
+fn conflicted_files(repo: &Repository) -> Vec<String> {
+    let Ok(index) = repo.index() else {
+        return Vec::new();
+    };
+    let Ok(conflicts) = index.conflicts() else {
+        return Vec::new();
+    };
+    conflicts
+        .flatten()
+        .filter_map(|c| c.our.or(c.their).or(c.ancestor))
+        .map(|entry| String::from_utf8_lossy(&entry.path).into_owned())
+        .collect()
 }
 
 fn read_count(file: &Path) -> Option<u32> {
@@ -41,26 +47,19 @@ fn read_count(file: &Path) -> Option<u32> {
 }
 
 /// Commit HEAD resolves to, or an empty string on an unborn branch.
-fn head_sha(path: &str) -> String {
-    GitCmd::in_repo(path)
-        .args(["rev-parse", "HEAD"])
-        .run()
-        .map(|out| out.trim().to_string())
+fn head_sha(repo: &Repository) -> String {
+    repo.head()
+        .ok()
+        .and_then(|head| head.target())
+        .map(|oid| oid.to_string())
         .unwrap_or_default()
-}
-
-fn head_is_detached(path: &str) -> bool {
-    GitCmd::in_repo(path)
-        .args(["symbolic-ref", "-q", "HEAD"])
-        .output()
-        .map(|out| !out.status.success())
-        .unwrap_or(false)
 }
 
 /// Read the current repository state. Shared with `sequencer.rs`, which needs
 /// to know whether an operation is still running after `--continue`.
 pub(crate) fn read_repo_state(path: &str) -> Result<RepoStateInfo, String> {
-    let dir = git_dir(path)?;
+    let repo = Repository::open(path).map_err(|e| e.message().to_string())?;
+    let dir = git_dir(&repo);
     let rebase_merge = dir.join("rebase-merge");
     let rebase_apply = dir.join("rebase-apply");
 
@@ -90,11 +89,11 @@ pub(crate) fn read_repo_state(path: &str) -> Result<RepoStateInfo, String> {
 
     Ok(RepoStateInfo {
         state,
-        head_detached: head_is_detached(path),
-        head_sha: head_sha(path),
+        head_detached: repo.head_detached().unwrap_or(false),
+        head_sha: head_sha(&repo),
         rebase_step,
         rebase_total,
-        conflicted_files: conflicted_files(path),
+        conflicted_files: conflicted_files(&repo),
     })
 }
 
@@ -110,8 +109,110 @@ pub async fn get_repo_state(path: String) -> Result<RepoStateInfo, String> {
 mod tests {
     use super::*;
     use crate::commands::history::testutil::{
-        conflict_repo, conflict_repo_named, git, git_ok, init_empty_repo, init_repo,
+        commit_file, conflict_repo, conflict_repo_named, git, git_ok, init_empty_repo, init_repo,
     };
+    use tempfile::TempDir;
+
+    /// Git dir, detached flag, HEAD sha and conflicted paths as the `git` CLI
+    /// reports them, which is what this module used to shell out for.
+    fn git_cli_state(repo: &str) -> (PathBuf, bool, String, Vec<String>) {
+        let dir = String::from_utf8_lossy(&git(repo, &["rev-parse", "--absolute-git-dir"]).stdout)
+            .trim_end_matches(['\r', '\n', ' '])
+            .to_string();
+        let detached = !git(repo, &["symbolic-ref", "-q", "HEAD"]).status.success();
+        let head = git(repo, &["rev-parse", "HEAD"]);
+        let head_sha = if head.status.success() {
+            String::from_utf8_lossy(&head.stdout).trim().to_string()
+        } else {
+            String::new()
+        };
+        let unmerged = git(repo, &["diff", "--name-only", "--diff-filter=U", "-z"]);
+        let conflicted = String::from_utf8_lossy(&unmerged.stdout)
+            .split('\0')
+            .map(|s| s.trim_end_matches(['\r', '\n']))
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect();
+        (PathBuf::from(dir), detached, head_sha, conflicted)
+    }
+
+    fn assert_matches_the_git_cli(repo: &str) {
+        let (dir, detached, head_sha, conflicted) = git_cli_state(repo);
+        assert_eq!(git_dir(&Repository::open(repo).unwrap()), dir);
+
+        let info = read_repo_state(repo).unwrap();
+        assert_eq!(info.head_detached, detached);
+        assert_eq!(info.head_sha, head_sha);
+        assert_eq!(info.conflicted_files, conflicted);
+    }
+
+    #[test]
+    fn a_clean_repo_matches_the_git_cli() {
+        let (_dir, repo) = init_repo();
+        assert_matches_the_git_cli(&repo);
+    }
+
+    #[test]
+    fn a_detached_head_matches_the_git_cli() {
+        let (_dir, repo) = init_repo();
+        git_ok(&repo, &["checkout", "--detach", "HEAD"]);
+        assert_matches_the_git_cli(&repo);
+    }
+
+    #[test]
+    fn a_merge_conflict_matches_the_git_cli() {
+        let (_dir, repo) = conflict_repo();
+        assert!(
+            !git(&repo, &["merge", "feature"]).status.success(),
+            "merge was expected to conflict"
+        );
+        assert_matches_the_git_cli(&repo);
+    }
+
+    #[test]
+    fn a_repo_without_commits_matches_the_git_cli() {
+        let (_dir, repo) = init_empty_repo();
+        assert_matches_the_git_cli(&repo);
+    }
+
+    /// `zz.txt` is deleted on `main`, so its conflict has no "ours" stage, and
+    /// it must still come after `aa.txt` like git prints it.
+    #[test]
+    fn conflicts_without_every_stage_match_the_git_cli() {
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "aa.txt", "base\n", "base aa");
+        commit_file(&repo, "zz.txt", "base\n", "base zz");
+
+        git_ok(&repo, &["checkout", "-b", "feature"]);
+        commit_file(&repo, "aa.txt", "feature\n", "feature aa");
+        commit_file(&repo, "zz.txt", "feature\n", "feature zz");
+
+        git_ok(&repo, &["checkout", "main"]);
+        commit_file(&repo, "aa.txt", "main\n", "main aa");
+        git_ok(&repo, &["rm", "--", "zz.txt"]);
+        git_ok(&repo, &["commit", "-m", "drop zz"]);
+
+        assert!(
+            !git(&repo, &["merge", "feature"]).status.success(),
+            "merge was expected to conflict"
+        );
+        let info = read_repo_state(&repo).unwrap();
+        assert_eq!(info.conflicted_files, vec!["aa.txt", "zz.txt"]);
+        assert_matches_the_git_cli(&repo);
+    }
+
+    /// The git dir of a linked worktree is `<main>/.git/worktrees/<name>`, and
+    /// that is the dir the sequencer markers live in.
+    #[test]
+    fn a_linked_worktree_matches_the_git_cli() {
+        let (_dir, repo) = init_repo();
+        let elsewhere = TempDir::new().expect("create worktree dir");
+        let linked = elsewhere.path().join("linked");
+        let linked = linked.to_str().expect("non-UTF-8 tempdir path");
+        git_ok(&repo, &["worktree", "add", "--detach", linked]);
+
+        assert_matches_the_git_cli(linked);
+    }
 
     #[test]
     fn clean_repo_reports_clean() {
@@ -191,17 +292,19 @@ mod tests {
     }
 
     #[test]
-    fn unicode_conflict_paths_survive_the_nul_split() {
+    fn unicode_conflict_paths_survive_the_index_read() {
         let (_dir, repo) = conflict_repo_named("señal ñ.txt");
         git(&repo, &["merge", "feature"]);
-        assert_eq!(conflicted_files(&repo), vec!["señal ñ.txt".to_string()]);
+        let handle = Repository::open(&repo).unwrap();
+        assert_eq!(conflicted_files(&handle), vec!["señal ñ.txt".to_string()]);
     }
 
     #[test]
-    fn git_dir_is_absolute_and_forward_slashed_by_git() {
+    fn git_dir_is_absolute_and_has_no_trailing_separator() {
         let (_dir, repo) = init_repo();
-        let dir = git_dir(&repo).unwrap();
+        let dir = git_dir(&Repository::open(&repo).unwrap());
         assert!(dir.is_absolute());
         assert!(dir.ends_with(".git"));
+        assert!(!dir.to_str().unwrap().ends_with(std::path::is_separator));
     }
 }

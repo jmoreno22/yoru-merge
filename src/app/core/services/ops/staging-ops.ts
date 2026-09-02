@@ -1,9 +1,19 @@
 import { Injectable, inject } from '@angular/core';
-import type { HunkRange } from '../../models';
+import type { HunkRange, RepoChangeKind } from '../../models';
 import type { PatchApplyFlags } from '../../utils/patch-builder';
 import type { RepoState } from '../workspace.store';
 import { OpsRunner } from './ops-runner';
 import { RepoOps } from './repo-ops';
+
+/**
+ * A discard restores tracked paths from the index and removes untracked ones:
+ * no ref moves, but `checkout -- <path>` does resolve a conflicted path, so
+ * the conflict list has to come back with the changes.
+ */
+const WORKING_TREE: ReadonlySet<RepoChangeKind> = new Set<RepoChangeKind>([
+  'index',
+  'worktree',
+]);
 
 /** Options accepted by {@link StagingOps.commit}. */
 export interface CommitOptions {
@@ -91,7 +101,7 @@ export class StagingOps {
     return this.ops.run(
       async () => {
         const discarded = await this.ops.git.discardChanges(repo.path, [...files]);
-        await this.repoOps.refreshAll(state);
+        await this.repoOps.refreshFor(state, WORKING_TREE);
         this.repoOps.clearDiff(state);
         return discarded;
       },

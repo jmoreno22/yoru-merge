@@ -4,10 +4,8 @@ import {
   Component,
   computed,
   ElementRef,
-  effect,
   inject,
   signal,
-  untracked,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
@@ -82,14 +80,6 @@ export class Sidebar {
   );
 
   constructor() {
-    // The ref menus need real remote names (push targets, web URLs); the
-    // refresh cycle does not carry them.
-    effect(() => {
-      const repo = this.service.repo();
-      if (!repo) return;
-      untracked(() => void this.service.listRemotesAction());
-    });
-
     afterRenderEffect(() => {
       const request = this.focusRequest();
       if (!request || request.seq === this.lastFocusSeq) return;

@@ -27,6 +27,17 @@ const MAX_PREVIEW_BYTES: u64 = 10 * 1024 * 1024;
 
 const TOO_LARGE: &str = "file too large to preview";
 
+/// First parent of `commit`, or the empty tree when it is a root commit.
+///
+/// Answers exactly what `rev-parse --verify --quiet <sha>^` answered — the
+/// first parent of a merge included — off an already-open commit object.
+fn diff_base_of(commit: &git2::Commit<'_>) -> String {
+    commit
+        .parent_id(0)
+        .map(|id| id.to_string())
+        .unwrap_or_else(|_| EMPTY_TREE.to_string())
+}
+
 /// First parent of `rev`, or the empty tree when it is a root commit.
 fn diff_base(path: &str, rev: &str) -> String {
     GitCmd::in_repo(path)
@@ -137,19 +148,29 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
     let author = commit.author();
     let committer = commit.committer();
 
-    let files = parse_raw_numstat(
-        &GitCmd::in_repo(path)
+    let base = diff_base_of(&commit);
+    // On a signed commit `%G?` makes git run gpg or ssh-keygen, so it rides
+    // alongside the diff instead of adding its latency after it.
+    let (raw, signature) = std::thread::scope(|scope| {
+        let signing = scope.spawn(|| signature_status(path, &full_sha));
+        let raw = GitCmd::in_repo(path)
             .args([
                 "diff",
                 "--raw",
                 "--numstat",
                 "-z",
                 "--find-renames",
-                &diff_base(path, &full_sha),
+                &base,
                 &full_sha,
             ])
-            .run()?,
-    );
+            .run();
+        let signature = signing
+            .join()
+            .unwrap_or_else(|payload| std::panic::resume_unwind(payload));
+        (raw, signature)
+    });
+
+    let files = parse_raw_numstat(&raw?);
     let additions = files.iter().map(|file| file.additions).sum();
     let deletions = files.iter().map(|file| file.deletions).sum();
 
@@ -168,7 +189,7 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
             .get(&commit.id())
             .cloned()
             .unwrap_or_default(),
-        signature: signature_status(path, &full_sha),
+        signature,
         files,
         additions,
         deletions,
@@ -454,6 +475,42 @@ mod tests {
         let head_diff = commit_file_diff_inner(&repo, &head, "file.txt").unwrap();
         assert!(head_diff.contains("-one"));
         assert!(head_diff.contains("+two"));
+    }
+
+    /// The in-process base and the parallel signature read are the two ways a
+    /// root commit or a merge could start reporting something else.
+    #[test]
+    fn root_and_merge_details_match_what_the_spawned_base_reported() {
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "file.txt", "base\n", "base");
+        let root = git_ok(&repo, &["rev-parse", "HEAD"]);
+        git_ok(&repo, &["checkout", "-b", "feature"]);
+        commit_file(&repo, "feature.txt", "f\n", "feature");
+        git_ok(&repo, &["checkout", "main"]);
+        commit_file(&repo, "main.txt", "m\n", "main");
+        git_ok(&repo, &["merge", "--no-ff", "-m", "merge", "feature"]);
+
+        let opened = Repository::open(&repo).unwrap();
+        for rev in ["HEAD", "HEAD^", "HEAD^2", &root] {
+            let commit = opened
+                .revparse_single(rev)
+                .and_then(|object| object.peel_to_commit())
+                .unwrap();
+            assert_eq!(diff_base_of(&commit), diff_base(&repo, rev), "rev {rev}");
+        }
+
+        let root_details = commit_details_inner(&repo, &root).unwrap();
+        assert!(root_details.parents.is_empty());
+        assert_eq!(root_details.files.len(), 1);
+        assert_eq!(root_details.files[0].path, "file.txt");
+        assert_eq!(root_details.files[0].status, FileChangeStatus::Added);
+        assert_eq!(root_details.signature, SignatureStatus::None);
+
+        let merge_details = commit_details_inner(&repo, "HEAD").unwrap();
+        assert_eq!(merge_details.parents.len(), 2);
+        assert_eq!(merge_details.files.len(), 1);
+        assert_eq!(merge_details.files[0].path, "feature.txt");
+        assert_eq!(merge_details.signature, SignatureStatus::None);
     }
 
     #[test]

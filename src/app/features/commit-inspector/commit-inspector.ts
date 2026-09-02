@@ -250,7 +250,11 @@ export class CommitInspector {
     const sha = this.details()?.sha;
     if (!sha) return;
     this.activeFile.set(path);
-    this.repo.diffText.set(await this.repo.commitFileDiff(sha, path));
+    const diff = await this.repo.commitFileDiff(sha, path);
+    // Clicking through files leaves several of these in flight; a slow answer
+    // must not overwrite the diff of the file now open.
+    if (this.activeFile() !== path || this.details()?.sha !== sha) return;
+    this.repo.diffText.set(diff);
   }
 
   protected async onFileMenu(event: MouseEvent, file: CommitFile): Promise<void> {

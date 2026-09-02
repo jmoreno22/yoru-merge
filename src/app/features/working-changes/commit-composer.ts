@@ -87,7 +87,6 @@ export class CommitComposer {
     viewChild<ElementRef<HTMLInputElement>>('subjectInput');
   /** The split button's caret, reused to anchor the fixup picker. */
   private menuAnchor: HTMLElement | null = null;
-  private remotesRequestedFor: string | null = null;
 
   protected readonly types = CONVENTIONAL_TYPES;
   protected readonly subjectWarn = SUBJECT_WARN;
@@ -298,15 +297,6 @@ export class CommitComposer {
       if (this.service.isOpen() && this.service.config() === null) {
         void this.service.loadConfigAction();
       }
-    });
-
-    // "Commit & push" must know whether a remote exists; nothing else in the
-    // refresh set lists them, and re-reading on every change would loop.
-    effect(() => {
-      const repo = this.service.repo();
-      if (!repo || this.remotesRequestedFor === repo.path) return;
-      this.remotesRequestedFor = repo.path;
-      void this.service.listRemotesAction();
     });
 
     effect((onCleanup) => {

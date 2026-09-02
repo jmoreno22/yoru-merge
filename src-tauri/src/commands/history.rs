@@ -7,12 +7,14 @@
 //! of the cached vectors, so graph row indices stay absolute: page `k` lines up
 //! 1:1 with the accumulated commit array on the UI side.
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
 use git2::{Oid, Reference, Repository, Revwalk, Sort};
 
-use super::git::{validate_repo_path, validate_revision, GitCmd};
+use super::git::{validate_repo_path, validate_revision};
 use crate::graph::assign_lanes;
 use crate::models::{CommitInfo, GraphData, HistoryPage, RefInfo, RefType};
 
@@ -157,7 +159,7 @@ impl Scope {
 }
 
 struct CachedHistory {
-    ref_fingerprint: String,
+    ref_fingerprint: u64,
     oids: Vec<Oid>,
     head_set: HashSet<Oid>,
     ref_map: HashMap<Oid, Vec<RefInfo>>,
@@ -170,16 +172,43 @@ struct CachedHistory {
 pub struct HistoryCache(Arc<Mutex<HashMap<String, CachedHistory>>>);
 
 /// Cheap signature of every ref plus HEAD; any change invalidates the walk.
-fn ref_fingerprint(path: &str) -> String {
-    let refs = GitCmd::in_repo(path)
-        .args(["for-each-ref", "--format=%(refname)%00%(objectname)"])
-        .run()
-        .unwrap_or_default();
-    let head = GitCmd::in_repo(path)
-        .args(["rev-parse", "HEAD"])
-        .run()
-        .unwrap_or_default();
-    format!("{refs}\u{1}{head}")
+///
+/// `refs/stash` and `refs/notes/*` are left out: no scope walks them and
+/// `build_ref_map` drops them, so stashing or annotating would otherwise throw
+/// away the whole walk for something the UI never shows. Targets are hashed
+/// unpeeled, which is enough because retagging rewrites the tag object too.
+fn ref_fingerprint(repo: &Repository) -> u64 {
+    let mut entries: Vec<(String, String)> = Vec::new();
+    if let Ok(references) = repo.references() {
+        for reference in references.flatten() {
+            let Some(name) = reference.name() else {
+                continue;
+            };
+            if name == "refs/stash" || name.starts_with("refs/notes/") {
+                continue;
+            }
+            let target = reference
+                .target()
+                .map(|oid| oid.to_string())
+                .or_else(|| reference.symbolic_target().map(str::to_string))
+                .unwrap_or_default();
+            entries.push((name.to_string(), target));
+        }
+    }
+    // `references()` gives no iteration order, so an unsorted hash would differ
+    // between two identical calls and invalidate the cache on every page.
+    entries.sort_unstable();
+
+    let mut hasher = DefaultHasher::new();
+    entries.hash(&mut hasher);
+    let head = repo.head().ok();
+    // The name is hashed too, so detaching HEAD at the same commit still counts.
+    head.as_ref().and_then(|h| h.name()).hash(&mut hasher);
+    head.as_ref()
+        .and_then(|h| h.target())
+        .map(|oid| oid.to_string())
+        .hash(&mut hasher);
+    hasher.finish()
 }
 
 fn push_branch(repo: &Repository, walk: &mut Revwalk<'_>, name: &str) -> Result<(), String> {
@@ -253,7 +282,7 @@ fn lane_stub(sha: String, parent_shas: Vec<String>) -> CommitInfo {
 fn build_history(
     repo: &Repository,
     scope: &Scope,
-    ref_fingerprint: String,
+    ref_fingerprint: u64,
 ) -> Result<CachedHistory, String> {
     let mut walk = repo.revwalk().map_err(|e| e.message().to_string())?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
@@ -294,7 +323,7 @@ pub(crate) fn history_page(
     let repo = Repository::open(path).map_err(|e| e.message().to_string())?;
     let scope = Scope::new(branch, all);
     let key = format!("{path}\u{0}{}", scope.key());
-    let fingerprint = ref_fingerprint(path);
+    let fingerprint = ref_fingerprint(&repo);
 
     let mut cached = cache
         .0
@@ -556,6 +585,65 @@ mod tests {
             .refs
             .iter()
             .any(|r| r.name == "v1" && matches!(r.ref_type, RefType::Tag)));
+    }
+
+    fn fingerprint_of(repo: &str) -> u64 {
+        ref_fingerprint(&Repository::open(repo).expect("open repository"))
+    }
+
+    #[test]
+    fn the_fingerprint_is_the_same_when_nothing_moved() {
+        let (_dir, repo) = init_repo();
+        git_ok(&repo, &["branch", "side"]);
+        git_ok(&repo, &["tag", "-a", "v1", "-m", "release"]);
+        assert_eq!(fingerprint_of(&repo), fingerprint_of(&repo));
+    }
+
+    #[test]
+    fn stashing_does_not_change_the_fingerprint() {
+        let (_dir, repo) = init_repo();
+        write_file(
+            &repo, "a.txt", "v2
+",
+        );
+        let before = fingerprint_of(&repo);
+        git_ok(&repo, &["stash"]);
+        assert_eq!(fingerprint_of(&repo), before);
+    }
+
+    #[test]
+    fn adding_a_note_does_not_change_the_fingerprint() {
+        let (_dir, repo) = init_repo();
+        let before = fingerprint_of(&repo);
+        git_ok(&repo, &["notes", "add", "-m", "annotated", "HEAD"]);
+        assert_eq!(fingerprint_of(&repo), before);
+    }
+
+    #[test]
+    fn a_new_commit_changes_the_fingerprint() {
+        let (_dir, repo) = init_repo();
+        let before = fingerprint_of(&repo);
+        commit_file(
+            &repo, "file.txt", "second
+", "second",
+        );
+        assert_ne!(fingerprint_of(&repo), before);
+    }
+
+    #[test]
+    fn creating_a_branch_changes_the_fingerprint() {
+        let (_dir, repo) = init_repo();
+        let before = fingerprint_of(&repo);
+        git_ok(&repo, &["branch", "side"]);
+        assert_ne!(fingerprint_of(&repo), before);
+    }
+
+    #[test]
+    fn detaching_head_changes_the_fingerprint() {
+        let (_dir, repo) = init_repo();
+        let before = fingerprint_of(&repo);
+        git_ok(&repo, &["checkout", "--detach"]);
+        assert_ne!(fingerprint_of(&repo), before);
     }
 
     #[test]

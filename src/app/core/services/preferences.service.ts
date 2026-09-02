@@ -20,6 +20,7 @@ import {
   type InspectorPlacement,
   MAX_AI_INSTRUCTIONS,
   migratePreferences,
+  PREFERENCES_KEY,
   type RailView,
   SCHEMA_VERSION,
   SCHEMA_VERSION_KEY,
@@ -113,6 +114,9 @@ export class PreferencesService {
 
   /** Handle for the debounced write timer. */
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Set when the store on disk still carries an older {@link SCHEMA_VERSION}. */
+  private staleSchemaVersion = false;
 
   constructor() {
     // Defaults stay in place until the durable store resolves.
@@ -329,6 +333,7 @@ export class PreferencesService {
         stored[key] = value;
       }
       const version = asNumber(stored[SCHEMA_VERSION_KEY]) ?? 0;
+      this.staleSchemaVersion = version !== SCHEMA_VERSION;
       this._durable.set({
         ...DEFAULT_PREFERENCES,
         ...sanitizePreferences(migratePreferences(stored, version)),
@@ -342,9 +347,13 @@ export class PreferencesService {
   private async writeToStore(data: DurablePreferences): Promise<void> {
     if (!this.store) return;
     try {
-      await this.store.set(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
-      for (const [key, value] of Object.entries(data)) {
-        await this.store.set(key, value);
+      await this.store.set(PREFERENCES_KEY, data);
+      // Stamped after the values land, and only while it is out of date: a
+      // store still on the old version must keep its loose keys authoritative
+      // if this very flush is the one that fails.
+      if (this.staleSchemaVersion) {
+        await this.store.set(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
+        this.staleSchemaVersion = false;
       }
       await this.store.save();
     } catch {

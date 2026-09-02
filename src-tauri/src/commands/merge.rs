@@ -128,10 +128,32 @@ fn merge_branch_inner(
     Ok(MergeResult::Success)
 }
 
+/// The same list [`conflicted_files`] produces, read from the index instead of
+/// from `git status`, which is what makes `get_conflicts` spawn-free.
+///
+/// Non-UTF-8 index paths are dropped, exactly like [`parse_unmerged`] drops
+/// them; an unreadable index means "nothing conflicted", like a failed status.
+fn index_conflicts(path: &str) -> Vec<String> {
+    let Ok(repo) = git2::Repository::open(path) else {
+        return Vec::new();
+    };
+    let Ok(index) = repo.index() else {
+        return Vec::new();
+    };
+    let Ok(conflicts) = index.conflicts() else {
+        return Vec::new();
+    };
+    conflicts
+        .flatten()
+        .filter_map(|c| c.our.or(c.their).or(c.ancestor))
+        .filter_map(|entry| String::from_utf8(entry.path).ok())
+        .collect()
+}
+
 fn get_conflicts_inner(path: &str) -> Result<Vec<ConflictFile>, String> {
     validate_repo_path(path)?;
 
-    let files = conflicted_files(path)?;
+    let files = index_conflicts(path);
     let mut result = Vec::with_capacity(files.len());
     for file in files {
         let abs = Path::new(path).join(&file);
@@ -290,6 +312,36 @@ mod tests {
     fn no_conflicts_in_a_fresh_repo() {
         let (_dir, path) = init_repo();
         assert!(get_conflicts_inner(&path).unwrap().is_empty());
+    }
+
+    /// `get_conflicts` reads the index while `merge_branch` still reads
+    /// `git status`, so both listings have to agree. `zz.txt` is deleted on
+    /// `main`, which leaves its conflict without an "ours" stage.
+    #[test]
+    fn the_index_listing_matches_the_status_listing() {
+        let (_dir, path) = init_repo();
+        write_file(&path, "aa.txt", "base\n");
+        write_file(&path, "zz.txt", "base\n");
+        git(&path, &["add", "."]);
+        git(&path, &["commit", "-m", "base"]);
+
+        git(&path, &["checkout", "-b", "feature"]);
+        write_file(&path, "aa.txt", "feature\n");
+        write_file(&path, "zz.txt", "feature\n");
+        git(&path, &["commit", "-am", "feature"]);
+
+        git(&path, &["checkout", "main"]);
+        write_file(&path, "aa.txt", "main\n");
+        git(&path, &["rm", "--", "zz.txt"]);
+        git(&path, &["commit", "-am", "main"]);
+
+        assert!(matches!(
+            merge_branch_inner(&path, "feature", false, false).unwrap(),
+            MergeResult::Conflicts { .. }
+        ));
+
+        assert_eq!(index_conflicts(&path), conflicted_files(&path).unwrap());
+        assert_eq!(index_conflicts(&path), vec!["aa.txt", "zz.txt"]);
     }
 
     #[test]

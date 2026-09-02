@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
-import type { PullResult, PushResult } from '../../models';
+import type { PullResult, PushResult, RepoChangeKind } from '../../models';
 import { AUTH_REQUIRED_TOAST } from '../git-auth-error';
 import { PreferencesService } from '../preferences.service';
 import type { PullMode } from '../tauri-git.service';
@@ -37,6 +37,13 @@ const PROGRESS_GRACE_MS = 2000;
 /** Auto-fetch is evaluated on this cadence, not on the interval itself. */
 const AUTO_FETCH_TICK_MS = 60_000;
 
+/**
+ * Fetch and push only move refs — remote-tracking ones, and the upstream a
+ * `--set-upstream` writes. Neither can touch the index or the work tree, so
+ * they refresh refs instead of paying for a full `git status`.
+ */
+const REFS_ONLY: ReadonlySet<RepoChangeKind> = new Set<RepoChangeKind>(['refs']);
+
 /** Fetch, pull, push and remote CRUD, plus the background auto-fetch timer. */
 @Injectable({ providedIn: 'root' })
 export class RemoteOps {
@@ -67,7 +74,7 @@ export class RemoteOps {
         options.tags ?? false,
         (progress) => state.fetchProgress.set(progress),
       );
-      await this.repoOps.refreshAll(state);
+      await this.repoOps.refreshFor(state, REFS_ONLY);
       if (!options.silent) {
         this.ops.toast.success(
           options.remote === null ? 'Fetched all remotes.' : 'Fetch complete.',
@@ -137,7 +144,8 @@ export class RemoteOps {
     );
     if (!result) return null;
     this.reportPush(result, branch, remote);
-    if (result.kind !== 'auth_required') await this.repoOps.refreshAll(state);
+    if (result.kind !== 'auth_required')
+      await this.repoOps.refreshFor(state, REFS_ONLY);
     return result;
   }
 
@@ -228,8 +236,8 @@ export class RemoteOps {
     await this.ops.run(
       async () => {
         await action();
-        await this.listRemotes(state);
-        // New or renamed remotes change the ref namespace.
+        // New or renamed remotes change the ref namespace, and the ref reload
+        // already brings the remote list back with it.
         await this.repoOps.refreshRefs(state);
       },
       undefined,

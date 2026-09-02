@@ -129,9 +129,24 @@ export class CommitList {
     this.isSearchActive() ? this.repo.searchResults() : this.repo.commits(),
   );
 
+  /**
+   * Object identity is a safe key because a `CommitInfo` is never mutated: an
+   * append keeps the objects of the pages already loaded and every refresh
+   * replaces the whole array, so a commit whose refs changed gets a new row.
+   * A reused row keeps the `now` it was built with, so relative dates re-time
+   * on a refresh rather than on every page appended.
+   */
+  private readonly rowCache = new WeakMap<CommitInfo, CommitRow>();
+
   protected readonly rows = computed<readonly CommitRow[]>(() => {
     const now = Date.now();
-    return this.commits().map((commit) => toRow(commit, now));
+    return this.commits().map((commit) => {
+      const cached = this.rowCache.get(commit);
+      if (cached) return cached;
+      const row = toRow(commit, now);
+      this.rowCache.set(commit, row);
+      return row;
+    });
   });
 
   private readonly order = computed<readonly string[]>(() =>

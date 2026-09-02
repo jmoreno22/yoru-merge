@@ -239,12 +239,14 @@ export class CurrentRepoService {
   // ── lifecycle ──────────────────────────────────────────────────────────
 
   async openRepo(path: string): Promise<void> {
-    await this.ensureRepoChangeListener();
-
     const state = this.workspace.openWorkspace(path);
     if (state.repo() !== null) return;
 
+    // The listener only has to be live before `watchPath` starts emitting, so
+    // registering it rides alongside `open_repo` instead of delaying it.
+    const listener = this.ensureRepoChangeListener();
     const opened = await this.repoOps.open(state);
+    await listener;
     if (!opened) return;
 
     // The watcher and the persisted tab list both follow the canonical

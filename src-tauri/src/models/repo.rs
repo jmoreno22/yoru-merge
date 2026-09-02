@@ -6,6 +6,5 @@ pub struct RepoInfo {
     pub path: String,
     pub name: String,
     pub current_branch: Option<String>,
-    pub is_clean: bool,
     pub is_bare: bool,
 }

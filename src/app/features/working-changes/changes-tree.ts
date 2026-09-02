@@ -190,7 +190,13 @@ export function folderPaths(entries: readonly FileEntry[]): string[] {
   return [...paths];
 }
 
+/** Built once: `localeCompare` with options builds a collator per comparison. */
+const collator = new Intl.Collator(undefined, {
+  sensitivity: 'base',
+  numeric: true,
+});
+
 /** Case-insensitive, locale-aware, stable for equal keys. */
 function comparePaths(a: string, b: string): number {
-  return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+  return collator.compare(a, b);
 }

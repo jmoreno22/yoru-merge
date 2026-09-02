@@ -140,9 +140,12 @@ export interface PreferencesSchema extends DurablePreferences {
 }
 
 /** Bumped whenever a stored shape changes; drives {@link migratePreferences}. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const SCHEMA_VERSION_KEY = 'schemaVersion';
+
+/** Store key holding every durable preference as one object. */
+export const PREFERENCES_KEY = 'preferences';
 
 export const DEFAULT_PREFERENCES: DurablePreferences = {
   workspaceTabs: [],
@@ -220,20 +223,31 @@ export const MAX_UI_FONT_SIZE = 17;
 export const MIN_MONO_FONT_SIZE = 10;
 export const MAX_MONO_FONT_SIZE = 18;
 
+/** First version whose values live under {@link PREFERENCES_KEY}. */
+const SINGLE_KEY_VERSION = 4;
+
 /**
- * Upgrades a stored payload to {@link SCHEMA_VERSION}.
+ * Turns the raw store entries into a flat payload at {@link SCHEMA_VERSION}.
  *
  * Version 0 is "written before the version key existed": its keys already match
- * the current names, so nothing has to move. Every bump since has only added
+ * the current names, so nothing has to move. Every bump up to 3 only added
  * keys — 1 -> 2 typography, accent and layout, 2 -> 3 the AI provider — and a
- * missing key already falls back to its default, so there is still nothing to
- * move. Later migrations go here.
+ * missing key already falls back to its default, so there was nothing to move.
+ *
+ * 3 -> 4 is the first that moves anything: the values left the top level for a
+ * single {@link PREFERENCES_KEY} object, so one write replaces the ~39 the flat
+ * shape needed. The loose keys of a version 3 store are read here once and then
+ * left in place — a user who goes back to an older build still finds them.
+ * Which side to read is decided by the stored version, not by which keys exist,
+ * so a downgrade that rewrites the loose keys wins over the stale object.
  */
 export function migratePreferences(
   stored: Record<string, unknown>,
-  _fromVersion: number,
+  fromVersion: number,
 ): Record<string, unknown> {
-  return stored;
+  if (fromVersion < SINGLE_KEY_VERSION) return stored;
+  const values = stored[PREFERENCES_KEY];
+  return isRecord(values) ? values : {};
 }
 
 /**
@@ -438,6 +452,10 @@ export function asNumber(value: unknown): number | null {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === 'string');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isOneOf<T extends string>(value: unknown, allowed: readonly T[]): value is T {
