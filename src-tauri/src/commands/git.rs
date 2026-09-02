@@ -19,8 +19,20 @@ use std::process::{Command, Output, Stdio};
 /// `diff.<driver>.command` — turns "show me a diff" into "run this command" for
 /// a repository received as a folder or a zip. Every invocation that can produce
 /// a patch carries this flag; grep for the name to find them. It does not cover
-/// `textconv` or `clean` filters, which git still runs.
+/// `clean` filters, which git still runs, nor `textconv`: that one needs
+/// [`NO_TEXTCONV`], which always travels with this flag.
 pub const NO_EXT_DIFF: &str = "--no-ext-diff";
+
+/// Refuses to run a file through a program before diffing it.
+///
+/// `diff.<driver>.textconv` — normally selected by the repository's own
+/// `.gitattributes` — is the second way a repository turns "show me a diff"
+/// into "run this command", and [`NO_EXT_DIFF`] does not disable it. It is the
+/// wider of the two: an external driver only runs under `git diff`, while
+/// textconv also runs under `show` and `log -p`. The cost is accepted: a
+/// repository that configures `textconv` (`pdftotext` for PDFs, say) shows
+/// those files as binary instead of the converted diff.
+pub const NO_TEXTCONV: &str = "--no-textconv";
 
 pub struct GitCmd {
     cmd: Command,
@@ -497,6 +509,29 @@ pub mod test_support {
             repo,
             &["config", "diff.external", &format!("printf 1 > '{target}'")],
         );
+        marker
+    }
+
+    /// Points `repo`'s `textconv` at a command that records having run, and
+    /// returns the path that must not exist after showing a diff.
+    ///
+    /// There is no repository-wide `textconv` key, so the driver is selected
+    /// the way a repository really would: a `diff=` attribute. The
+    /// `.gitattributes` is left untracked on purpose — git honours it either
+    /// way, and a committed one would show up in the diffs under test. The
+    /// `cat` keeps the command a real converter and not just a marker.
+    pub fn arm_textconv(repo: &str) -> std::path::PathBuf {
+        let marker = Path::new(repo).join(".git").join("textconv-ran");
+        let target = marker.to_string_lossy().replace('\\', "/");
+        git_ok(
+            repo,
+            &[
+                "config",
+                "diff.evil.textconv",
+                &format!("printf 1 > '{target}'; cat"),
+            ],
+        );
+        write_file(repo, ".gitattributes", "* diff=evil\n");
         marker
     }
 

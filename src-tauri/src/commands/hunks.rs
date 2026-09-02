@@ -1,6 +1,8 @@
 //! Staging and unstaging individual hunks of a file.
 
-use super::git::{blocking, validate_pathspec, validate_repo_path, GitCmd, NO_EXT_DIFF};
+use super::git::{
+    blocking, validate_pathspec, validate_repo_path, GitCmd, NO_EXT_DIFF, NO_TEXTCONV,
+};
 use serde::{Deserialize, Serialize};
 
 /// One hunk of a file's diff, identified by its position in that diff.
@@ -166,7 +168,7 @@ fn apply_patch_inner(path: &str, patch: &str, reverse: bool, cached: bool) -> Re
 }
 
 fn file_diff(path: &str, file: &str, staged: bool) -> Result<String, String> {
-    let mut cmd = GitCmd::in_repo(path).args(["diff", NO_EXT_DIFF, "--no-color"]);
+    let mut cmd = GitCmd::in_repo(path).args(["diff", NO_EXT_DIFF, NO_TEXTCONV, "--no-color"]);
     if staged {
         cmd = cmd.arg("--cached");
     }
@@ -230,7 +232,9 @@ pub async fn apply_patch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::git::test_support::{arm_external_diff, git_ok, init_repo, write_file};
+    use crate::commands::git::test_support::{
+        arm_external_diff, arm_textconv, git_ok, init_repo, write_file,
+    };
 
     const TWO_HUNKS: &str = concat!(
         "diff --git a/foo.txt b/foo.txt\n",
@@ -376,15 +380,24 @@ mod tests {
         lines[0] = "CHANGED_FIRST\n".to_string();
         write_file(&path, "file.txt", &lines.concat());
         let marker = arm_external_diff(&path);
+        let textconv_marker = arm_textconv(&path);
 
         let outcome = stage_hunks_inner(&path, "file.txt", &[HunkRange { index: 0 }]);
 
         assert!(!marker.exists(), "the repository's diff.external ran");
+        assert!(!textconv_marker.exists(), "the repository's textconv ran");
         outcome.unwrap();
-        // `--no-ext-diff` here too, so the check itself cannot trip the driver.
+        // Both flags here too, so the check itself cannot trip either driver.
         let staged = git_ok(
             &path,
-            &["diff", "--no-ext-diff", "--cached", "--", "file.txt"],
+            &[
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--cached",
+                "--",
+                "file.txt",
+            ],
         );
         assert!(staged.contains("+CHANGED_FIRST"), "staged:\n{staged}");
     }

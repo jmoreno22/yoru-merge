@@ -12,6 +12,7 @@ use git2::Repository;
 
 use super::git::{
     stderr_or, validate_pathspec, validate_repo_path, validate_revision, GitCmd, NO_EXT_DIFF,
+    NO_TEXTCONV,
 };
 use super::history::{build_ref_map, format_git2_time};
 use super::merge::resolve_in_repo;
@@ -159,6 +160,7 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
             .args([
                 "diff",
                 NO_EXT_DIFF,
+                NO_TEXTCONV,
                 "--raw",
                 "--numstat",
                 "-z",
@@ -186,8 +188,8 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
         committer_name: committer.name().unwrap_or("").to_string(),
         committer_email: committer.email().unwrap_or("").to_string(),
         committer_date: format_git2_time(committer.when()),
-        subject: commit.summary().unwrap_or("").to_string(),
-        body: commit.body().unwrap_or("").to_string(),
+        subject: commit.summary().ok().flatten().unwrap_or("").to_string(),
+        body: commit.body().ok().flatten().unwrap_or("").to_string(),
         refs: build_ref_map(&repo)?
             .get(&commit.id())
             .cloned()
@@ -214,6 +216,7 @@ fn commit_file_diff_inner(path: &str, sha: &str, file: &str) -> Result<String, S
             .args([
                 "diff",
                 NO_EXT_DIFF,
+                NO_TEXTCONV,
                 "--find-renames",
                 &base,
                 sha,
@@ -332,7 +335,8 @@ pub async fn get_file_base64(
 mod tests {
     use super::*;
     use crate::commands::history::testutil::{
-        arm_external_diff, commit_file, git_ok, init_empty_repo, write_file,
+        arm_external_diff, arm_textconv, commit_file, git_ok, init_empty_repo,
+        write_commit_with_invalid_utf8_ident, write_file,
     };
 
     fn file_named<'a>(details: &'a CommitDetails, path: &str) -> &'a CommitFile {
@@ -455,6 +459,22 @@ mod tests {
     }
 
     #[test]
+    fn an_ident_that_is_not_utf8_reads_as_empty_instead_of_failing() {
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "file.txt", "one\n", "first");
+        let sha = write_commit_with_invalid_utf8_ident(&repo);
+
+        let details = commit_details_inner(&repo, &sha).unwrap();
+        assert_eq!(details.author_name, "");
+        assert_eq!(details.author_email, "");
+        assert_eq!(details.committer_name, "");
+        assert_eq!(details.committer_email, "");
+        assert_eq!(details.subject, "");
+        assert_eq!(details.body, "");
+        assert!(details.author_date.contains('T'));
+    }
+
+    #[test]
     fn refs_pointing_at_the_commit_are_included() {
         let (_dir, repo) = init_empty_repo();
         commit_file(&repo, "file.txt", "x\n", "only");
@@ -497,11 +517,13 @@ mod tests {
         commit_file(&repo, "file.txt", "two\n", "second");
         let head = git_ok(&repo, &["rev-parse", "HEAD"]);
         let marker = arm_external_diff(&repo);
+        let textconv_marker = arm_textconv(&repo);
 
         let details = commit_details_inner(&repo, &head).unwrap();
         let diff = commit_file_diff_inner(&repo, &head, "file.txt").unwrap();
 
         assert!(!marker.exists(), "the repository's diff.external ran");
+        assert!(!textconv_marker.exists(), "the repository's textconv ran");
         assert_eq!(details.files.len(), 1);
         assert_eq!(details.files[0].additions, 1);
         assert!(diff.contains("+two"), "got: {diff}");

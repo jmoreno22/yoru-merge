@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Git 2.31 or newer is now required**, up from 2.25. Resolving a merge's diff
+  in a single call needs `--diff-merges`, which git gained in March 2021.
+
+- **Opening a repository no longer walks the whole worktree.** On Windows the
+  file watcher built a map of every file in the tree before it could report a
+  single change — `node_modules`, `target` and `.git/objects` included. On this
+  repository that took 17.7 s; it now takes under a millisecond, and a map of
+  52 000 entries is gone from memory.
+
+- Everyday gestures spawn far less git. Repository state and the conflict list
+  no longer shell out at all, opening a repository makes half the calls it did,
+  listing branches makes one instead of two, and a diff costs one instead of
+  two. Saving a file, committing, fetching and clicking a commit all got
+  shorter for the same reason.
+
+- The window stays hidden until its saved geometry is restored, instead of
+  appearing at a default size and then jumping to where you left it.
+
+- The first frame uses the appearance you configured. Type size, density,
+  palette, accent and layout rendered at their defaults for one frame, because
+  preferences load asynchronously, and then every token was rewritten at once.
+
+- A large history keeps its place. A commit made in a terminal — or any refresh
+  — replaced the list with its first page: at row 4000 you lost both your
+  position and every page you had scrolled through.
+
+- Preferences are stored as one record rather than one call per key. A change
+  cost 39 sequential round-trips to the backend; it now costs two.
+
+- Without an editor configured, **open in editor reveals the file in its folder**
+  instead of handing it to the operating system's default. For a `.exe`, `.lnk`,
+  `.bat` or `.desktop` that meant running it.
+
+- The commit inspector's header scrolls on its own, capped at half the panel, so
+  a long commit message no longer pushes the file list off screen.
+
+- Diffs, the refs sidebar and a commit's file list stay responsive on large
+  inputs: highlighting happens on the row being drawn rather than for every line
+  of every expanded file, and the sidebar and file list only build the rows they
+  show. The graph draws the current branch's glow without re-blurring the canvas
+  on every frame of a scroll.
+
+- The app starts with 192 kB instead of 228 kB over the wire: syntax
+  highlighting and the interactive rebase dialog load when they are first
+  needed. libgit2 is built without ssh and OpenSSL support, which it never
+  used — every remote operation goes through your own git.
+
+### Fixed
+
+- **Moving quickly through commits could show the wrong diff.** Two requests
+  went out per row and nothing checked, on arrival, that the selection had not
+  moved on, so a slow answer could overwrite a fast one.
+
+- Scrolling for more commits while a refresh was in flight could leave the list
+  as its first page followed by page N, which also misaligned the graph beside
+  it.
+
+- Opening the interactive rebase dialog twice left the first one attached to the
+  document for the rest of the session.
+
+### Security
+
+- **The AI provider no longer runs with the repository as its working
+  directory.** Several CLIs read configuration from there on startup, and that
+  configuration travels inside a clone: opening someone else's repository and
+  pressing the button ran code they chose.
+
+- The commands that launch programs — editor, terminal, AI provider — are read
+  from your settings in the backend instead of being passed in from the web
+  layer, so a scripting flaw in the interface can no longer decide what runs.
+
+- **Showing a diff no longer runs a program the repository picked.** A
+  repository can declare a converter or an external diff tool in its own
+  config, and both ran while a diff was being read — the converter as soon as
+  a commit was opened. Neither runs now. The cost is that a repository which
+  configured a converter to make PDFs or documents readable will show those
+  files as binary; `README.md` says what this covers and what it still does
+  not.
+
+- The Linux installer verifies the AppImage's minisign signature before making
+  it executable, and stops with instructions if minisign is missing rather than
+  continuing unverified. `docs/packaging.md` now says exactly what is signed,
+  what is verified at install time and what is not.
+
+- Angular's sanitizer advisories are patched, four unused Tauri plugins are out
+  of the bundle, and RUSTSEC-2026-0194 and RUSTSEC-2026-0195 are out of the
+  dependency tree.
+
+- Every workflow declares `contents: read` and elevates per job, every action is
+  pinned to a full commit SHA, and CI now fails on a new advisory in what ships.
+
+- The interactive rebase's scratch directory has a random name and is created
+  exclusively, instead of a predictable name in the system temp directory.
+
 ## [1.0.3] - 2026-09-01
 
 ### Added

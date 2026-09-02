@@ -65,7 +65,7 @@ pub(crate) fn build_ref_map(repo: &Repository) -> Result<HashMap<Oid, Vec<RefInf
     let mut map = HashMap::new();
 
     if let Ok(head) = repo.head() {
-        if let (Some(oid), Some(shorthand)) = (reference_commit_oid(&head), head.shorthand()) {
+        if let (Some(oid), Some(shorthand)) = (reference_commit_oid(&head), head.shorthand().ok()) {
             add_ref_info(
                 &mut map,
                 oid,
@@ -79,7 +79,8 @@ pub(crate) fn build_ref_map(repo: &Repository) -> Result<HashMap<Oid, Vec<RefInf
 
     for reference in repo.references().map_err(|e| e.message().to_string())? {
         let reference = reference.map_err(|e| e.message().to_string())?;
-        let (Some(oid), Some(name)) = (reference_commit_oid(&reference), reference.name()) else {
+        let (Some(oid), Some(name)) = (reference_commit_oid(&reference), reference.name().ok())
+        else {
             continue;
         };
 
@@ -122,7 +123,7 @@ pub(crate) fn commit_info(
     CommitInfo {
         short_sha: sha.chars().take(7).collect(),
         sha,
-        message: commit.summary().unwrap_or("").to_string(),
+        message: commit.summary().ok().flatten().unwrap_or("").to_string(),
         author_name: author.name().unwrap_or("").to_string(),
         author_email: author.email().unwrap_or("").to_string(),
         date: format_git2_time(author.when()),
@@ -281,7 +282,7 @@ fn ref_fingerprint(repo: &Repository) -> u64 {
     let mut entries: Vec<(String, String)> = Vec::new();
     if let Ok(references) = repo.references() {
         for reference in references.flatten() {
-            let Some(name) = reference.name() else {
+            let Ok(name) = reference.name() else {
                 continue;
             };
             if name == "refs/stash" || name.starts_with("refs/notes/") {
@@ -290,7 +291,13 @@ fn ref_fingerprint(repo: &Repository) -> u64 {
             let target = reference
                 .target()
                 .map(|oid| oid.to_string())
-                .or_else(|| reference.symbolic_target().map(str::to_string))
+                .or_else(|| {
+                    reference
+                        .symbolic_target()
+                        .ok()
+                        .flatten()
+                        .map(str::to_string)
+                })
                 .unwrap_or_default();
             entries.push((name.to_string(), target));
         }
@@ -303,7 +310,7 @@ fn ref_fingerprint(repo: &Repository) -> u64 {
     entries.hash(&mut hasher);
     let head = repo.head().ok();
     // The name is hashed too, so detaching HEAD at the same commit still counts.
-    head.as_ref().and_then(|h| h.name()).hash(&mut hasher);
+    head.as_ref().and_then(|h| h.name().ok()).hash(&mut hasher);
     head.as_ref()
         .and_then(|h| h.target())
         .map(|oid| oid.to_string())
@@ -524,6 +531,39 @@ pub(crate) mod testutil {
 
     pub fn conflict_repo() -> (TempDir, String) {
         conflict_repo_named("file.txt")
+    }
+
+    /// Write a commit object on top of HEAD whose author, committer and message
+    /// are not valid UTF-8, and return its sha.
+    ///
+    /// That is the only reason git2 reports those fields as an error, and no
+    /// `git commit` can produce one: the ident has to be handed to the object
+    /// database as raw bytes.
+    pub fn write_commit_with_invalid_utf8_ident(repo: &str) -> String {
+        use std::io::Write;
+
+        let tree = git_ok(repo, &["rev-parse", "HEAD^{tree}"]);
+        let parent = git_ok(repo, &["rev-parse", "HEAD"]);
+        let ident: &[u8] = b" \xff\xfe <b\xff@example.com> 1700000000 +0000\n";
+        let mut object = format!("tree {tree}\nparent {parent}\nauthor").into_bytes();
+        object.extend_from_slice(ident);
+        object.extend_from_slice(b"committer");
+        object.extend_from_slice(ident);
+        object.extend_from_slice(b"\nsubject \xff\xfe\n\nbody \xff\xfe\n");
+
+        let mut file = tempfile::NamedTempFile::new().expect("commit object file");
+        file.write_all(&object).expect("write commit object");
+        let out = std::process::Command::new("git")
+            .args(["-C", repo, "hash-object", "-w", "-t", "commit", "--stdin"])
+            .stdin(file.reopen().expect("reopen commit object"))
+            .output()
+            .expect("git hash-object");
+        assert!(
+            out.status.success(),
+            "git hash-object failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
     }
 }
 
@@ -749,6 +789,23 @@ mod tests {
             .refs
             .iter()
             .any(|r| r.name == "v1" && matches!(r.ref_type, RefType::Tag)));
+    }
+
+    #[test]
+    fn a_commit_whose_ident_is_not_utf8_is_still_listed() {
+        let (_dir, repo) = init_repo();
+        let sha = write_commit_with_invalid_utf8_ident(&repo);
+        git_ok(&repo, &["update-ref", "refs/heads/broken", &sha]);
+
+        let result = page(&HistoryCache::default(), &repo, 10, 0);
+        let row = result
+            .commits
+            .iter()
+            .find(|commit| commit.sha == sha)
+            .expect("the commit with the unreadable ident is listed");
+        assert_eq!(row.author_name, "");
+        assert_eq!(row.author_email, "");
+        assert_eq!(row.message, "");
     }
 
     fn fingerprint_of(repo: &str) -> u64 {

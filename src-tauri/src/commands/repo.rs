@@ -59,6 +59,8 @@ pub(super) fn head_branch(root: &str) -> Option<String> {
     let repo = git2::Repository::open(root).ok()?;
     let head = repo.find_reference("HEAD").ok()?;
     head.symbolic_target()
+        .ok()
+        .flatten()
         .and_then(|name| name.strip_prefix("refs/heads/"))
         .map(str::to_string)
 }

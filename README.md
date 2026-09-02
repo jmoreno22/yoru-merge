@@ -115,11 +115,13 @@ outside the repositories you open.
 
 **Repositories from a source you do not trust.** Opening a repository runs
 `git` inside it, and git reads that repository's own `.git/config`. YoruMerge
-never lets git hand a diff to an external program (`--no-ext-diff`), but a
-repository can still name commands git runs in other ways — signature
-verification, hooks, and `textconv` or `clean` filters. So treat a repository
-that arrived as a folder or a zip the way you would before running `git` in it
-from a terminal: look at `.git/config` and `.gitattributes` first.
+never lets git hand a diff to an external program, nor run one to convert a
+file before diffing it (`--no-ext-diff --no-textconv`) — the price being that a
+repository configuring `textconv` shows those files as binary instead of the
+converted diff. But a repository can still name commands git runs in other
+ways — signature verification, hooks, and `clean` filters. So treat a
+repository that arrived as a folder or a zip the way you would before running
+`git` in it from a terminal: look at `.git/config` and `.gitattributes` first.
 
 ## What it does
 

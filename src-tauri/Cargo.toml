@@ -29,7 +29,7 @@ base64 = "0.22"
 chrono = "0.4"
 # libgit2 is only used for local reads; every remote operation goes through the
 # git CLI, so the default `ssh`/`https` features would only add libssh2 and OpenSSL.
-git2 = { version = "0.19", default-features = false }
+git2 = { version = "0.21", default-features = false }
 # `notify` itself comes from the debouncer so both always agree on a version.
 notify-debouncer-full = "0.7"
 tempfile = "3"
