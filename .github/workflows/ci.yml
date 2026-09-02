@@ -70,9 +70,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          # matrix.os, not runner.os: the latter is "Linux" for both ubuntu-latest
+          # and the 22.04 image the bundle job pins, so a target/ built against one
+          # glibc could be restored onto the other.
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ matrix.os }}-cargo-
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
@@ -155,10 +158,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-bundle-${{ hashFiles('src-tauri/Cargo.lock') }}
+          # Keyed by image, and deliberately without a fallback to the build job's
+          # cache: that one is built on a different Ubuntu, and its artefacts are
+          # not interchangeable with this one's.
+          key: ${{ matrix.os }}-bundle-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-bundle-
-            ${{ runner.os }}-cargo-
+            ${{ matrix.os }}-bundle-
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
