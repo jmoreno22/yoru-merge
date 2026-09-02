@@ -2,6 +2,7 @@
 
 use super::git::{
     blocking, validate_message, validate_pathspec, validate_ref, validate_repo_path, GitCmd,
+    NO_EXT_DIFF,
 };
 use crate::models::StashEntry;
 
@@ -96,6 +97,7 @@ fn stash_show_inner(path: &str, index: u32) -> Result<String, String> {
         .args([
             "stash",
             "show",
+            NO_EXT_DIFF,
             "--patch",
             "--no-color",
             "--include-untracked",

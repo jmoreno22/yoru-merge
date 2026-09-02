@@ -16,6 +16,9 @@ import { ClipboardService, YoruTooltip } from '../../ui';
 /** How often "fetched 4 minutes ago" is recomputed. */
 const CLOCK_TICK_MS = 30_000;
 
+/** How long the git version waits for an idle slot before being asked anyway. */
+const GIT_VERSION_IDLE_MS = 2_000;
+
 /** Dot colour per activity level; the label repeats the state as words. */
 const ACTIVITY_COLOR: Readonly<Record<string, string>> = {
   watching: 'var(--color-git-added)',
@@ -147,10 +150,29 @@ export class StatusBar {
       this.wasFetching = fetching;
     });
 
-    // One round-trip per session: the git binary cannot change under us.
-    void this.repo.gitVersionAction().then((version) => this.gitVersion.set(version));
+    // One round-trip per session: the git binary cannot change under us. Asked
+    // at idle rather than from the constructor, where it spawned one more `git`
+    // in the middle of the burst `open_repo` fires while the window is still
+    // painting. `requestIdleCallback` is absent on older WebKitGTK, hence the
+    // timer: the version is a footer label, so late is never wrong.
+    const askGitVersion = (): void => {
+      void this.repo.gitVersionAction().then((version) => this.gitVersion.set(version));
+    };
+    let cancelGitVersion: () => void;
+    if (typeof requestIdleCallback === 'function') {
+      const handle = requestIdleCallback(askGitVersion, {
+        timeout: GIT_VERSION_IDLE_MS,
+      });
+      cancelGitVersion = () => cancelIdleCallback(handle);
+    } else {
+      const handle = setTimeout(askGitVersion, GIT_VERSION_IDLE_MS);
+      cancelGitVersion = () => clearTimeout(handle);
+    }
 
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(timer);
+      cancelGitVersion();
+    });
   }
 
   protected async onCopySha(): Promise<void> {

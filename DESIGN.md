@@ -321,9 +321,13 @@ the graph lanes drift away from their commits.
 Type scale: body 13 px, mono 12 px, headings 15 px, labels 10.5 px uppercase
 with `tracking-[0.12em]`.
 
-**Compact density.** The `uiDensity` preference writes `data-density="compact"`
-on `<html>`, and `styles.css` redefines the tokens above under
-`:root[data-density="compact"]`. **`--row-h` and `--file-row-h` deliberately do
+**Compact density.** Density is applied as inline custom properties on
+`<html>`: `AppearanceService` derives every metric from the type size and the
+density in `core/services/appearance-metrics.ts` and writes the tokens itself.
+There is no `:root[data-density="compact"]` rule, and `styles.css` says so at
+the declaration — the `data-density` attribute is only a read-back marker.
+Change density metrics in the arithmetic of that module, never with a CSS
+override. **`--row-h` and `--file-row-h` deliberately do
 not change**: both are pinned to a CDK virtual-scroll `itemSize` declared in
 TypeScript (`COMMIT_ROW_HEIGHT`, `FILE_ROW_HEIGHT`), and a token that disagrees
 with `itemSize` misplaces every row and drifts the graph lanes off their

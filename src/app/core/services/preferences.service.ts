@@ -47,6 +47,46 @@ const STORE_FILE = 'preferences.json';
 /** localStorage key for the trivial sidebar-section toggle state. */
 const LS_SIDEBAR_SECTIONS = 'prefs.sidebarSections';
 
+/**
+ * localStorage mirror of the preferences the first frame is laid out with.
+ * `assets/theme-preboot.js` reads it too — change one, change the other.
+ */
+const LS_APPEARANCE = 'prefs.appearance';
+
+/**
+ * The keys the first render depends on. The plugin-store resolves
+ * asynchronously and Angular's first tick does not wait for it, so these are
+ * mirrored to synchronous localStorage and read back as the initial value: the
+ * first frame is laid out with the user's own appearance instead of the
+ * defaults. Everything else can wait, because with no repository open yet the
+ * chrome and the appearance tokens are all that is on screen.
+ *
+ * The store stays the source of truth: when it resolves it replaces these
+ * outright, and the selectors only notify when a value actually differs, so a
+ * mirror that agreed with it costs no second layout and one that lied costs
+ * exactly the single rewrite the defaults used to cost anyway.
+ */
+const APPEARANCE_KEYS = [
+  'uiDensity',
+  'uiFontSize',
+  'monoFontSize',
+  'codeTabWidth',
+  'codeLigatures',
+  'accent',
+  'graphPalette',
+  'colorPalette',
+  'animations',
+  'inspectorPlacement',
+  'sidebarSide',
+  'sidebarWidth',
+  'workbenchSplit',
+  'showToolbar',
+  'showStatusBar',
+  'showGraph',
+  'zenMode',
+  'refsPanelOpen',
+] as const satisfies readonly (keyof DurablePreferences)[];
+
 /** How long (ms) to wait after the last change before flushing to disk. */
 const STORE_DEBOUNCE_MS = 500;
 
@@ -54,6 +94,7 @@ const STORE_DEBOUNCE_MS = 500;
 export class PreferencesService {
   private readonly _durable = signal<DurablePreferences>({
     ...DEFAULT_PREFERENCES,
+    ...loadAppearanceMirror(),
   });
 
   /** Cheap to rebuild if lost, so it stays in synchronous localStorage. */
@@ -345,6 +386,9 @@ export class PreferencesService {
   }
 
   private async writeToStore(data: DurablePreferences): Promise<void> {
+    // Every flush lands here, the window-close hook included, so this is where
+    // the first-paint mirror stays in step with the store.
+    writeAppearanceMirror(data);
     if (!this.store) return;
     try {
       await this.store.set(PREFERENCES_KEY, data);
@@ -385,6 +429,42 @@ export class PreferencesService {
       // Not running inside Tauri — `beforeunload` is the only hook available.
     }
   }
+}
+
+/**
+ * Reads the appearance mirror. Everything goes through the store's own
+ * sanitizer and is then narrowed to {@link APPEARANCE_KEYS}, so a corrupt,
+ * stale or hand-edited entry can only ever cost a default.
+ */
+function loadAppearanceMirror(): Partial<DurablePreferences> {
+  try {
+    const raw = localStorage.getItem(LS_APPEARANCE);
+    if (!raw) return {};
+    return pickAppearance(sanitizePreferences(JSON.parse(raw)));
+  } catch {
+    // Malformed JSON or unavailable storage — the defaults still render.
+    return {};
+  }
+}
+
+function writeAppearanceMirror(values: DurablePreferences): void {
+  try {
+    localStorage.setItem(LS_APPEARANCE, JSON.stringify(pickAppearance(values)));
+  } catch {
+    // localStorage unavailable (private mode, etc.) — fail silent: the next
+    // start just renders the defaults until the store arrives, as it used to.
+  }
+}
+
+function pickAppearance(
+  values: Partial<DurablePreferences>,
+): Partial<DurablePreferences> {
+  const out: Record<string, unknown> = {};
+  for (const key of APPEARANCE_KEYS) {
+    const value = values[key];
+    if (value !== undefined) out[key] = value;
+  }
+  return out as Partial<DurablePreferences>;
 }
 
 /**

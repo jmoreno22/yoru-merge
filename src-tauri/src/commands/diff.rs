@@ -4,7 +4,9 @@ use std::path::Path;
 
 use git2::Repository;
 
-use super::git::{blocking, validate_pathspec, validate_repo_path, validate_sha, GitCmd};
+use super::git::{
+    blocking, validate_pathspec, validate_repo_path, validate_sha, GitCmd, NO_EXT_DIFF,
+};
 
 const SIZE_LIMIT: usize = 10 * 1024 * 1024;
 
@@ -53,7 +55,14 @@ pub(super) fn get_diff_inner(
     if let Some(f) = file {
         if !staged && !is_tracked(path, f) {
             let out = GitCmd::in_repo(path)
-                .args(["diff", "--no-color", "--patch", "--no-index", "--"])
+                .args([
+                    "diff",
+                    NO_EXT_DIFF,
+                    "--no-color",
+                    "--patch",
+                    "--no-index",
+                    "--",
+                ])
                 .arg(NULL_DEVICE)
                 .arg(f)
                 .output()?;
@@ -65,7 +74,7 @@ pub(super) fn get_diff_inner(
         }
     }
 
-    let mut cmd = GitCmd::in_repo(path).args(["diff", "--no-color", "--patch"]);
+    let mut cmd = GitCmd::in_repo(path).args(["diff", NO_EXT_DIFF, "--no-color", "--patch"]);
     if staged {
         cmd = cmd.arg("--cached");
     }
@@ -91,6 +100,7 @@ pub(super) fn get_commit_diff_inner(path: &str, sha: &str) -> Result<String, Str
     let out = GitCmd::in_repo(path)
         .args([
             "show",
+            NO_EXT_DIFF,
             "--diff-merges=first-parent",
             "--no-color",
             "--patch",
@@ -120,7 +130,9 @@ pub async fn get_commit_diff(path: String, sha: String) -> Result<String, String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::git::test_support::{git, git_ok, init_repo, write_file};
+    use crate::commands::git::test_support::{
+        arm_external_diff, git, git_ok, init_repo, write_file,
+    };
 
     #[test]
     fn invalid_input_is_rejected() {
@@ -248,6 +260,29 @@ mod tests {
         let diff = get_commit_diff_inner(&path, &sha).unwrap();
         assert!(diff.contains("a.txt"), "got: {diff}");
         assert!(diff.contains("+v1"), "got: {diff}");
+    }
+
+    #[test]
+    fn a_diff_driver_configured_by_the_repository_is_never_executed() {
+        let (_dir, path) = init_repo();
+        let sha = git_ok(&path, &["rev-parse", "HEAD"]);
+        write_file(&path, "a.txt", "v2\n");
+        write_file(&path, "untracked.txt", "nuevo\n");
+        let marker = arm_external_diff(&path);
+
+        // Every diff the UI can ask for, with the driver armed: unstaged,
+        // untracked, a commit and staged.
+        let unstaged = get_diff_inner(&path, Some("a.txt"), false).unwrap();
+        let untracked = get_diff_inner(&path, Some("untracked.txt"), false).unwrap();
+        let commit = get_commit_diff_inner(&path, &sha).unwrap();
+        git_ok(&path, &["add", "a.txt"]);
+        let staged = get_diff_inner(&path, Some("a.txt"), true).unwrap();
+
+        assert!(!marker.exists(), "the repository's diff.external ran");
+        assert!(unstaged.contains("+v2"), "got: {unstaged}");
+        assert!(untracked.contains("+nuevo"), "got: {untracked}");
+        assert!(commit.contains("+v1"), "got: {commit}");
+        assert!(staged.contains("+v2"), "got: {staged}");
     }
 
     #[test]

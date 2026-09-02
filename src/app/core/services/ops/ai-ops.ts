@@ -6,9 +6,10 @@ import { OpsRunner } from './ops-runner';
 /**
  * Drafting a commit message with the user's own AI CLI.
  *
- * Thin on purpose: the provider command, the diff budget and the timeout all
- * come from preferences, and everything that could go wrong is the backend's to
- * explain — this only decides whether there is anything to ask for.
+ * Thin on purpose: the diff budget and the timeout come from preferences, the
+ * provider command the backend reads out of the store itself, and everything
+ * that could go wrong is the backend's to explain — this only decides whether
+ * there is anything to ask for.
  */
 @Injectable({ providedIn: 'root' })
 export class AiOps {
@@ -43,7 +44,7 @@ export class AiOps {
 
     return this.ops.run(
       () =>
-        this.ops.git.generateCommitMessage(repo.path, this.prefs.aiProvider().trim(), {
+        this.ops.git.generateCommitMessage(repo.path, {
           instructions: this.prefs.aiInstructions(),
           maxDiffKb: this.prefs.aiMaxDiffKb(),
           timeoutSecs: this.prefs.aiTimeoutSeconds(),

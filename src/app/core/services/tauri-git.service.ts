@@ -641,25 +641,22 @@ export class TauriGitService {
     return invoke<void>('open_in_file_manager', { target });
   }
 
-  /** `terminal` is the user's preferred command; `null` uses the OS default. */
   // ── AI commit messages ──────────────────────────────────────────────────
 
   /**
-   * A commit message for what is staged, drafted by the CLI named in
-   * `command`.
+   * A commit message for what is staged, drafted by the CLI the user
+   * configured.
    *
-   * The command is the whole configuration: no key, token or account of any
-   * kind crosses this boundary, because the CLI is already authenticated on
-   * the user's machine with the user's own subscription.
+   * Which CLI that is never crosses this boundary: the backend reads
+   * `aiProvider` from the preferences store, so a script running in this
+   * webview cannot choose the program that gets spawned.
    */
   generateCommitMessage(
     path: string,
-    command: string,
     options: AiProviderOptions = {},
   ): Promise<string> {
     return invoke<string>('generate_commit_message', {
       path,
-      command,
       instructions: options.instructions ?? null,
       maxDiffKb: options.maxDiffKb ?? null,
       timeoutSecs: options.timeoutSecs ?? null,
@@ -670,20 +667,19 @@ export class TauriGitService {
    * The exact prompt {@link generateCommitMessage} would send, without sending
    * it — what Settings shows behind "See what gets sent".
    */
-  previewAiPrompt(
-    path: string,
-    command: string,
-    options: AiProviderOptions = {},
-  ): Promise<string> {
+  previewAiPrompt(path: string, options: AiProviderOptions = {}): Promise<string> {
     return invoke<string>('preview_ai_prompt', {
       path,
-      command,
       instructions: options.instructions ?? null,
       maxDiffKb: options.maxDiffKb ?? null,
     });
   }
 
-  /** Runs the provider against a fixed one-line diff, for the Test button. */
+  /**
+   * Runs a provider command against a fixed one-line diff, for the Test
+   * button. The one place a command still crosses this boundary, because the
+   * point is to try one before it is saved.
+   */
   testAiProvider(command: string, timeoutSecs?: number): Promise<string> {
     return invoke<string>('test_ai_provider', {
       command,
@@ -691,12 +687,13 @@ export class TauriGitService {
     });
   }
 
-  openInTerminal(dir: string, terminal: string | null = null): Promise<void> {
-    return invoke<void>('open_in_terminal', { dir, terminal });
+  /** The terminal and the editor come from the store, read by the backend. */
+  openInTerminal(dir: string): Promise<void> {
+    return invoke<void>('open_in_terminal', { dir });
   }
 
-  openInEditor(target: string, editor: string | null = null): Promise<void> {
-    return invoke<void>('open_in_editor', { target, editor });
+  openInEditor(target: string): Promise<void> {
+    return invoke<void>('open_in_editor', { target });
   }
 
   /**

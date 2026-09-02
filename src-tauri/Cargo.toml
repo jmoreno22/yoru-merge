@@ -27,14 +27,16 @@ tauri-plugin-window-state = "2"
 tauri-plugin-clipboard-manager = "2"
 base64 = "0.22"
 chrono = "0.4"
-git2 = "0.19"
+# libgit2 is only used for local reads; every remote operation goes through the
+# git CLI, so the default `ssh`/`https` features would only add libssh2 and OpenSSL.
+git2 = { version = "0.19", default-features = false }
 # `notify` itself comes from the debouncer so both always agree on a version.
 notify-debouncer-full = "0.7"
+tempfile = "3"
 tauri-plugin-updater = "2.11.0"
 tauri-plugin-process = "2.3.1"
 
 [dev-dependencies]
-tempfile = "3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [profile.release]

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { escapeHtml, Highlighter } from './highlighter';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { escapeHtml, Highlighter, loadHighlightGrammars } from './highlighter';
 import type { HighlightLanguage } from './language-map';
 
 describe('escapeHtml', () => {
@@ -14,7 +14,24 @@ describe('escapeHtml', () => {
   });
 });
 
+describe('Highlighter with the grammars still in flight', () => {
+  it('escapes the line instead of colouring it', async () => {
+    // A fresh module registry puts the grammars back in flight, which is what
+    // the first lines of a session are rendered with.
+    vi.resetModules();
+    const pending = await import('./highlighter');
+    expect(pending.highlightGrammarsLoaded()).toBe(false);
+    expect(new pending.Highlighter().line('const tag = "<b>";', 'typescript')).toBe(
+      'const tag = &quot;&lt;b&gt;&quot;;',
+    );
+  });
+});
+
 describe('Highlighter', () => {
+  beforeAll(async () => {
+    await loadHighlightGrammars();
+  });
+
   it('returns an empty string for an empty line', () => {
     expect(new Highlighter().line('', 'typescript')).toBe('');
   });

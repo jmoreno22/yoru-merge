@@ -10,7 +10,8 @@ use crate::models::{
     BlameLine, CommitInfo, PatchApplyResult, RebaseResult, RebaseTodoEntry, ResetResult,
 };
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use tempfile::TempDir;
 
 /// Actions the interactive-rebase editor accepts. Anything else is rejected
 /// before a todo file is written, so nothing arbitrary reaches git.
@@ -233,32 +234,22 @@ fn get_rebase_todo_inner(path: &str, base: &str) -> Result<Vec<RebaseTodoEntry>,
 }
 
 /// A temp directory that removes itself, so a failed rebase leaves no litter.
-struct Scratch(PathBuf);
+/// It must outlive the `git rebase` call that reads the files it holds.
+struct Scratch(TempDir);
 
 impl Scratch {
     fn new(prefix: &str) -> Result<Self, String> {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0);
-        // pid + nanos: two rebases started at the same moment must not share
-        // a todo file, and a stale file from a crashed run must never be reused.
-        let dir = std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()));
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("cannot create temporary directory: {e}"))?;
-        Ok(Self(dir))
+        tempfile::Builder::new()
+            .prefix(prefix)
+            .tempdir()
+            .map(Self)
+            .map_err(|e| format!("cannot create temporary directory: {e}"))
     }
 
     fn write(&self, name: &str, contents: &str) -> Result<String, String> {
-        let file = self.0.join(name);
+        let file = self.0.path().join(name);
         std::fs::write(&file, contents).map_err(|e| format!("cannot write {name}: {e}"))?;
         Ok(git_path(&file))
-    }
-}
-
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
 
@@ -834,7 +825,7 @@ mod tests {
         let dir = {
             let scratch = Scratch::new("yorumerge-test").unwrap();
             scratch.write("todo.txt", "pick abc\n").unwrap();
-            scratch.0.clone()
+            scratch.0.path().to_path_buf()
         };
         assert!(!dir.exists());
     }

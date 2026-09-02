@@ -67,7 +67,6 @@ Icons never encode state on their own either — colour + icon + text together
 | Repository | `lucideDatabase` |
 | Conflict | `lucideTriangleAlert` |
 | Signed commit | `lucideShieldCheck` |
-| Credentials | `lucideKeyRound` |
 | Author | `lucideUser` |
 | Detached HEAD / current ref | `lucideCircleDot` |
 | Sequencer continue · skip · abort | `lucidePlay` · `lucideSkipForward` · `lucideBan` |
@@ -89,9 +88,12 @@ Icons never encode state on their own either — colour + icon + text together
 None. Every name in the plan exists in `@ng-icons/lucide` 35.1.0 and is exported
 verbatim.
 
-Twelve icons were **added** beyond the plan's list because the feature
+Ten icons were **added** beyond the plan's list because the feature
 inventories need them: `lucideGlobe`, `lucideCloudUpload`, `lucideFolderTree`,
 `lucideList` (tree/list toggles), `lucideEye`, `lucidePlay`,
 `lucideSkipForward`, `lucideBan` (sequencer banner), `lucideGripVertical`
-(reorder handles), `lucidePin` / `lucidePinOff` (pinned repositories) and
-`lucideClock` ("fetched 4 m ago").
+(reorder handles) and `lucideClock` ("fetched 4 m ago").
+
+The map lists only icons the app actually registers. Nine that no longer had a
+single call site were dropped from `icons.ts`, so a concept missing from the
+table means no screen shows it yet — add the icon and the row together.

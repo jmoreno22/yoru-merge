@@ -1,12 +1,15 @@
 import { Injectable, inject } from '@angular/core';
-import { PreferencesService } from '../preferences.service';
 import { OpsRunner } from './ops-runner';
 
-/** Handing a path to the OS: file manager, terminal, editor. */
+/**
+ * Handing a path to the OS: file manager, terminal, editor.
+ *
+ * Only the target travels. Which terminal and which editor to start are read
+ * from the store by the backend, so nothing running here can pick the program.
+ */
 @Injectable({ providedIn: 'root' })
 export class SystemOps {
   private readonly ops = inject(OpsRunner);
-  private readonly prefs = inject(PreferencesService);
 
   /** Reveals a file in the OS file manager, or opens a directory. */
   async reveal(target: string): Promise<void> {
@@ -17,12 +20,9 @@ export class SystemOps {
 
   /** Uses the configured terminal, falling back to the OS default. */
   async openTerminal(dir: string): Promise<void> {
-    const terminal = this.prefs.terminal().trim();
-    await this.ops.run(
-      () => this.ops.git.openInTerminal(dir, terminal.length > 0 ? terminal : null),
-      undefined,
-      { failure: 'Could not open a terminal' },
-    );
+    await this.ops.run(() => this.ops.git.openInTerminal(dir), undefined, {
+      failure: 'Could not open a terminal',
+    });
   }
 
   /**
@@ -36,13 +36,14 @@ export class SystemOps {
     });
   }
 
-  /** Uses the configured editor, falling back to the OS default. */
+  /**
+   * Uses the configured editor. With none available the backend reveals the
+   * file in its folder rather than handing it to the program its extension is
+   * associated with.
+   */
   async openEditor(target: string): Promise<void> {
-    const editor = this.prefs.externalEditor().trim();
-    await this.ops.run(
-      () => this.ops.git.openInEditor(target, editor.length > 0 ? editor : null),
-      undefined,
-      { failure: 'Could not open the editor' },
-    );
+    await this.ops.run(() => this.ops.git.openInEditor(target), undefined, {
+      failure: 'Could not open the editor',
+    });
   }
 }

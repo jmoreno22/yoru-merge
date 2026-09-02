@@ -12,6 +12,16 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
+/// Refuses to hand a diff to an external program.
+///
+/// git honours the `.git/config` of the repository it runs in, so
+/// `diff.external` — or a `diff=<driver>` attribute naming
+/// `diff.<driver>.command` — turns "show me a diff" into "run this command" for
+/// a repository received as a folder or a zip. Every invocation that can produce
+/// a patch carries this flag; grep for the name to find them. It does not cover
+/// `textconv` or `clean` filters, which git still runs.
+pub const NO_EXT_DIFF: &str = "--no-ext-diff";
+
 pub struct GitCmd {
     cmd: Command,
 }
@@ -472,6 +482,22 @@ pub mod test_support {
             std::fs::create_dir_all(parent).expect("create parent dir");
         }
         std::fs::write(target, contents).expect("write file");
+    }
+
+    /// Points `repo`'s `diff.external` at a command that records having run,
+    /// and returns the path that must not exist after showing a diff.
+    ///
+    /// git executes the value through a shell, so a `printf` redirect needs no
+    /// script file and no executable bit on either platform. The marker lives
+    /// inside `.git`, out of the work tree, so it can never alter a diff.
+    pub fn arm_external_diff(repo: &str) -> std::path::PathBuf {
+        let marker = Path::new(repo).join(".git").join("external-diff-ran");
+        let target = marker.to_string_lossy().replace('\\', "/");
+        git_ok(
+            repo,
+            &["config", "diff.external", &format!("printf 1 > '{target}'")],
+        );
+        marker
     }
 
     /// An empty repository on branch `main` with no commits.

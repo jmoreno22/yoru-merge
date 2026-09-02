@@ -568,7 +568,7 @@ export class SettingsDialog {
     this.aiPreviewError.set('');
     try {
       this.aiPromptPreview.set(
-        await this.git.previewAiPrompt(repo.path, this.prefs.aiProvider().trim(), {
+        await this.git.previewAiPrompt(repo.path, {
           instructions: this.prefs.aiInstructions(),
           maxDiffKb: this.prefs.aiMaxDiffKb(),
         }),

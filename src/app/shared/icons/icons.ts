@@ -7,14 +7,12 @@ import {
   lucideArrowUpDown,
   lucideBan,
   lucideBell,
-  lucideBookOpen,
   lucideCheck,
   lucideCherry,
   lucideChevronDown,
   lucideChevronLeft,
   lucideChevronRight,
   lucideChevronUp,
-  lucideCircle,
   lucideCircleCheck,
   lucideCircleDot,
   lucideCircleX,
@@ -49,10 +47,7 @@ import {
   lucideGlobe,
   lucideGripVertical,
   lucideHistory,
-  lucideHouse,
   lucideInfo,
-  lucideKeyboard,
-  lucideKeyRound,
   lucideLayers,
   lucideLink,
   lucideList,
@@ -65,10 +60,7 @@ import {
   lucideMoreHorizontal,
   lucidePackage,
   lucidePanelLeft,
-  lucidePanelLeftClose,
   lucidePencil,
-  lucidePin,
-  lucidePinOff,
   lucidePlay,
   lucidePlus,
   lucideRefreshCw,
@@ -90,7 +82,6 @@ import {
   lucideTriangleAlert,
   lucideUndo2,
   lucideUnlink,
-  lucideUpload,
   lucideUser,
   lucideWrapText,
   lucideX,
@@ -127,7 +118,6 @@ const ICONS = {
   lucideCloudDownload,
   lucideCloudUpload,
   lucideGlobe,
-  lucideUpload,
   lucideDownload,
   lucideRefreshCw,
   lucideLink,
@@ -162,7 +152,6 @@ const ICONS = {
   lucideSparkles,
   lucideTerminal,
   lucidePanelLeft,
-  lucidePanelLeftClose,
   lucideChevronDown,
   lucideChevronRight,
   lucideChevronUp,
@@ -173,10 +162,7 @@ const ICONS = {
   lucideMaximize2,
   lucideMinimize2,
   lucideSquare,
-  lucideHouse,
   lucideExternalLink,
-  lucidePin,
-  lucidePinOff,
 
   // Arrows / ahead-behind
   lucideArrowUp,
@@ -190,7 +176,6 @@ const ICONS = {
 
   // Status & feedback
   lucideCircleDot,
-  lucideCircle,
   lucideLoaderCircle,
   lucideTriangleAlert,
   lucideInfo,
@@ -206,7 +191,6 @@ const ICONS = {
   // Identity & security
   lucideUser,
   lucideShieldCheck,
-  lucideKeyRound,
 
   // Diff / view options
   lucideEye,
@@ -217,9 +201,7 @@ const ICONS = {
   lucideRows3,
 
   // Misc
-  lucideKeyboard,
   lucideDatabase,
-  lucideBookOpen,
 };
 
 /** Every icon name the app is allowed to render. */

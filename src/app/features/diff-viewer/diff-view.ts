@@ -44,7 +44,11 @@ import {
   UNLIMITED_CONTEXT,
   unifiedRowChanged,
 } from './diff-view-model';
-import { Highlighter } from './highlighter';
+import {
+  Highlighter,
+  highlightGrammarsLoaded,
+  loadHighlightGrammars,
+} from './highlighter';
 import { ImageDiff } from './image-diff';
 import { type ImageDiffContext, type ImageSides, imageSides } from './image-preview';
 import { type HighlightLanguage, isImagePath, languageFor } from './language-map';
@@ -245,6 +249,15 @@ export class DiffView {
   private readonly parsed = signal<readonly DiffFileModel[]>([]);
   private highlighter = new Highlighter();
 
+  /**
+   * Whether the grammars have landed.
+   *
+   * `files()` reads it, so the whole tree of cells is rebuilt when they do: a
+   * cell caches its HTML on first read, and the ones painted while the chunk
+   * was still in flight hold escaped text nothing else would refresh.
+   */
+  private readonly canHighlight = signal(highlightGrammarsLoaded());
+
   protected readonly skeletonRows = SKELETON_ROWS;
   protected readonly parsing = signal(false);
 
@@ -320,13 +333,16 @@ export class DiffView {
     const skipWhitespace = this.ignoreWhitespace();
     const context = this.contextLines();
     const imageContext = this.imageContext();
+    const canHighlight = this.canHighlight();
 
     return parsed.map((file) => {
       const expanded =
         overrides.get(file.path) ?? file.lineCount <= COLLAPSE_THRESHOLD_LINES;
       const slash = file.path.lastIndexOf('/');
       const language =
-        file.raw.length > HIGHLIGHT_LIMIT_BYTES ? null : languageFor(file.path);
+        !canHighlight || file.raw.length > HIGHLIGHT_LIMIT_BYTES
+          ? null
+          : languageFor(file.path);
       const image = isImagePath(file.path);
 
       return {
@@ -464,6 +480,10 @@ export class DiffView {
   readonly hunkPosition = computed(() => this.hunkCursor() + 1);
 
   constructor() {
+    if (!this.canHighlight()) {
+      void loadHighlightGrammars().then(() => this.canHighlight.set(true));
+    }
+
     effect((onCleanup) => {
       const text = this.text();
       this.parsed.set([]);

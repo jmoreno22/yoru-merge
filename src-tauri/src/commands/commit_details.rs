@@ -10,7 +10,9 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 use git2::Repository;
 
-use super::git::{stderr_or, validate_pathspec, validate_repo_path, validate_revision, GitCmd};
+use super::git::{
+    stderr_or, validate_pathspec, validate_repo_path, validate_revision, GitCmd, NO_EXT_DIFF,
+};
 use super::history::{build_ref_map, format_git2_time};
 use super::merge::resolve_in_repo;
 use crate::models::{CommitDetails, CommitFile, FileChangeStatus, FileSource, SignatureStatus};
@@ -156,6 +158,7 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
         let raw = GitCmd::in_repo(path)
             .args([
                 "diff",
+                NO_EXT_DIFF,
                 "--raw",
                 "--numstat",
                 "-z",
@@ -208,7 +211,15 @@ fn commit_file_diff_inner(path: &str, sha: &str, file: &str) -> Result<String, S
     let base = diff_base(path, sha);
     capped(
         GitCmd::in_repo(path)
-            .args(["diff", "--find-renames", &base, sha, "--", file])
+            .args([
+                "diff",
+                NO_EXT_DIFF,
+                "--find-renames",
+                &base,
+                sha,
+                "--",
+                file,
+            ])
             .run()?,
     )
 }
@@ -320,7 +331,9 @@ pub async fn get_file_base64(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::history::testutil::{commit_file, git_ok, init_empty_repo, write_file};
+    use crate::commands::history::testutil::{
+        arm_external_diff, commit_file, git_ok, init_empty_repo, write_file,
+    };
 
     fn file_named<'a>(details: &'a CommitDetails, path: &str) -> &'a CommitFile {
         details
@@ -475,6 +488,23 @@ mod tests {
         let head_diff = commit_file_diff_inner(&repo, &head, "file.txt").unwrap();
         assert!(head_diff.contains("-one"));
         assert!(head_diff.contains("+two"));
+    }
+
+    #[test]
+    fn a_diff_driver_configured_by_the_repository_is_never_executed() {
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "file.txt", "one\n", "root");
+        commit_file(&repo, "file.txt", "two\n", "second");
+        let head = git_ok(&repo, &["rev-parse", "HEAD"]);
+        let marker = arm_external_diff(&repo);
+
+        let details = commit_details_inner(&repo, &head).unwrap();
+        let diff = commit_file_diff_inner(&repo, &head, "file.txt").unwrap();
+
+        assert!(!marker.exists(), "the repository's diff.external ran");
+        assert_eq!(details.files.len(), 1);
+        assert_eq!(details.files[0].additions, 1);
+        assert!(diff.contains("+two"), "got: {diff}");
     }
 
     /// The in-process base and the parallel signature read are the two ways a

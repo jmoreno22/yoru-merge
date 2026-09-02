@@ -417,22 +417,31 @@ fn generate_inner(
     sanitize_message(&extract_text(&raw))
 }
 
+/// The provider the user configured, read from the preferences store.
+///
+/// Deliberately not an argument of the commands below: a command string that
+/// crosses the IPC boundary is a program anything running in the webview gets
+/// to choose, and this one is spawned. An empty command and an absent one are
+/// the same thing, which `parse_provider_command` already has the message for.
+fn configured_provider(app: &tauri::AppHandle) -> Result<ProviderCommand, String> {
+    parse_provider_command(&super::system::configured_ai_provider(app).unwrap_or_default())
+}
+
 /// A commit message for whatever is staged in `path`.
 ///
-/// `command` is the provider command as configured by the user; everything
-/// about which CLI that is, and which model it runs, lives in that string.
-/// `instructions` is the user's own layer of the prompt — house style, a
-/// language, a ticket convention — and refines the built-in rules rather than
-/// replacing them.
+/// Which CLI runs, and which model it runs, comes from the store — see
+/// [`configured_provider`]. `instructions` is the user's own layer of the
+/// prompt — house style, a language, a ticket convention — and refines the
+/// built-in rules rather than replacing them.
 #[tauri::command]
 pub async fn generate_commit_message(
+    app: tauri::AppHandle,
     path: String,
-    command: String,
     instructions: Option<String>,
     max_diff_kb: Option<usize>,
     timeout_secs: Option<u64>,
 ) -> Result<String, String> {
-    let provider = parse_provider_command(&command)?;
+    let provider = configured_provider(&app)?;
     let max_diff_bytes = clamp_diff_bytes(max_diff_kb);
     let timeout = clamp_timeout(timeout_secs);
     let house = sanitize_instructions(&instructions.unwrap_or_default());
@@ -446,22 +455,28 @@ pub async fn generate_commit_message(
 /// their wording before spending a request on it.
 #[tauri::command]
 pub async fn preview_ai_prompt(
+    app: tauri::AppHandle,
     path: String,
-    command: String,
     instructions: Option<String>,
     max_diff_kb: Option<usize>,
 ) -> Result<String, String> {
-    let provider = parse_provider_command(&command)?;
+    let provider = configured_provider(&app)?;
     let max_diff_bytes = clamp_diff_bytes(max_diff_kb);
     let house = sanitize_instructions(&instructions.unwrap_or_default());
     blocking(move || prompt_for_repo(&path, &provider, max_diff_bytes, &house)).await
 }
 
-/// Runs the configured provider against a fixed one-line diff.
+/// Runs a provider command against a fixed one-line diff.
 ///
 /// This is the Settings "Test" button: it answers "is this command installed,
 /// authenticated and returning something usable?" without needing a repository
 /// or showing the user's code to anyone.
+///
+/// The one command here that still takes a provider string from the webview,
+/// and the one that cannot stop: the button exists to try a command *before* it
+/// is saved, so there is nothing in the store to read yet. What is left is a
+/// narrower surface rather than none — the string is only ever spawned against
+/// [`PROBE_DIFF`], and it reaches `parse_provider_command` like any other.
 #[tauri::command]
 pub async fn test_ai_provider(
     command: String,
