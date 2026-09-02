@@ -1,3 +1,5 @@
+@let selecting = canSelectLines();
+
 @if (unreadable()) {
   <div class="flex h-full flex-col">
     <yoru-empty-state
@@ -39,7 +41,7 @@
 } @else {
   <div class="flex h-full min-h-0 flex-col">
     <div class="neon-scroll min-h-0 flex-1 overflow-auto" data-testid="diff-content">
-      @for (file of files(); track file.path) {
+      @for (file of visibleFiles(); track file.path) {
         <section class="dv-file" [style.--dv-num-w]="file.numberWidth + 'ch'">
           <header class="dv-file-head">
             <button
@@ -193,12 +195,12 @@
 
               <div
                 class="dv-hunk-body"
-                [attr.role]="canSelectLines() ? 'listbox' : null"
-                [attr.aria-multiselectable]="canSelectLines() ? 'true' : null"
-                [attr.aria-label]="canSelectLines() ? 'Lines of ' + file.path : null"
+                [attr.role]="selecting ? 'listbox' : null"
+                [attr.aria-multiselectable]="selecting ? 'true' : null"
+                [attr.aria-label]="selecting ? 'Lines of ' + file.path : null"
                 (keydown)="onHunkKeydown($event, file.index, hunk)"
               >
-                @for (row of hunk.rows; track $index) {
+                @for (row of hunk.rows; track row.id) {
                   @if (row.kind === 'gap') {
                     <button type="button" class="dv-gap" (click)="expandGap(row.id)">
                       <ng-icon
@@ -209,21 +211,17 @@
                       Show {{ row.count }} unchanged lines
                     </button>
                   } @else if (row.kind === 'line') {
+                    @let selected = selectedIds().has(row.cell.id);
+                    @let option = selecting && row.cell.selectable;
                     <div
                       class="dv-row dv-unified"
                       [class.dv-add]="row.cell.line.kind === 'insert'"
                       [class.dv-del]="row.cell.line.kind === 'delete'"
-                      [class.dv-sel]="isLineSelected(file.index, hunk.index, row.cell)"
-                      [attr.role]="
-                        canSelectLines() && row.cell.selectable ? 'option' : null
-                      "
-                      [attr.aria-selected]="
-                        canSelectLines() && row.cell.selectable
-                          ? isLineSelected(file.index, hunk.index, row.cell)
-                          : null
-                      "
+                      [class.dv-sel]="selected"
+                      [attr.role]="option ? 'option' : null"
+                      [attr.aria-selected]="option ? selected : null"
                       [attr.tabindex]="
-                        canSelectLines() && row.cell.id === activeLineId() ? 0 : -1
+                        selecting && row.cell.id === activeLineId() ? 0 : -1
                       "
                       (click)="
                         onLineClick($event, file.index, hunk.index, hunk, row.cell)

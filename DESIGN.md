@@ -783,6 +783,13 @@ It is a file rather than an inline script because the Tauri CSP is
 - Do not rely on color alone for Git states; pair colors with icons, labels, diff markers, or badges.
 - Focus rings are global: `styles.css` declares one `:focus-visible` rule (2 px cyan, 2 px offset). Do not remove or override it per component.
 - Disable intense glow animations when `prefers-reduced-motion: reduce` is active.
+- The in-app animations preference (`:root[data-animations="off"]`) also drops
+  `backdrop-filter` on the dialog and command-palette scrims. Backdrop blur is
+  re-rasterised on every repaint of the window beneath it, which on WebKitGTK
+  costs a full-window blur per keystroke in the palette. Atmosphere is the only
+  thing lost: those panels sit on an opaque `--app-surface-raised`, and no text
+  is ever placed on the scrim itself, so contrast is unaffected. Any new surface
+  that relies on blur for legibility must not — give it an opaque background.
 - Diff backgrounds must remain readable for long sessions; never place decorative gradients behind code lines.
 
 Recommended reduced motion rule:

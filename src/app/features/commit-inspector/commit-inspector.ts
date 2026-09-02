@@ -1,3 +1,4 @@
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,6 +9,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import type { CommitDetails, CommitFile, SignatureStatus } from '../../core/models';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { ToastService } from '../../core/services/toast.service';
 import { absoluteTime, relativeTime, shortSha } from '../../core/utils';
@@ -26,9 +28,7 @@ import { CommitActions } from '../commit-list/commit-actions.service';
 import {
   buildFileRows,
   FILE_STATUS_LABEL,
-  FILE_STATUS_STYLE,
   type FileRow,
-  type FileStatusStyle,
   type FileViewMode,
   filterFiles,
 } from './commit-files';
@@ -71,7 +71,15 @@ const SIGNATURE_CHIP: Readonly<Record<SignatureStatus, SignatureChip>> = {
  */
 @Component({
   selector: 'app-commit-inspector',
-  imports: [NgIcon, YoruAvatar, YoruBadge, YoruButton, YoruEmptyState, YoruSkeleton],
+  imports: [
+    NgIcon,
+    ScrollingModule,
+    YoruAvatar,
+    YoruBadge,
+    YoruButton,
+    YoruEmptyState,
+    YoruSkeleton,
+  ],
   templateUrl: './commit-inspector.html',
   styleUrl: './commit-inspector.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,7 +94,9 @@ export class CommitInspector {
   private readonly menu = inject(ContextMenuService);
   private readonly clipboard = inject(ClipboardService);
   private readonly toast = inject(ToastService);
+  private readonly appearance = inject(AppearanceService);
 
+  protected readonly rowHeight = this.appearance.fileRowHeight;
   protected readonly details = this.repo.commitDetails;
   protected readonly loading = this.repo.commitDetailsLoading;
   protected readonly skeletonFiles = Array.from(
@@ -160,21 +170,12 @@ export class CommitInspector {
     return shortSha(sha);
   }
 
-  protected statusStyle(file: CommitFile): FileStatusStyle {
-    return FILE_STATUS_STYLE[file.status];
-  }
-
   protected statusLabel(file: CommitFile): string {
     return FILE_STATUS_LABEL[file.status];
   }
 
-  protected fileTitle(file: CommitFile): string {
-    const status = FILE_STATUS_LABEL[file.status];
-    const renamed = file.old_path ? `\nRenamed from ${file.old_path}` : '';
-    const stats = file.binary
-      ? '\nBinary file'
-      : `\n+${file.additions} −${file.deletions}`;
-    return `${status}: ${file.path}${renamed}${stats}`;
+  protected trackRow(_index: number, row: FileRow): string {
+    return row.path;
   }
 
   protected onFilter(value: string): void {

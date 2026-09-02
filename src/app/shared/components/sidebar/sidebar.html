@@ -61,14 +61,15 @@
       />
     }
   } @else {
-    <div
+    <cdk-virtual-scroll-viewport
       role="tree"
       aria-label="Repository refs"
       data-testid="refs-tree"
-      class="neon-scroll min-h-0 flex-1 overflow-y-auto pb-2"
+      class="neon-scroll min-h-0 flex-1"
+      [itemSize]="rowHeight()"
       (keydown)="onKeydown($event)"
     >
-      @for (node of nodes(); track node.id) {
+      <ng-container *cdkVirtualFor="let node of nodes(); trackBy: trackNode">
         <div
           role="treeitem"
           [attr.data-node-id]="node.id"
@@ -76,13 +77,13 @@
           [attr.aria-level]="node.level + 1"
           [attr.aria-posinset]="node.posInSet"
           [attr.aria-setsize]="node.setSize"
-          [attr.aria-expanded]="isExpandable(node) ? expanded(node) : null"
+          [attr.aria-expanded]="node.expandable ? node.expanded : null"
           [attr.aria-current]="node.kind === 'branch' && node.current ? 'true' : null"
           [tabindex]="node.id === activeId() ? 0 : -1"
-          [title]="rowTitle(node)"
-          [class]="rowClass(node)"
-          [style.padding-left.px]="indentPx(node)"
-          [appDragDrop]="payloadFor(node)"
+          [title]="node.title"
+          [class]="node.rowClass"
+          [style.padding-left.px]="node.indent"
+          [appDragDrop]="node.payload"
           (focus)="onRowFocus(node)"
           (click)="onClick(node, $event)"
           (dblclick)="onDoubleClick(node)"
@@ -90,19 +91,25 @@
         >
           @switch (node.kind) {
             @case ('section') {
-              <yoru-section-header
-                class="pointer-events-none w-full"
-                [label]="node.label"
-                [count]="node.count"
+              <!--
+                Type and layout follow `shared/ui/yoru-section-header.ts`,
+                duplicated here because a row of this tree measures
+                `--ref-row-h` and that component hardcodes `--panel-head-h`.
+              -->
+              <span
+                class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
               >
-                <ng-icon
-                  actions
-                  [name]="node.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
-                  size="14px"
-                  class="text-[var(--app-text-faint)]"
-                  aria-hidden="true"
-                />
-              </yoru-section-header>
+                {{ node.label }}
+              </span>
+              <span class="font-mono text-y-xs text-[var(--app-text-faint)]">
+                {{ node.count }}
+              </span>
+              <ng-icon
+                [name]="node.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
+                size="14px"
+                class="ml-auto shrink-0 text-[var(--app-text-faint)]"
+                aria-hidden="true"
+              />
             }
 
             @case ('folder') {
@@ -209,7 +216,7 @@
             }
           }
         </div>
-      }
-    </div>
+      </ng-container>
+    </cdk-virtual-scroll-viewport>
   }
 }

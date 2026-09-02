@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { CommitFile } from '../../core/models';
-import { buildFileRows, filterFiles } from './commit-files';
+import type { CommitFile, FileChangeStatus } from '../../core/models';
+import { buildFileRows, FILE_STATUS_STYLE, filterFiles } from './commit-files';
 
 const file = (path: string, old_path: string | null = null): CommitFile => ({
   path,
@@ -53,6 +53,8 @@ describe('buildFileRows in tree mode', () => {
         file: expect.anything(),
         fileCount: 0,
         collapsed: false,
+        title: 'Modified: README.md\n+1 −0',
+        statusStyle: FILE_STATUS_STYLE.modified,
       },
     ]);
   });
@@ -106,5 +108,45 @@ describe('buildFileRows in tree mode', () => {
     const rows = buildFileRows([file('src/app/main.ts')], 'tree', new Set(['src']));
     expect(rows[0]?.collapsed).toBe(false);
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe('buildFileRows precomputes what the row draws', () => {
+  const rowFor = (patch: Partial<CommitFile>) => {
+    const entry: CommitFile = { ...file('src/main.ts'), ...patch };
+    const row = buildFileRows([entry], 'list', NONE)[0];
+    if (row === undefined) throw new Error('no row');
+    return row;
+  };
+
+  const cases: readonly [FileChangeStatus, string][] = [
+    ['added', 'Added'],
+    ['modified', 'Modified'],
+    ['deleted', 'Deleted'],
+    ['renamed', 'Renamed'],
+    ['copied', 'Copied'],
+    ['type_changed', 'Type changed'],
+  ];
+
+  for (const [status, label] of cases) {
+    it(`titles and styles a ${status} file`, () => {
+      const row = rowFor({ status, additions: 3, deletions: 2 });
+      expect(row.title).toBe(`${label}: src/main.ts\n+3 −2`);
+      expect(row.statusStyle).toBe(FILE_STATUS_STYLE[status]);
+    });
+  }
+
+  it('names the path a rename came from', () => {
+    const row = rowFor({ status: 'renamed', old_path: 'src/old.ts' });
+    expect(row.title).toBe('Renamed: src/main.ts\nRenamed from src/old.ts\n+1 −0');
+  });
+
+  it('says binary instead of counting lines', () => {
+    expect(rowFor({ binary: true }).title).toBe('Modified: src/main.ts\nBinary file');
+  });
+
+  it('leaves folder rows without a title or a status style', () => {
+    const rows = buildFileRows([file('src/a/one.ts')], 'tree', NONE);
+    expect(rows[0]).toMatchObject({ kind: 'folder', title: '', statusStyle: null });
   });
 });

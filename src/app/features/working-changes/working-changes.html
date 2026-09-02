@@ -39,8 +39,8 @@
         headerClass="border-l-2 border-sakura-400 bg-sakura-400/5"
         [section]="'conflicts'"
         label="Conflicts"
-        [rows]="conflictRows()"
-        [count]="fileCount(conflictRows())"
+        [rows]="conflictSection().rows"
+        [count]="conflictSection().fileCount"
         [maxVisibleRows]="maxConflictRows"
         [selectedPaths]="selectedIn('conflicts')"
         [activePath]="activeIn('conflicts')"
@@ -59,12 +59,12 @@
 
     <app-changes-list
       class="border-b border-[var(--app-border)]"
-      [class.flex-1]="stagedRows().length > 0"
-      [class.shrink-0]="stagedRows().length === 0"
+      [class.flex-1]="stagedSection().rows.length > 0"
+      [class.shrink-0]="stagedSection().rows.length === 0"
       [section]="'staged'"
       label="Staged"
-      [rows]="stagedRows()"
-      [count]="fileCount(stagedRows())"
+      [rows]="stagedSection().rows"
+      [count]="stagedSection().fileCount"
       [selectedPaths]="selectedIn('staged')"
       [activePath]="activeIn('staged')"
       [diffPath]="stagedDiffPath()"
@@ -82,7 +82,7 @@
         size="sm"
         variant="ghost"
         icon="lucideMinus"
-        [disabled]="stagedRows().length === 0"
+        [disabled]="stagedSection().rows.length === 0"
         (click)="unstageAll()"
       >
         Unstage all
@@ -90,12 +90,12 @@
     </app-changes-list>
 
     <app-changes-list
-      [class.flex-1]="changeRows().length > 0"
-      [class.shrink-0]="changeRows().length === 0"
+      [class.flex-1]="changeSection().rows.length > 0"
+      [class.shrink-0]="changeSection().rows.length === 0"
       [section]="'changes'"
       label="Changes"
-      [rows]="changeRows()"
-      [count]="fileCount(changeRows())"
+      [rows]="changeSection().rows"
+      [count]="changeSection().fileCount"
       [selectedPaths]="selectedIn('changes')"
       [activePath]="activeIn('changes')"
       [diffPath]="worktreeDiffPath()"
@@ -114,7 +114,7 @@
         size="sm"
         variant="ghost"
         icon="lucideUndo2"
-        [disabled]="changeRows().length === 0"
+        [disabled]="changeSection().rows.length === 0"
         (click)="discardAll()"
       >
         Discard all
@@ -124,7 +124,7 @@
         size="sm"
         variant="ghost"
         icon="lucidePlus"
-        [disabled]="changeRows().length === 0"
+        [disabled]="changeSection().rows.length === 0"
         (click)="stageAll()"
       >
         Stage all

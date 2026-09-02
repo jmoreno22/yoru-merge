@@ -675,3 +675,16 @@ body.yoru-dragging * {
 :root[data-animations="off"]::view-transition-old(root) {
   animation: none !important;
 }
+
+/* Backdrop blur follows the same preference even though it does not move: the
+ * modal and command-palette scrims cover the whole window, and WebKitGTK
+ * re-blurs everything behind them on every repaint — a keystroke in the palette
+ * costs a full-window blur. The panels on top are opaque, so only the scrim's
+ * atmosphere is lost. Tailwind emits the -webkit- alias too, hence both.
+ */
+:root[data-animations="off"] *,
+:root[data-animations="off"] *::before,
+:root[data-animations="off"] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

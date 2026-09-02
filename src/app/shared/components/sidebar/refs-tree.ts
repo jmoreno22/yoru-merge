@@ -1,15 +1,28 @@
 import type { BranchInfo, BranchList, StashEntry, TagInfo } from '../../../core/models';
+import type { DragPayload } from '../../../core/services/drag-payload.service';
 import { fuzzyMatch, groupByPrefix } from '../../../core/utils';
 
 export type RefsSectionId = 'local' | 'remote' | 'tags' | 'stashes';
 
-/** Shared by every row: identity plus the ARIA a flattened tree has to carry. */
+/**
+ * Shared by every row: identity, the ARIA a flattened tree has to carry, and
+ * everything the template would otherwise recompute per row per change
+ * detection cycle.
+ */
 interface RefsNodeBase {
   readonly id: string;
   /** 0-based depth; the row indents by `level * 18px`. */
   readonly level: number;
   readonly posInSet: number;
   readonly setSize: number;
+  /** Sections and folders open and close; every other row is a leaf. */
+  readonly expandable: boolean;
+  readonly expanded: boolean;
+  /** `padding-left` in px, already resolved from `level`. */
+  readonly indent: number;
+  readonly rowClass: string;
+  readonly title: string;
+  readonly payload: DragPayload | null;
 }
 
 export interface RefsSectionNode extends RefsNodeBase {
@@ -17,7 +30,6 @@ export interface RefsSectionNode extends RefsNodeBase {
   readonly section: RefsSectionId;
   readonly label: string;
   readonly count: number;
-  readonly expanded: boolean;
 }
 
 export interface RefsFolderNode extends RefsNodeBase {
@@ -27,7 +39,6 @@ export interface RefsFolderNode extends RefsNodeBase {
   readonly key: string;
   readonly label: string;
   readonly count: number;
-  readonly expanded: boolean;
   /** Remote whose branches this folder groups, or `null` for a prefix folder. */
   readonly remote: string | null;
 }
@@ -88,6 +99,54 @@ const SECTION_DEFAULT_EXPANDED: Readonly<Record<RefsSectionId, boolean>> = {
   stashes: false,
 };
 
+/** Tree indent per level, from the density spec. */
+const INDENT_PX = 18;
+
+const ROW_BASE =
+  'flex w-full cursor-pointer select-none items-center transition-colors hover:bg-[var(--app-panel)]';
+
+/**
+ * Section rows are `--ref-row-h` like every other row: the tree is one
+ * fixed-height virtual list, and a taller header would misplace every row
+ * below it.
+ */
+const SECTION_CLASS = `${ROW_BASE} h-[var(--ref-row-h)] gap-2 border-b border-[var(--app-border)] px-3`;
+
+const LEAF_CLASS = `${ROW_BASE} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md text-[var(--app-text)]`;
+
+// Weight, not colour: the marker icon and `aria-current` carry the state too.
+const CURRENT_LEAF_CLASS = `${ROW_BASE} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md font-semibold text-accent-ink`;
+
+function indentOf(level: number): number {
+  return 8 + level * INDENT_PX;
+}
+
+/**
+ * Drag payloads are memoised per `BranchInfo` so a rebuild caused by something
+ * else — a section toggled, tags arriving — hands `[appDragDrop]` the very same
+ * object instead of a fresh one. Safe as a key because the backend returns new
+ * `BranchInfo` objects on every refresh, so a stale payload cannot outlive the
+ * branch it describes.
+ */
+const branchPayloads = new WeakMap<BranchInfo, DragPayload>();
+
+function branchPayload(
+  branch: BranchInfo,
+  remote: string | null,
+  current: boolean,
+): DragPayload {
+  const cached = branchPayloads.get(branch);
+  if (cached) return cached;
+  const payload: DragPayload = {
+    type: 'branch',
+    name: branch.name,
+    isRemote: remote !== null,
+    isCurrent: current,
+  };
+  branchPayloads.set(branch, payload);
+  return payload;
+}
+
 /** A node plus the children that only exist while it is expanded. */
 interface Draft {
   readonly build: (posInSet: number, setSize: number) => RefsNode;
@@ -121,10 +180,16 @@ export function buildRefsTree(input: RefsTreeInput): RefsNode[] {
         level: 0,
         posInSet,
         setSize,
+        expandable: true,
+        expanded,
+        // Sections carry their own padding through `px-3`.
+        indent: 0,
+        rowClass: SECTION_CLASS,
+        title: SECTION_LABELS[section],
+        payload: null,
         section,
         label: SECTION_LABELS[section],
         count,
-        expanded,
       }),
       expanded,
       children,
@@ -192,6 +257,12 @@ function branchDraft(
       level,
       posInSet,
       setSize,
+      expandable: false,
+      expanded: false,
+      indent: indentOf(level),
+      rowClass: current ? CURRENT_LEAF_CLASS : LEAF_CLASS,
+      title: branch.upstream ? `${branch.name} tracks ${branch.upstream}` : branch.name,
+      payload: branchPayload(branch, remote, current),
       branch,
       label,
       current,
@@ -236,11 +307,16 @@ function localDrafts(
           level: 1,
           posInSet,
           setSize,
+          expandable: true,
+          expanded,
+          indent: indentOf(1),
+          rowClass: LEAF_CLASS,
+          title: prefix,
+          payload: null,
           section: 'local',
           key,
           label: prefix,
           count: children.length,
-          expanded,
           remote: null,
         }),
         expanded,
@@ -297,11 +373,16 @@ function remoteDrafts(
           level: 1,
           posInSet,
           setSize,
+          expandable: true,
+          expanded,
+          indent: indentOf(1),
+          rowClass: LEAF_CLASS,
+          title: remote,
+          payload: null,
           section: 'remote',
           key,
           label: remote,
           count: children.length,
-          expanded,
           remote,
         }),
         expanded,
@@ -320,6 +401,14 @@ function tagDrafts(input: RefsTreeInput, keep: (text: string) => boolean): Draft
         level: 1,
         posInSet,
         setSize,
+        expandable: false,
+        expanded: false,
+        indent: indentOf(1),
+        rowClass: LEAF_CLASS,
+        title: tag.is_annotated
+          ? `${tag.name} — annotated: ${tag.message ?? ''}`.trim()
+          : tag.name,
+        payload: null,
         tag,
         label: tag.name,
       }),
@@ -338,6 +427,12 @@ function stashDrafts(input: RefsTreeInput, keep: (text: string) => boolean): Dra
         level: 1,
         posInSet,
         setSize,
+        expandable: false,
+        expanded: false,
+        indent: indentOf(1),
+        rowClass: LEAF_CLASS,
+        title: `${stash.message} · ${stash.date}`,
+        payload: null,
         stash,
         label: stashLabel(stash.message),
       }),

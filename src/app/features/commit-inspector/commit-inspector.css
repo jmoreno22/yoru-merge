@@ -1,7 +1,12 @@
+/* Scrolls on its own, and never past half the panel: the file list below is a
+ * virtual viewport, which needs a bounded box, and a long commit message would
+ * otherwise leave it nothing to live in. */
 .inspector-header {
   display: flex;
+  max-height: 50%;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
   padding: var(--panel-pad);
   border-bottom: 1px solid var(--app-border);
 }
@@ -83,11 +88,9 @@
 }
 
 .files-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   display: flex;
   height: var(--panel-head-h);
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
   padding: 0 var(--panel-pad);
@@ -144,10 +147,13 @@
   color: var(--app-accent-text);
 }
 
-.file-list {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 8px;
+/* The CDK positions its content wrapper absolutely, so its width is
+ * shrink-to-fit and grows to the widest row's max-content; without a ceiling a
+ * long path stops truncating and the list scrolls sideways instead. */
+/* biome-ignore lint/correctness/noUnknownPseudoElement: ::ng-deep is the only
+ * way to reach an element the CDK renders from its own template. */
+:host ::ng-deep .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
 }
 
 .folder-row,

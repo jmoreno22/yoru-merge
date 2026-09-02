@@ -48,12 +48,7 @@ import { Highlighter } from './highlighter';
 import { ImageDiff } from './image-diff';
 import { type ImageDiffContext, type ImageSides, imageSides } from './image-preview';
 import { type HighlightLanguage, isImagePath, languageFor } from './language-map';
-import {
-  isSelected,
-  type LineSelection,
-  selectLine,
-  selectModeFor,
-} from './line-selection';
+import { type LineSelection, selectLine, selectModeFor } from './line-selection';
 
 /** Patches past this size are not rendered until the user insists. */
 const HARD_LIMIT_BYTES = 1_500_000;
@@ -67,18 +62,51 @@ const COLLAPSE_THRESHOLD_LINES = 400;
 /** Rough count of rows painted while the patch is still being parsed. */
 const SKELETON_ROWS = [0, 1, 2, 3, 4, 5, 6, 7];
 
-interface RenderedCell {
-  readonly line: DiffLine;
-  readonly html: string;
-  readonly id: string;
-  readonly selectable: boolean;
+/** Rows added to the DOM per frame while a patch is being inserted. */
+const CHUNK_ROWS = 300;
+
+const NO_SELECTION: ReadonlySet<string> = new Set();
+
+/** Stable id of one rendered line; the keyboard handler rebuilds it by hand. */
+function lineId(
+  fileIndex: number,
+  hunkIndex: number,
+  side: string,
+  bodyIndex: number,
+): string {
+  return `l-${fileIndex}-${hunkIndex}-${side}-${bodyIndex}`;
+}
+
+/**
+ * One line of the rendered patch.
+ *
+ * The highlighted HTML is produced on first read instead of when the row is
+ * built, so a patch only pays for the lines the template actually paints —
+ * building the rows of a 50-file commit no longer highlights all of them.
+ */
+class RenderedCell {
+  private cached: string | null = null;
+
+  constructor(
+    readonly line: DiffLine,
+    readonly id: string,
+    readonly selectable: boolean,
+    private readonly highlighter: Highlighter,
+    private readonly language: HighlightLanguage | null,
+  ) {}
+
+  get html(): string {
+    this.cached ??= this.highlighter.line(this.line.text, this.language);
+    return this.cached;
+  }
 }
 
 type RenderedRow =
   | { readonly kind: 'gap'; readonly id: string; readonly count: number }
-  | { readonly kind: 'line'; readonly cell: RenderedCell }
+  | { readonly kind: 'line'; readonly id: string; readonly cell: RenderedCell }
   | {
       readonly kind: 'pair';
+      readonly id: string;
       readonly left: RenderedCell | null;
       readonly right: RenderedCell | null;
     };
@@ -268,6 +296,22 @@ export class DiffView {
     () => this.selection()?.indexes.length ?? 0,
   );
 
+  /**
+   * Ids of the selected lines.
+   *
+   * A row asks a set instead of scanning the selection: with a whole hunk
+   * selected, the per-row scan was quadratic in the number of rows painted.
+   */
+  protected readonly selectedIds = computed<ReadonlySet<string>>(() => {
+    const selection = this.selection();
+    if (selection === null) return NO_SELECTION;
+    return new Set(
+      selection.indexes.map((bodyIndex) =>
+        lineId(selection.fileIndex, selection.hunkIndex, 'u', bodyIndex),
+      ),
+    );
+  });
+
   protected readonly files = computed<readonly RenderedFile[]>(() => {
     const parsed = this.parsed();
     const overrides = this.fileOverrides();
@@ -341,6 +385,61 @@ export class DiffView {
     });
   });
 
+  /** Rows the whole patch would paint, counting one per file header. */
+  private readonly totalRows = computed(() => {
+    let total = 0;
+    for (const file of this.files()) {
+      total += 1;
+      for (const hunk of file.hunks) total += hunk.rows.length;
+    }
+    return total;
+  });
+
+  /**
+   * The prefix of `files()` that is allowed into the DOM, in rows.
+   *
+   * `Infinity` once the whole patch is on screen, so nothing the user does
+   * afterwards — expanding a gap, a file, switching layout — is ever clipped.
+   */
+  private readonly renderBudget = signal(Number.POSITIVE_INFINITY);
+
+  /**
+   * What the template paints: `files()` cut to the current budget.
+   *
+   * A patch arrives a chunk per frame instead of all at once, so the frame the
+   * skeleton disappears costs one chunk rather than the whole diff. Files whose
+   * hunks are all still beyond the budget are left out entirely — a header with
+   * an empty `hunks` reads as "no textual changes" in the template.
+   */
+  protected readonly visibleFiles = computed<readonly RenderedFile[]>(() => {
+    const files = this.files();
+    let left = this.renderBudget();
+    if (!Number.isFinite(left)) return files;
+
+    const out: RenderedFile[] = [];
+    for (const file of files) {
+      if (left <= 0) break;
+      left -= 1;
+
+      const hunks: RenderedHunk[] = [];
+      let clipped = false;
+      for (const hunk of file.hunks) {
+        if (hunk.rows.length > left) {
+          if (left > 0) hunks.push({ ...hunk, rows: hunk.rows.slice(0, left) });
+          left = 0;
+          clipped = true;
+          break;
+        }
+        hunks.push(hunk);
+        left -= hunk.rows.length;
+      }
+
+      if (clipped && hunks.length === 0) break;
+      out.push(clipped ? { ...file, hunks } : file);
+    }
+    return out;
+  });
+
   protected readonly isEmpty = computed(
     () => !this.parsing() && this.parsed().length === 0,
   );
@@ -382,13 +481,28 @@ export class DiffView {
       // Off the render pass: a megabyte of patch takes long enough to parse
       // that doing it inline drops frames on every file the user clicks.
       this.parsing.set(true);
+      let frame = 0;
+
+      const grow = (): void => {
+        const budget = this.renderBudget() + CHUNK_ROWS;
+        if (budget >= this.totalRows()) {
+          this.renderBudget.set(Number.POSITIVE_INFINITY);
+          return;
+        }
+        this.renderBudget.set(budget);
+        frame = requestAnimationFrame(grow);
+      };
+
       const handle = setTimeout(() => {
         this.highlighter = new Highlighter();
+        this.renderBudget.set(CHUNK_ROWS);
         this.parsed.set(parseUnifiedDiff(text));
         this.parsing.set(false);
+        frame = requestAnimationFrame(grow);
       });
       onCleanup(() => {
         clearTimeout(handle);
+        cancelAnimationFrame(frame);
         this.parsing.set(false);
       });
     });
@@ -403,12 +517,13 @@ export class DiffView {
     line: DiffLine,
     language: HighlightLanguage | null,
   ): RenderedCell {
-    return {
+    return new RenderedCell(
       line,
-      html: this.highlighter.line(line.text, language),
-      id: `l-${fileIndex}-${hunkIndex}-${side}-${line.bodyIndex}`,
-      selectable: line.kind !== 'context',
-    };
+      lineId(fileIndex, hunkIndex, side, line.bodyIndex),
+      line.kind !== 'context',
+      this.highlighter,
+      language,
+    );
   }
 
   private buildUnifiedRows(
@@ -422,23 +537,20 @@ export class DiffView {
     const collapsed = collapseContext(toUnifiedRows(lines), unifiedRowChanged, context);
     const out: RenderedRow[] = [];
 
+    const line = (source: DiffLine): RenderedRow => {
+      const cell = this.cell(file.index, hunkIndex, 'u', source, language);
+      return { kind: 'line', id: cell.id, cell };
+    };
+
     for (const entry of collapsed) {
       if (entry.kind === 'row') {
-        out.push({
-          kind: 'line',
-          cell: this.cell(file.index, hunkIndex, 'u', entry.row.line, language),
-        });
+        out.push(line(entry.row.line));
         continue;
       }
       const first = entry.rows[0]?.line.bodyIndex ?? 0;
       const id = `g-${file.index}-${hunkIndex}-${first}`;
       if (gaps.has(id)) {
-        for (const row of entry.rows) {
-          out.push({
-            kind: 'line',
-            cell: this.cell(file.index, hunkIndex, 'u', row.line, language),
-          });
-        }
+        for (const row of entry.rows) out.push(line(row.line));
       } else {
         out.push({ kind: 'gap', id, count: entry.count });
       }
@@ -457,16 +569,20 @@ export class DiffView {
     const collapsed = collapseContext(toSplitRows(lines), splitRowChanged, context);
     const out: RenderedRow[] = [];
 
-    const pair = (row: { left: DiffLine | null; right: DiffLine | null }) =>
-      ({
+    const pair = (row: { left: DiffLine | null; right: DiffLine | null }) => {
+      const left = row.left
+        ? this.cell(file.index, hunkIndex, 'l', row.left, language)
+        : null;
+      const right = row.right
+        ? this.cell(file.index, hunkIndex, 'r', row.right, language)
+        : null;
+      return {
         kind: 'pair',
-        left: row.left
-          ? this.cell(file.index, hunkIndex, 'l', row.left, language)
-          : null,
-        right: row.right
-          ? this.cell(file.index, hunkIndex, 'r', row.right, language)
-          : null,
-      }) satisfies RenderedRow;
+        id: left?.id ?? right?.id ?? '',
+        left,
+        right,
+      } satisfies RenderedRow;
+    };
 
     for (const entry of collapsed) {
       if (entry.kind === 'row') {
@@ -497,18 +613,6 @@ export class DiffView {
 
   protected statusClass(status: DiffFileStatus): string {
     return STATUS_CLASS[status];
-  }
-
-  protected isLineSelected(
-    fileIndex: number,
-    hunkIndex: number,
-    cell: RenderedCell,
-  ): boolean {
-    return isSelected(this.selection(), {
-      fileIndex,
-      hunkIndex,
-      bodyIndex: cell.line.bodyIndex,
-    });
   }
 
   protected hunkHasSelection(fileIndex: number, hunkIndex: number): boolean {
@@ -585,7 +689,7 @@ export class DiffView {
       const current = this.cursorIndex(fileIndex, hunk);
       const next = Math.min(hunk.selectable.length - 1, Math.max(0, current + step));
       const bodyIndex = hunk.selectable[next] as number;
-      this.activeLineId.set(`l-${fileIndex}-${hunk.index}-u-${bodyIndex}`);
+      this.activeLineId.set(lineId(fileIndex, hunk.index, 'u', bodyIndex));
       this.selection.set(
         selectLine(
           this.selection(),
@@ -787,14 +891,18 @@ export class DiffView {
 
     const cursor = this.hunkCursor();
     const next = Math.min(ids.length - 1, Math.max(0, cursor + step));
-    this.hunkCursor.set(cursor < 0 && step < 0 ? 0 : next);
-    const id = ids[this.hunkCursor()];
+    const target = cursor < 0 && step < 0 ? 0 : next;
+    const id = ids[target];
     if (!id) return;
 
     const element = this.host.nativeElement.querySelector<HTMLElement>(
       `[data-hunk="${id}"]`,
     );
-    element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    element?.focus({ preventScroll: true });
+    // A hunk whose chunk has not been inserted yet has no element: leave the
+    // cursor where it is rather than counting a move that did not happen.
+    if (!element) return;
+    this.hunkCursor.set(target);
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    element.focus({ preventScroll: true });
   }
 }

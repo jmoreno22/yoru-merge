@@ -1,3 +1,4 @@
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import {
   afterRenderEffect,
   ChangeDetectionStrategy,
@@ -6,19 +7,17 @@ import {
   ElementRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
-import type { DragPayload } from '../../../core/services/drag-payload.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { shortSha } from '../../../core/utils';
 import { DragDropDirective } from '../../directives/drag-drop.directive';
 import { YoruButton, YoruEmptyState, YoruSectionHeader } from '../../ui';
 import { RefsActions } from './refs-actions.service';
 import { buildRefsTree, type RefsNode } from './refs-tree';
-
-/** Tree indent per level, from the density spec. */
-const INDENT_PX = 18;
 
 /**
  * The refs panel: local branches, remotes, tags and stashes as one keyboard
@@ -27,10 +26,22 @@ const INDENT_PX = 18;
  * The whole panel is a single `role="tree"` with a roving tabindex — sections
  * and prefix folders are rows like any other, which is what makes one set of
  * arrow-key rules cover collapsing, navigating and reaching every ref.
+ *
+ * Every row is `--ref-row-h` tall and the list is virtualised, so a repository
+ * with thousands of tags costs a viewport of DOM rather than one node per ref.
+ * That is also why each row arrives from `buildRefsTree` with its class, title,
+ * indent and drag payload already resolved: the template only reads properties.
  */
 @Component({
   selector: 'app-sidebar',
-  imports: [DragDropDirective, NgIcon, YoruButton, YoruEmptyState, YoruSectionHeader],
+  imports: [
+    DragDropDirective,
+    NgIcon,
+    ScrollingModule,
+    YoruButton,
+    YoruEmptyState,
+    YoruSectionHeader,
+  ],
   templateUrl: './sidebar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -42,6 +53,7 @@ export class Sidebar {
   protected readonly service = inject(CurrentRepoService);
   protected readonly actions = inject(RefsActions);
   private readonly prefs = inject(PreferencesService);
+  private readonly appearance = inject(AppearanceService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly filter = signal('');
@@ -55,6 +67,11 @@ export class Sidebar {
   private lastFocusSeq = 0;
 
   protected readonly shortSha = shortSha;
+
+  /** Signal, not a constant: it is also the `--ref-row-h` token. */
+  protected readonly rowHeight = this.appearance.refRowHeight;
+
+  private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   protected readonly nodes = computed<RefsNode[]>(() =>
     buildRefsTree({
@@ -84,7 +101,16 @@ export class Sidebar {
       const request = this.focusRequest();
       if (!request || request.seq === this.lastFocusSeq) return;
       this.lastFocusSeq = request.seq;
-      this.rowElement(request.id)?.focus();
+      this.focusRowElement(request.id);
+    });
+
+    afterRenderEffect(() => {
+      // The CDK inserts a wrapper <div> between the viewport and the rows,
+      // which would leave the treeitems without an owning tree.
+      this.viewport()
+        ?.getElementRef()
+        .nativeElement.querySelector('.cdk-virtual-scroll-content-wrapper')
+        ?.setAttribute('role', 'presentation');
     });
   }
 
@@ -106,51 +132,8 @@ export class Sidebar {
 
   // ── rows ────────────────────────────────────────────────────────────────
 
-  protected indentPx(node: RefsNode): number {
-    // Sections carry their own padding through `yoru-section-header`.
-    return node.kind === 'section' ? 0 : 8 + node.level * INDENT_PX;
-  }
-
-  protected isExpandable(node: RefsNode): boolean {
-    return node.kind === 'section' || node.kind === 'folder';
-  }
-
-  protected rowClass(node: RefsNode): string {
-    const base =
-      'flex w-full cursor-pointer select-none items-center transition-colors hover:bg-[var(--app-panel)]';
-    if (node.kind === 'section') return base;
-    const leaf = `${base} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md`;
-    // Weight, not colour: the marker icon and `aria-current` carry the state too.
-    return node.kind === 'branch' && node.current
-      ? `${leaf} font-semibold text-accent-ink`
-      : `${leaf} text-[var(--app-text)]`;
-  }
-
-  protected payloadFor(node: RefsNode): DragPayload | null {
-    if (node.kind !== 'branch') return null;
-    return {
-      type: 'branch',
-      name: node.branch.name,
-      isRemote: node.remote !== null,
-      isCurrent: node.current,
-    };
-  }
-
-  protected rowTitle(node: RefsNode): string {
-    switch (node.kind) {
-      case 'branch':
-        return node.branch.upstream
-          ? `${node.branch.name} tracks ${node.branch.upstream}`
-          : node.branch.name;
-      case 'tag':
-        return node.tag.is_annotated
-          ? `${node.tag.name} — annotated: ${node.tag.message ?? ''}`.trim()
-          : node.tag.name;
-      case 'stash':
-        return `${node.stash.message} · ${node.stash.date}`;
-      default:
-        return node.label;
-    }
+  protected trackNode(_index: number, node: RefsNode): string {
+    return node.id;
   }
 
   /** Keeps the roving tabindex on whichever row actually holds focus. */
@@ -163,7 +146,7 @@ export class Sidebar {
     // A second click is a checkout, and `dblclick` handles it; navigating on
     // the first one costs nothing and needs no timer to disambiguate.
     if (event.detail > 1) return;
-    if (this.isExpandable(node)) {
+    if (node.expandable) {
       this.toggle(node);
       return;
     }
@@ -171,7 +154,7 @@ export class Sidebar {
   }
 
   protected onDoubleClick(node: RefsNode): void {
-    if (this.isExpandable(node)) return;
+    if (node.expandable) return;
     void this.actions.activate(node);
   }
 
@@ -222,11 +205,11 @@ export class Sidebar {
       // Enter mirrors the double click (check the ref out); Space mirrors the
       // single click (move the history to it).
       case 'Enter':
-        if (this.isExpandable(node)) this.toggle(node);
+        if (node.expandable) this.toggle(node);
         else void this.actions.activate(node);
         break;
       case ' ':
-        if (this.isExpandable(node)) this.toggle(node);
+        if (node.expandable) this.toggle(node);
         else void this.actions.navigate(node);
         break;
       case 'Delete':
@@ -246,8 +229,8 @@ export class Sidebar {
 
   /** Right: open a closed row, otherwise step into it. */
   private onForward(node: RefsNode, index: number): void {
-    if (!this.isExpandable(node)) return;
-    if (!this.expanded(node)) {
+    if (!node.expandable) return;
+    if (!node.expanded) {
       this.toggle(node);
       return;
     }
@@ -256,7 +239,7 @@ export class Sidebar {
 
   /** Left: close an open row, otherwise step out to its parent. */
   private onBack(node: RefsNode, index: number): void {
-    if (this.isExpandable(node) && this.expanded(node)) {
+    if (node.expandable && node.expanded) {
       this.toggle(node);
       return;
     }
@@ -288,6 +271,22 @@ export class Sidebar {
     this.focusRequest.set({ id, seq: this.focusSeq });
   }
 
+  /**
+   * A row outside the rendered range has no element to focus, so the viewport
+   * is scrolled to it first and the focus lands once the CDK has drawn it.
+   */
+  private focusRowElement(id: string): void {
+    const element = this.rowElement(id);
+    if (element) {
+      element.focus();
+      return;
+    }
+    const index = this.nodes().findIndex((node) => node.id === id);
+    if (index < 0) return;
+    this.viewport()?.scrollToIndex(index);
+    setTimeout(() => this.rowElement(id)?.focus(), 0);
+  }
+
   private rowElement(id: string): HTMLElement | null {
     return this.host.nativeElement.querySelector<HTMLElement>(
       `[data-node-id="${CSS.escape(id)}"]`,
@@ -296,15 +295,11 @@ export class Sidebar {
 
   // ── expanded state ──────────────────────────────────────────────────────
 
-  protected expanded(node: RefsNode): boolean {
-    return node.kind === 'section' || node.kind === 'folder' ? node.expanded : false;
-  }
-
   private toggle(node: RefsNode): void {
     const key =
       node.kind === 'section' ? node.section : node.kind === 'folder' ? node.key : null;
     if (key === null) return;
     // The preference stores the collapsed flag, so it is the negation.
-    this.prefs.setSidebarSectionCollapsed(key, this.expanded(node));
+    this.prefs.setSidebarSectionCollapsed(key, node.expanded);
   }
 }

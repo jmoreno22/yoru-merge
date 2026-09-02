@@ -56,6 +56,12 @@ const VIEW_OPTIONS: readonly SegmentedOption[] = [
   { value: 'tree', label: 'Tree', icon: 'lucideFolderTree' },
 ];
 
+/** One section's rows and its file count, counted while the rows are built. */
+interface SectionRows {
+  readonly rows: readonly ChangeRow[];
+  readonly fileCount: number;
+}
+
 /**
  * The working tree: conflicts, staged and unstaged/untracked files, with the
  * commit composer pinned underneath.
@@ -154,9 +160,9 @@ export class WorkingChangesPanel {
     () => new Set(this.service.changes()?.untracked ?? []),
   );
 
-  protected readonly conflictRows = computed(() => this.rowsFor('conflicts'));
-  protected readonly stagedRows = computed(() => this.rowsFor('staged'));
-  protected readonly changeRows = computed(() => this.rowsFor('changes'));
+  protected readonly conflictSection = computed(() => this.rowsFor('conflicts'));
+  protected readonly stagedSection = computed(() => this.rowsFor('staged'));
+  protected readonly changeSection = computed(() => this.rowsFor('changes'));
 
   protected readonly showConflicts = computed(
     () => this.conflictCount() > 0 || this.sequencerActive(),
@@ -194,10 +200,6 @@ export class WorkingChangesPanel {
 
   protected activeIn(section: SectionId): string | null {
     return this.activeSection() === section ? this.activePath() : null;
-  }
-
-  protected fileCount(rows: readonly ChangeRow[]): number {
-    return rows.reduce((total, row) => total + (row.kind === 'file' ? 1 : 0), 0);
   }
 
   protected onFilterInput(event: Event): void {
@@ -415,11 +417,21 @@ export class WorkingChangesPanel {
     void this.service.selectWorkingFile(path, section === 'staged');
   }
 
-  private rowsFor(section: SectionId): ChangeRow[] {
+  private rowsFor(section: SectionId): SectionRows {
     const entries = this.filtered().filter((entry) => entry.section === section);
-    return this.viewMode() === 'tree'
-      ? treeRows(entries, this.collapsed())
-      : listRows(entries);
+    if (this.viewMode() !== 'tree') {
+      const rows = listRows(entries);
+      return { rows, fileCount: rows.length };
+    }
+
+    // A collapsed folder keeps its files out of the rows, so the header count
+    // has to come from what was emitted rather than from the entries.
+    const rows = treeRows(entries, this.collapsed());
+    let fileCount = 0;
+    for (const row of rows) {
+      if (row.kind === 'file') fileCount += 1;
+    }
+    return { rows, fileCount };
   }
 
   /**
@@ -429,10 +441,10 @@ export class WorkingChangesPanel {
   private visibleIn(section: SectionId): string[] {
     const rows =
       section === 'conflicts'
-        ? this.conflictRows()
+        ? this.conflictSection().rows
         : section === 'staged'
-          ? this.stagedRows()
-          : this.changeRows();
+          ? this.stagedSection().rows
+          : this.changeSection().rows;
     return rows.filter((row) => row.kind === 'file').map((row) => row.path);
   }
 

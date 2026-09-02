@@ -15,6 +15,10 @@ export interface FileRow {
   /** Files under this folder, at any depth. Zero for file rows. */
   readonly fileCount: number;
   readonly collapsed: boolean;
+  /** Tooltip of a file row; empty on folders. */
+  readonly title: string;
+  /** How the status chip draws; null on folders. */
+  readonly statusStyle: FileStatusStyle | null;
 }
 
 /** How one status is drawn: an icon, a letter, and the token that tints both. */
@@ -91,15 +95,7 @@ export function buildFileRows(
   collapsed: ReadonlySet<string>,
 ): FileRow[] {
   if (mode === 'list') {
-    return files.map((file) => ({
-      kind: 'file' as const,
-      path: file.path,
-      label: file.path,
-      depth: 0,
-      file,
-      fileCount: 0,
-      collapsed: false,
-    }));
+    return files.map((file) => fileRow(file, file.path, 0));
   }
 
   const root = newNode('', '');
@@ -129,6 +125,32 @@ function newNode(name: string, path: string): TreeNode {
   return { name, path, folders: new Map(), files: [], fileCount: 0 };
 }
 
+/**
+ * A file row with its presentation resolved.
+ *
+ * The title and the status style are resolved here rather than in the
+ * template: a template expression runs again for every rendered row on every
+ * change-detection pass, and opening a file triggers one.
+ */
+function fileRow(file: CommitFile, label: string, depth: number): FileRow {
+  const status = FILE_STATUS_LABEL[file.status];
+  const renamed = file.old_path ? `\nRenamed from ${file.old_path}` : '';
+  const stats = file.binary
+    ? '\nBinary file'
+    : `\n+${file.additions} −${file.deletions}`;
+  return {
+    kind: 'file',
+    path: file.path,
+    label,
+    depth,
+    file,
+    fileCount: 0,
+    collapsed: false,
+    title: `${status}: ${file.path}${renamed}${stats}`,
+    statusStyle: FILE_STATUS_STYLE[file.status],
+  };
+}
+
 function emit(
   node: TreeNode,
   depth: number,
@@ -153,19 +175,13 @@ function emit(
       file: null,
       fileCount: current.fileCount,
       collapsed: isCollapsed,
+      title: '',
+      statusStyle: null,
     });
     if (!isCollapsed) emit(current, depth + 1, rows, collapsed);
   }
 
   for (const file of node.files) {
-    rows.push({
-      kind: 'file',
-      path: file.path,
-      label: file.path.slice(file.path.lastIndexOf('/') + 1),
-      depth,
-      file,
-      fileCount: 0,
-      collapsed: false,
-    });
+    rows.push(fileRow(file, file.path.slice(file.path.lastIndexOf('/') + 1), depth));
   }
 }

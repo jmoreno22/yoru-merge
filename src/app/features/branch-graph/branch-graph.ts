@@ -35,8 +35,10 @@ const SELECTED_RING_WIDTH = 2;
 const VISIBLE_BUFFER_ROWS = 2;
 /** Alpha applied to lanes whose commits the current branch cannot reach. */
 const OFF_BRANCH_ALPHA = 0.45;
-/** Glow radius of the lane HEAD sits on. */
-const HEAD_GLOW_BLUR = 8;
+/** Stroke width of the glow pass drawn under the lane HEAD sits on. */
+const HEAD_GLOW_WIDTH = 6;
+/** Alpha of that glow pass, relative to the alpha already on the context. */
+const HEAD_GLOW_ALPHA = 0.3;
 /** Final alpha of a dangling edge where it fades out. */
 const EDGE_FADE_ALPHA = 0.25;
 /** Horizontal slack around a lane centre that still counts as a hit. */
@@ -223,7 +225,10 @@ export class BranchGraph {
   // ── pointer ──────────────────────────────────────────────────────────────
 
   protected onPointerMove(event: PointerEvent): void {
-    this.hover.set(this.hitTest(event.offsetX, event.offsetY));
+    // A pointermove fires per pixel; writing the signal only when the pointed
+    // row actually changes keeps a mouse sweep from re-rendering the tooltip.
+    const hit = this.hitTest(event.offsetX, event.offsetY);
+    if (!sameHoverTarget(this.hover(), hit)) this.hover.set(hit);
   }
 
   protected onPointerLeave(): void {
@@ -334,8 +339,10 @@ export class BranchGraph {
     const backingH = Math.max(1, Math.round(cssH * dpr));
     if (canvasEl.width !== backingW) canvasEl.width = backingW;
     if (canvasEl.height !== backingH) canvasEl.height = backingH;
-    canvasEl.style.width = `${cssW}px`;
-    canvasEl.style.height = `${cssH}px`;
+    const styleW = `${cssW}px`;
+    const styleH = `${cssH}px`;
+    if (canvasEl.style.width !== styleW) canvasEl.style.width = styleW;
+    if (canvasEl.style.height !== styleH) canvasEl.style.height = styleH;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
@@ -385,17 +392,17 @@ export class BranchGraph {
       if (!node) continue;
       const commit = meta[row];
       const x = node.lane * LANE_WIDTH + LANE_WIDTH / 2;
-      this.applyLaneStyle(ctx, node.lane, commit, headLane);
+      this.applyLaneStyle(ctx, commit);
       this.drawNode(
         ctx,
         x,
         rowY(row),
         this.laneColor(node.lane),
-        node.sha === selected,
+        commit?.sha === selected,
         commit?.refs.some((ref) => ref.ref_type === 'head') ?? false,
+        node.lane === headLane,
       );
       ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
     }
 
     ctx.restore();
@@ -405,20 +412,12 @@ export class BranchGraph {
     return this.lanes[lane % this.lanes.length] ?? FALLBACK_LANES[0] ?? '#00E5FF';
   }
 
-  /** Off-branch lanes recede; the lane HEAD is on is the only one that glows. */
+  /** Off-branch lanes recede; the lane HEAD is on glows (see `strokeGlow`). */
   private applyLaneStyle(
     ctx: CanvasRenderingContext2D,
-    lane: number,
     commit: CommitInfo | undefined,
-    headLane: number | null,
   ): void {
     ctx.globalAlpha = commit && !commit.on_current_branch ? OFF_BRANCH_ALPHA : 1;
-    if (lane === headLane) {
-      ctx.shadowBlur = HEAD_GLOW_BLUR;
-      ctx.shadowColor = this.laneColor(lane);
-    } else {
-      ctx.shadowBlur = 0;
-    }
   }
 
   private drawEdge(
@@ -435,8 +434,9 @@ export class BranchGraph {
     const fromY = rowY(edge.fromRow);
     const color = this.laneColor(edge.fromLane);
 
-    this.applyLaneStyle(ctx, edge.fromLane, commit, headLane);
+    this.applyLaneStyle(ctx, commit);
 
+    ctx.beginPath();
     if (edge.dangling) {
       // The parent is not in the walk, so the line stops just below the node
       // and dissolves rather than pretending to reach a row that exists.
@@ -445,19 +445,17 @@ export class BranchGraph {
       gradient.addColorStop(0, color);
       gradient.addColorStop(1, withAlpha(color, EDGE_FADE_ALPHA));
       ctx.strokeStyle = gradient;
-      ctx.beginPath();
       ctx.moveTo(fromX, fromY);
       ctx.lineTo(fromX, toY);
-      ctx.stroke();
     } else {
       ctx.strokeStyle = color;
-      ctx.beginPath();
       drawEdgePath(ctx, edge.type, fromX, fromY, toX, rowY(edge.toRow));
-      ctx.stroke();
     }
 
+    if (edge.fromLane === headLane) strokeGlow(ctx, EDGE_LINE_WIDTH);
+    ctx.stroke();
+
     ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
   }
 
   private drawNode(
@@ -467,7 +465,17 @@ export class BranchGraph {
     color: string,
     selected: boolean,
     isHead: boolean,
+    glow: boolean,
   ): void {
+    if (glow) {
+      // Only the outermost circle is glowed: a halo around the inner disc
+      // would be painted over by the ring anyway.
+      ctx.beginPath();
+      ctx.arc(x, y, isHead ? HEAD_RING_RADIUS : NODE_RADIUS, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      strokeGlow(ctx, NODE_RING_WIDTH);
+    }
+
     ctx.beginPath();
     ctx.arc(x, y, NODE_RADIUS, 0, Math.PI * 2);
     if (selected) {
@@ -492,6 +500,20 @@ export class BranchGraph {
       ctx.stroke();
     }
   }
+}
+
+/**
+ * Strokes the current path once as a wide translucent pass, under the real
+ * stroke the caller is about to lay on top. `shadowBlur` would read the same
+ * but costs a gaussian blur per stroke and per node, on every scroll frame.
+ */
+function strokeGlow(ctx: CanvasRenderingContext2D, restoreWidth: number): void {
+  const alpha = ctx.globalAlpha;
+  ctx.globalAlpha = alpha * HEAD_GLOW_ALPHA;
+  ctx.lineWidth = HEAD_GLOW_WIDTH;
+  ctx.stroke();
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = restoreWidth;
 }
 
 /**
@@ -525,6 +547,12 @@ function drawEdgePath(
       return;
     }
   }
+}
+
+/** Whether two hover targets point at the same node in the same place. */
+function sameHoverTarget(a: HoverTarget | null, b: HoverTarget | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.row === b.row && a.sha === b.sha && a.x === b.x && a.y === b.y;
 }
 
 /** `#RRGGBB` → `rgba(...)`; anything else is returned untouched. */

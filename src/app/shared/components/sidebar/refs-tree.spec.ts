@@ -150,6 +150,111 @@ describe('buildRefsTree', () => {
     });
   });
 
+  it('indents by 18px per level and leaves the section padding to its class', () => {
+    const nodes = tree();
+    expect(nodes.find((n) => n.id === 'section:local')?.indent).toBe(0);
+    expect(nodes.find((n) => n.id === 'folder:local:feat')?.indent).toBe(26);
+    expect(nodes.find((n) => n.id === 'branch:local:feat/auth')?.indent).toBe(44);
+  });
+
+  it('gives every row the fixed height the virtual list needs', () => {
+    for (const node of tree()) {
+      expect(node.rowClass).toContain('h-[var(--ref-row-h)]');
+    }
+  });
+
+  it('marks the current branch by weight, not by colour alone', () => {
+    const nodes = tree();
+    expect(nodes.find((n) => n.id === 'branch:local:main')?.rowClass).toContain(
+      'font-semibold',
+    );
+    expect(
+      nodes.find((n) => n.id === 'branch:local:feat/auth')?.rowClass,
+    ).not.toContain('font-semibold');
+  });
+
+  it('spells the upstream out in the row title', () => {
+    const tracked = branch('main');
+    const nodes = buildRefsTree({
+      branches: {
+        local: [{ ...tracked, upstream: 'origin/main' }],
+        remote: [],
+        current: 'main',
+      },
+      tags: [tag('v1.0.0')],
+      stashes: [stash(0, 'WIP on main: 1234567 subject')],
+      filter: '',
+      collapsed: { tags: false, stashes: false },
+      perRemoteFolders: true,
+    });
+    expect(nodes.find((n) => n.id === 'branch:local:main')?.title).toBe(
+      'main tracks origin/main',
+    );
+    expect(nodes.find((n) => n.id === 'tag:v1.0.0')?.title).toBe('v1.0.0');
+    expect(nodes.find((n) => n.id === 'stash:0')?.title).toBe(
+      'WIP on main: 1234567 subject · 2026-08-29',
+    );
+    expect(nodes.find((n) => n.id === 'section:local')?.title).toBe('Local');
+  });
+
+  it('carries a drag payload on branches and nothing else', () => {
+    const nodes = tree({ collapsed: { tags: false, stashes: false } });
+    expect(nodes.find((n) => n.id === 'branch:local:main')?.payload).toEqual({
+      type: 'branch',
+      name: 'main',
+      isRemote: false,
+      isCurrent: true,
+    });
+    expect(nodes.find((n) => n.id === 'section:local')?.payload).toBeNull();
+    expect(nodes.find((n) => n.id === 'folder:local:feat')?.payload).toBeNull();
+    expect(nodes.find((n) => n.id === 'tag:v1.0.0')?.payload).toBeNull();
+    expect(nodes.find((n) => n.id === 'stash:0')?.payload).toBeNull();
+  });
+
+  it('keeps the drag payload identical across rebuilds of the same branches', () => {
+    const branches: BranchList = {
+      local: [branch('main')],
+      remote: [],
+      current: 'main',
+    };
+    const input: RefsTreeInput = {
+      branches,
+      tags: [],
+      stashes: [],
+      filter: '',
+      collapsed: {},
+      perRemoteFolders: true,
+    };
+    const first = buildRefsTree(input).find((n) => n.id === 'branch:local:main');
+    // A rebuild caused by an unrelated change must not hand `[appDragDrop]` a
+    // new object, or the directive input changes on every collapse or filter.
+    const second = buildRefsTree({ ...input, collapsed: { tags: true } }).find(
+      (n) => n.id === 'branch:local:main',
+    );
+    expect(first?.payload).not.toBeNull();
+    expect(second?.payload).toBe(first?.payload);
+  });
+
+  it('marks sections and folders expandable and leaves the rest closed', () => {
+    const nodes = tree();
+    expect(nodes.find((n) => n.id === 'section:local')).toMatchObject({
+      expandable: true,
+      expanded: true,
+    });
+    expect(nodes.find((n) => n.id === 'section:tags')).toMatchObject({
+      expandable: true,
+      expanded: false,
+    });
+    expect(nodes.find((n) => n.id === 'folder:local:feat')).toMatchObject({
+      expandable: true,
+      expanded: true,
+    });
+    expect(nodes.find((n) => n.id === 'branch:local:main')).toMatchObject({
+      expandable: false,
+      expanded: false,
+    });
+  });
+
   it('survives a repository whose refs have not loaded yet', () => {
     const nodes = buildRefsTree({
       branches: null,
