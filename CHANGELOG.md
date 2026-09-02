@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-09-02
+
 ### Changed
 
 - **Nothing changes in the app itself.** This is the same YoruMerge, rebuilt on
