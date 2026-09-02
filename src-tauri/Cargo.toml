@@ -25,7 +25,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-clipboard-manager = "2"
-base64 = "0.22"
+base64 = "0.23"
 chrono = "0.4"
 # libgit2 is only used for local reads; every remote operation goes through the
 # git CLI, so the default `ssh`/`https` features would only add libssh2 and OpenSSL.
