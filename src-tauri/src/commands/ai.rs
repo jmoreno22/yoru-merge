@@ -14,6 +14,7 @@
 //! cleaning up the answer — lives in [`super::ai_message`].
 
 use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -148,6 +149,55 @@ fn current_branch(path: &str) -> String {
 
 // ── Running the provider ─────────────────────────────────────────────────────
 
+/// An empty directory of ours, used as the provider's working directory.
+///
+/// These CLIs read project configuration from the directory they start in —
+/// `.mcp.json`, hooks, project settings — and that configuration travels inside
+/// a clone, so a provider started in the repository would run whatever a
+/// stranger's clone asked for on the first click. The prompt already carries
+/// the diff, the stat, the branch and the recent subjects, so the provider
+/// loses nothing by running somewhere else.
+struct ProviderDir(PathBuf);
+
+impl ProviderDir {
+    /// Creation is exclusive on purpose: on a shared `/tmp` a directory that
+    /// already exists is one somebody else may have filled with configuration.
+    /// Failing is the safe outcome — there is no directory to fall back to that
+    /// is known not to be the repository, including this process's own.
+    fn create() -> Result<Self, String> {
+        let base = std::env::temp_dir();
+        for _ in 0..8 {
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|since| since.as_nanos())
+                .unwrap_or_default();
+            let dir = base.join(format!("yoru-merge-ai-{}-{stamp}", std::process::id()));
+            match std::fs::create_dir(&dir) {
+                Ok(()) => return Ok(Self(dir)),
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(e) => {
+                    return Err(format!(
+                        "could not create a working directory for the provider: {e}"
+                    ))
+                }
+            }
+        }
+        Err("could not create a working directory for the provider".to_string())
+    }
+
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for ProviderDir {
+    /// `remove_dir`, not `remove_dir_all`: anything a provider chose to write
+    /// here is the user's, and deleting it is not this module's call.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0);
+    }
+}
+
 /// Reads a stream to EOF, keeping at most `cap` bytes.
 ///
 /// Draining past the cap rather than stopping is the point: a full pipe blocks
@@ -219,18 +269,19 @@ fn failure_message(stderr: &[u8], stdout: &[u8]) -> String {
 /// Spawns the provider, feeds it the prompt and returns its raw stdout.
 ///
 /// The environment is fixed the way [`super::git::GitCmd`] fixes git's: no
-/// colour, no spinners, no console window, and none of the AppImage's bundled
+/// colour, no spinners, no console window, none of the AppImage's bundled
 /// library paths — these CLIs are node or bun binaries and would break on them
-/// exactly as `git-remote-https` did.
+/// exactly as `git-remote-https` did — and a [`ProviderDir`] to run in.
 fn run_provider(
     provider: &ProviderCommand,
     prompt: &str,
-    cwd: Option<&str>,
     timeout: Duration,
 ) -> Result<String, String> {
+    let cwd = ProviderDir::create()?;
     let mut command = Command::new(&provider.program);
     command
         .args(provider.args_with_prompt(prompt))
+        .current_dir(cwd.path())
         .env("NO_COLOR", "1")
         .env("CLICOLOR", "0")
         .env("FORCE_COLOR", "0")
@@ -240,9 +291,6 @@ fn run_provider(
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(dir) = cwd {
-        command.current_dir(dir);
-    }
     // With the prompt in an argument there is nothing to send, and an open
     // stdin is one more thing an interactive CLI could decide to wait on.
     command.stdin(if provider.prompt_in_args {
@@ -365,7 +413,7 @@ fn generate_inner(
     instructions: &str,
 ) -> Result<String, String> {
     let prompt = prompt_for_repo(path, provider, max_diff_bytes, instructions)?;
-    let raw = run_provider(provider, &prompt, Some(path), timeout)?;
+    let raw = run_provider(provider, &prompt, timeout)?;
     sanitize_message(&extract_text(&raw))
 }
 
@@ -433,7 +481,7 @@ pub async fn test_ai_provider(
             // whether the CLI answers at all, not whether it follows a style.
             instructions: "",
         });
-        let raw = run_provider(&provider, &prompt, None, timeout)?;
+        let raw = run_provider(&provider, &prompt, timeout)?;
         sanitize_message(&extract_text(&raw))
     })
     .await
@@ -478,7 +526,7 @@ mod tests {
     #[test]
     fn a_missing_program_says_how_to_fix_it() {
         let provider = parse_provider_command("yoru-no-such-ai-cli").unwrap();
-        let error = run_provider(&provider, "hi", None, Duration::from_secs(5)).unwrap_err();
+        let error = run_provider(&provider, "hi", Duration::from_secs(5)).unwrap_err();
         assert!(error.contains("was not found"), "got: {error}");
         assert!(error.contains("Settings"), "got: {error}");
     }
@@ -486,14 +534,14 @@ mod tests {
     #[test]
     fn a_provider_that_answers_produces_its_text() {
         let provider = echo_provider("feat: add a thing");
-        let out = run_provider(&provider, "prompt", None, Duration::from_secs(30)).unwrap();
+        let out = run_provider(&provider, "prompt", Duration::from_secs(30)).unwrap();
         assert!(out.contains("feat: add a thing"), "got: {out}");
     }
 
     #[test]
     fn a_failing_provider_reports_its_own_stderr() {
         let error =
-            run_provider(&failing_provider(), "prompt", None, Duration::from_secs(30)).unwrap_err();
+            run_provider(&failing_provider(), "prompt", Duration::from_secs(30)).unwrap_err();
         assert!(!error.is_empty());
         assert!(!error.contains("failed without a message"), "got: {error}");
     }
@@ -546,8 +594,66 @@ mod tests {
     fn a_prompt_larger_than_a_pipe_buffer_does_not_deadlock() {
         let provider = echo_provider("chore: big prompt");
         let prompt = "x".repeat(512 * 1024);
-        let out = run_provider(&provider, &prompt, None, Duration::from_secs(60)).unwrap();
+        let out = run_provider(&provider, &prompt, Duration::from_secs(60)).unwrap();
         assert!(out.contains("chore: big prompt"));
+    }
+
+    // ── the working directory ────────────────────────────────────────────────
+
+    /// The repository must not be the provider's working directory: these CLIs
+    /// read configuration from it, and that configuration comes with a clone.
+    #[test]
+    fn a_provider_does_not_run_inside_the_repository() {
+        let (_dir, path) = staged_repo();
+        git_ok(&path, &["config", "yoru.marker", "hijacked"]);
+
+        // `git config --get` answers from the repository of its working
+        // directory, so it prints the marker only if that directory is the
+        // repository — the same way a CLI would pick up `.mcp.json`.
+        let provider = ProviderCommand {
+            program: "git".to_string(),
+            args: vec![
+                "config".to_string(),
+                "--get".to_string(),
+                "yoru.marker".to_string(),
+            ],
+            prompt_in_args: false,
+        };
+
+        // Run inside the repository it does print it, which is what makes the
+        // assertion below about the working directory and nothing else.
+        let inside = Command::new("git")
+            .args(["config", "--get", "yoru.marker"])
+            .current_dir(&path)
+            .output()
+            .expect("spawn git config");
+        assert!(String::from_utf8_lossy(&inside.stdout).contains("hijacked"));
+
+        // Away from the repository the marker is not there, so the provider
+        // finds nothing and exits non-zero.
+        let error = run_provider(&provider, "prompt", Duration::from_secs(30)).unwrap_err();
+        assert!(
+            !error.contains("hijacked"),
+            "the repository's config reached the provider: {error}"
+        );
+    }
+
+    #[test]
+    fn the_provider_directory_is_empty_and_goes_away_with_it() {
+        let (_dir, path) = staged_repo();
+
+        let cwd = ProviderDir::create().unwrap();
+        assert!(cwd.path().is_dir());
+        assert!(
+            !cwd.path().starts_with(&path),
+            "got: {}",
+            cwd.path().display()
+        );
+        assert_eq!(std::fs::read_dir(cwd.path()).unwrap().count(), 0);
+
+        let created = cwd.path().to_path_buf();
+        drop(cwd);
+        assert!(!created.exists(), "{} outlived its use", created.display());
     }
 
     #[test]

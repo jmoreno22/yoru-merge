@@ -7,6 +7,10 @@ on:
   release:
     types: [published]
 
+# The action talks to GitHub with `token` below, never with GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   publish:
     name: Submit to winget-pkgs
@@ -14,12 +18,14 @@ jobs:
 
     steps:
       - name: Create the winget-pkgs pull request
-        uses: vedantmgoyal9/winget-releaser@v2
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
         with:
           identifier: jmoreno22.YoruMerge
           # The NSIS installer only: the .msi is a second flavour of the same
           # package, and the .sig files are updater signatures, not installers.
           installers-regex: '_x64-setup\.exe$'
           # A classic PAT with `public_repo`; GITHUB_TOKEN cannot fork and open
-          # a pull request against another repository.
+          # a pull request against another repository. `public_repo` is write
+          # access to every public repo of the account, so prefer a fine-grained
+          # token scoped to the winget-pkgs fork alone.
           token: ${{ secrets.WINGET_TOKEN }}
