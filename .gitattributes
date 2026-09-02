@@ -1,5 +1,21 @@
+# Line endings are normalised to LF in the repository and, unlike the default
+# on Windows, in the working tree too. Biome formats with `lineEnding: "lf"`,
+# so a CRLF checkout made `pnpm lint` fail on every file it had never touched.
 * text=auto eol=lf
+
+# Binaries git must never inspect or convert.
 *.png binary
 *.ico binary
-*.gif binary
+*.icns binary
+*.jpg binary
+*.webp binary
+*.woff binary
 *.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.AppImage binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary

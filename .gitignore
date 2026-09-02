@@ -42,3 +42,7 @@ skills-lock.json
 **/.sisyphus/
 **/.agents/
 **/.claude/
+
+# Working notes: plans, trackers and audit reports kept beside the code for
+# context, deliberately not published.
+docs/plans/
