@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-02
+
 ### Changed
 
 - **Git 2.31 or newer is now required**, up from 2.25. Resolving a merge's diff
