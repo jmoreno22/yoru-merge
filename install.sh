@@ -9,6 +9,9 @@
 set -eu
 
 GH_REPO="jmoreno22/yoru-merge"
+# The key the release is signed with, from src-tauri/tauri.conf.json
+# (plugins.updater.pubkey, base64-decoded: minisign key EB277F3E28D1D3F3).
+MINISIGN_PUBKEY="RWTz09EoPn8n674gYQhxyA1W0EkM0cKhs3yw6gqdaF+yS9e/hlwOQEfJ"
 
 info() { echo "==> $*"; }
 warn() { echo "warning: $*" >&2; }
@@ -56,10 +59,21 @@ get() { # get <asset-name>
 }
 
 install_appimage() {
+	# Checked before the 80 MB download: without it the AppImage cannot be trusted.
+	command -v minisign >/dev/null 2>&1 ||
+		die "minisign is needed to verify the AppImage; install it (apt install minisign, dnf install minisign) and run this again"
+
 	get "YoruMerge_${version}_amd64.AppImage"
+	image="$asset"
+	get "YoruMerge_${version}_amd64.AppImage.sig"
+	# Tauri publishes the minisign signature base64-encoded, as its updater reads it.
+	base64 -d "$asset" >"$asset.minisig" || die "could not decode the signature"
+	minisign -V -P "$MINISIGN_PUBKEY" -x "$asset.minisig" -m "$image" ||
+		die "the AppImage does not match its signature; not installing it"
+
 	target="$HOME/.local/bin/YoruMerge.AppImage"
 	mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
-	cp "$asset" "$target"
+	cp "$image" "$target"
 	chmod +x "$target"
 
 	cat >"$HOME/.local/share/applications/YoruMerge.desktop" <<EOF
@@ -93,7 +107,8 @@ elif command -v dnf >/dev/null 2>&1; then
 	get "YoruMerge-${version}-1.x86_64.rpm"
 	$SUDO dnf install -y "$asset"
 elif command -v zypper >/dev/null 2>&1; then
-	# Tauri does not sign its RPMs.
+	# Tauri does not sign its RPMs, so there is no key to import: HTTPS to the
+	# release is the whole integrity story here, as it is for apt and dnf above.
 	get "YoruMerge-${version}-1.x86_64.rpm"
 	$SUDO zypper --non-interactive install --allow-unsigned-rpm "$asset"
 else
