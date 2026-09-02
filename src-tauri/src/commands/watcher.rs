@@ -8,7 +8,9 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
+use super::branches::AheadBehindCache;
 use super::git::validate_repo_path;
+use super::history::HistoryCache;
 
 /// Long enough that a `git commit` (which rewrites the index, HEAD and refs in
 /// quick succession) arrives as one notification instead of five.
@@ -159,10 +161,20 @@ pub async fn watch_repo(
     Ok(())
 }
 
-/// Stop watching `path`.
+/// Stop watching `path` and drop everything cached for it.
+///
+/// The locks are taken one after the other, never nested, so this cannot
+/// deadlock against a page or a branch listing being served.
 #[tauri::command]
-pub async fn unwatch_repo(path: String, state: State<'_, WatcherState>) -> Result<(), String> {
+pub async fn unwatch_repo(
+    path: String,
+    state: State<'_, WatcherState>,
+    history: State<'_, HistoryCache>,
+    ahead_behind: State<'_, AheadBehindCache>,
+) -> Result<(), String> {
     state.0.lock().map_err(|e| e.to_string())?.remove(&path);
+    history.evict(&path);
+    ahead_behind.evict(&path);
     Ok(())
 }
 

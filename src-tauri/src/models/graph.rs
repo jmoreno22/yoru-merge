@@ -6,11 +6,11 @@ pub struct GraphData {
     pub max_lanes: u32,
 }
 
+/// One row of the graph. It carries no sha: rows are sliced from the same walk
+/// as the page's commits, so row `k` belongs to `HistoryPage::commits[k]`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphCommit {
-    pub sha: String,
     pub lane: u32,
-    pub parent_shas: Vec<String>,
     pub edges: Vec<GraphEdge>,
 }
 

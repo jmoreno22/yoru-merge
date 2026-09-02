@@ -8,6 +8,13 @@ import { OpsRunner } from './ops-runner';
 /** Commits fetched per history page. */
 export const HISTORY_PAGE_SIZE = 200;
 
+/**
+ * Most rows a refresh reloads at once. The backend slices an already cached
+ * walk, so the whole window costs one call; what this bounds is the JSON that
+ * crosses the bridge and the rows the list rebuilds on every watcher event.
+ */
+const HISTORY_RELOAD_LIMIT = 5000;
+
 /** How many extra pages `ensureLoaded` will pull while hunting for a sha. */
 const MAX_LOOKUP_PAGES = 5;
 
@@ -22,13 +29,51 @@ const SEARCH_LIMIT = 200;
 export class HistoryOps {
   private readonly ops = inject(OpsRunner);
 
-  /** Loads the first page, replacing whatever is in `commits`/`graphData`. */
-  async load(state: RepoState): Promise<void> {
+  /**
+   * Latest history read of a tab. `load` queues behind it: it swaps the whole
+   * list, so an append landing afterwards would splice its page onto a list it
+   * was never read against.
+   */
+  private readonly reads = new WeakMap<RepoState, Promise<unknown>>();
+
+  /**
+   * Reloads the history, keeping the window that is already on screen.
+   *
+   * Coming back with only the first page threw a reader who had paged down
+   * back to the top, with the viewport pointing at rows that no longer
+   * existed. Asking for the whole window in one call costs what one page costs
+   * — the backend slices a cached walk — so the position survives a refresh.
+   */
+  load(state: RepoState): Promise<void> {
+    const run = this.reload(state, this.reads.get(state));
+    this.reads.set(state, run);
+    return run;
+  }
+
+  /** Appends the next page; no-op when the tail is already loaded. */
+  loadMore(state: RepoState): Promise<boolean> {
+    const repo = state.repo();
+    if (!repo || state.historyLoading() || !state.historyHasMore()) {
+      return Promise.resolve(false);
+    }
+    const run = this.appendPage(state, repo.path);
+    this.reads.set(state, run);
+    return run;
+  }
+
+  private async reload(state: RepoState, previous?: Promise<unknown>): Promise<void> {
+    // An append still in flight would add its page on top of the list this
+    // read is about to replace, leaving rows from two different reads.
+    await previous;
     const repo = state.repo();
     if (!repo) return;
+    const limit = Math.min(
+      Math.max(state.commits().length, HISTORY_PAGE_SIZE),
+      HISTORY_RELOAD_LIMIT,
+    );
     state.historyLoading.set(true);
     try {
-      const page = await this.ops.git.getHistory(repo.path, HISTORY_PAGE_SIZE, 0);
+      const page = await this.ops.git.getHistory(repo.path, limit, 0);
       state.commits.set(page.commits);
       state.graphData.set(page.graph);
       state.historyHasMore.set(page.has_more);
@@ -40,14 +85,11 @@ export class HistoryOps {
     }
   }
 
-  /** Appends the next page; no-op when the tail is already loaded. */
-  async loadMore(state: RepoState): Promise<boolean> {
-    const repo = state.repo();
-    if (!repo || state.historyLoading() || !state.historyHasMore()) return false;
+  private async appendPage(state: RepoState, path: string): Promise<boolean> {
     const skip = state.commits().length;
     state.historyLoading.set(true);
     try {
-      const page = await this.ops.git.getHistory(repo.path, HISTORY_PAGE_SIZE, skip);
+      const page = await this.ops.git.getHistory(path, HISTORY_PAGE_SIZE, skip);
       if (page.commits.length === 0) {
         state.historyHasMore.set(false);
         return false;
@@ -85,12 +127,17 @@ export class HistoryOps {
     if (!repo) return;
     state.commitDetailsLoading.set(true);
     try {
-      state.commitDetails.set(await this.ops.git.getCommitDetails(repo.path, sha));
+      const details = await this.ops.git.getCommitDetails(repo.path, sha);
+      // Arrowing down the list leaves several of these in flight; a slow answer
+      // for an earlier row must not land on the row now selected.
+      if (state.selectedCommitSha() !== sha) return;
+      state.commitDetails.set(details);
     } catch (error: unknown) {
+      if (state.selectedCommitSha() !== sha) return;
       state.commitDetails.set(null);
       this.ops.reportError(error, 'Could not read commit');
     } finally {
-      state.commitDetailsLoading.set(false);
+      if (state.selectedCommitSha() === sha) state.commitDetailsLoading.set(false);
     }
   }
 

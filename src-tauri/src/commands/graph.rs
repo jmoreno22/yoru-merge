@@ -90,15 +90,20 @@ mod tests {
         }
         git_ok(&path, &["merge", "--no-ff", "--no-edit", "feature"]);
 
-        let whole = graph(&path, 100, 0);
-        let second_page = graph(&path, 3, 3);
+        let cache = HistoryCache::default();
+        let whole = history_page(&cache, &path, 100, 0, None, true).expect("history page");
+        let second_page = history_page(&cache, &path, 3, 3, None, true).expect("history page");
 
-        assert_eq!(second_page.commits.len(), 3);
-        assert_eq!(second_page.max_lanes, whole.max_lanes);
+        assert_eq!(second_page.graph.commits.len(), 3);
+        assert_eq!(second_page.graph.max_lanes, whole.graph.max_lanes);
+        // The rows have no sha; the commits of the page say which window it is.
         for (offset, commit) in second_page.commits.iter().enumerate() {
-            let same = &whole.commits[3 + offset];
-            assert_eq!(commit.sha, same.sha);
-            assert_eq!(commit.lane, same.lane, "lane drifted between pages");
+            assert_eq!(commit.sha, whole.commits[3 + offset].sha);
+            assert_eq!(
+                second_page.graph.commits[offset].lane,
+                whole.graph.commits[3 + offset].lane,
+                "lane drifted between pages"
+            );
         }
     }
 }

@@ -5,12 +5,20 @@ import type { CloneOptions } from '../tauri-git.service';
 import type { RepoState } from '../workspace.store';
 import { HistoryOps } from './history-ops';
 import { OpsRunner } from './ops-runner';
+import { RefreshCoalescer } from './refresh-coalescer';
 
 /** How a clone ended. `canceled` is a user action, so nothing is reported. */
 export type CloneOutcome = 'cloned' | 'canceled' | 'failed';
 
 /** Substring the backend puts in the error of a clone the user cancelled. */
 const CLONE_CANCELED = 'clone canceled';
+
+/** What a full refresh covers; every panel hangs off one of these. */
+const ALL_KINDS: ReadonlySet<RepoChangeKind> = new Set<RepoChangeKind>([
+  'refs',
+  'worktree',
+  'index',
+]);
 
 /** True while the diff on screen is still the one this file asked for. */
 function isSelectedFile(state: RepoState, file: string, staged: boolean): boolean {
@@ -25,6 +33,9 @@ function isSelectedFile(state: RepoState, file: string, staged: boolean): boolea
 export class RepoOps {
   private readonly ops = inject(OpsRunner);
   private readonly history = inject(HistoryOps);
+
+  /** One refresh in flight per tab, with a single merged one queued behind. */
+  private readonly refreshes = new WeakMap<RepoState, RefreshCoalescer>();
 
   /**
    * Opens `state.path` and loads everything the workbench needs.
@@ -66,22 +77,12 @@ export class RepoOps {
   /** Reloads every panel. Individual failures do not abort the others. */
   async refreshAll(state: RepoState): Promise<void> {
     state.clearRefreshTimer();
-    const repo = state.repo();
-    if (!repo) return;
+    if (!state.repo()) return;
     state.loading.set(true);
     try {
-      const results = await Promise.allSettled([
-        this.history.load(state),
-        this.loadChanges(state),
-        this.loadRefs(state),
-        this.loadConflicts(state),
-        this.loadStashes(state),
-        this.loadRepoState(state),
-      ]);
-      this.reportFailures(results, state);
+      await this.refreshFor(state, ALL_KINDS);
     } finally {
       state.loading.set(false);
-      state.lastRefreshAt = Date.now();
     }
   }
 
@@ -94,13 +95,24 @@ export class RepoOps {
    * touches both sides — a checkout moves HEAD *and* rewrites the work tree —
    * and the debounce that batches those events would otherwise leave half of
    * the screen stale.
+   *
+   * Rounds never overlap: events arriving during a slow refresh merge into one
+   * follow-up instead of each starting a round of their own.
    */
-  async refreshFor(
+  refreshFor(state: RepoState, kinds: ReadonlySet<RepoChangeKind>): Promise<void> {
+    if (!state.repo()) return Promise.resolve();
+    let coalescer = this.refreshes.get(state);
+    if (!coalescer) {
+      coalescer = new RefreshCoalescer((merged) => this.runRefresh(state, merged));
+      this.refreshes.set(state, coalescer);
+    }
+    return coalescer.run(kinds);
+  }
+
+  private async runRefresh(
     state: RepoState,
     kinds: ReadonlySet<RepoChangeKind>,
   ): Promise<void> {
-    const repo = state.repo();
-    if (!repo) return;
     const tasks: Promise<unknown>[] = [this.loadRepoState(state)];
     if (kinds.has('refs')) {
       tasks.push(

@@ -4,24 +4,9 @@ use super::git::{blocking, validate_ref, validate_repo_path, validate_revision, 
 use super::git_auth::{auth_error_message, is_auth_error};
 use super::repo::head_branch;
 use crate::models::{BranchInfo, BranchList, CheckoutResult, FastForwardResult, TagInfo};
-
-/// Parse `[ahead N, behind M]` / `[ahead N]` / `[behind M]` / `[gone]` / empty.
-pub(super) fn parse_ahead_behind(track: &str) -> (u32, u32) {
-    let count = |marker: &str| -> u32 {
-        track
-            .find(marker)
-            .map(|pos| {
-                track[pos + marker.len()..]
-                    .chars()
-                    .take_while(|c| c.is_ascii_digit())
-                    .collect::<String>()
-                    .parse()
-                    .unwrap_or(0)
-            })
-            .unwrap_or(0)
-    };
-    (count("ahead "), count("behind "))
-}
+use git2::{Oid, Repository};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Files git named in a "would be overwritten" refusal.
 pub(super) fn overwrite_files(stderr: &str) -> Vec<String> {
@@ -233,7 +218,65 @@ fn fast_forward_inner(path: &str, branch: &str) -> FastForwardResult {
     }
 }
 
-fn list_branches_inner(path: &str) -> Result<BranchList, String> {
+/// Ahead/behind counts keyed by `(branch tip, upstream tip)`.
+type AheadBehindCounts = HashMap<(Oid, Oid), (u32, u32)>;
+
+/// Managed state: ahead/behind per `(branch tip, upstream tip)`, one map per
+/// repository path.
+///
+/// A pair's counts are a pure function of the pair, so an entry is valid for as
+/// long as both tips exist. Every listing rewrites its repository's map with
+/// exactly the pairs it used, which is what keeps a session-long process from
+/// piling up the counts of branches that have since moved.
+#[derive(Default, Clone)]
+pub struct AheadBehindCache(Arc<Mutex<HashMap<String, AheadBehindCounts>>>);
+
+impl AheadBehindCache {
+    /// Forget the counts cached for `path`, whose tab is gone.
+    pub fn evict(&self, path: &str) {
+        // Poisoning is recoverable for the same reason as in `ahead_behind`.
+        self.0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(path);
+    }
+}
+
+/// Counts for every pair, walking commits only for the pairs that moved.
+///
+/// A pair missing from the result never made it past `graph_ahead_behind` and
+/// is left uncached so the next listing retries it.
+fn ahead_behind(path: &str, pairs: &[(Oid, Oid)], cache: &AheadBehindCache) -> AheadBehindCounts {
+    // Recovering from a poisoned lock is safe here: a value can only ever be
+    // the counts of its own key, so no panic can leave a wrong one behind.
+    let mut repos = cache.0.lock().unwrap_or_else(|e| e.into_inner());
+    let previous = repos.remove(path).unwrap_or_default();
+
+    let repo = pairs
+        .iter()
+        .any(|pair| !previous.contains_key(pair))
+        .then(|| Repository::open(path).ok())
+        .flatten();
+
+    let mut fresh: AheadBehindCounts = HashMap::with_capacity(pairs.len());
+    for pair in pairs {
+        if fresh.contains_key(pair) {
+            continue;
+        }
+        if let Some(counts) = previous.get(pair).copied().or_else(|| {
+            repo.as_ref()
+                .and_then(|repo| repo.graph_ahead_behind(pair.0, pair.1).ok())
+                .map(|(ahead, behind)| (ahead as u32, behind as u32))
+        }) {
+            fresh.insert(*pair, counts);
+        }
+    }
+
+    repos.insert(path.to_string(), fresh.clone());
+    fresh
+}
+
+fn list_branches_inner(path: &str, cache: &AheadBehindCache) -> Result<BranchList, String> {
     validate_repo_path(path)?;
 
     let output = GitCmd::in_repo(path)
@@ -241,7 +284,7 @@ fn list_branches_inner(path: &str) -> Result<BranchList, String> {
             "for-each-ref",
             "refs/heads",
             "refs/remotes",
-            "--format=%(refname:short)%00%(refname)%00%(upstream:short)%00%(upstream:track)%00%(objectname)%00%(HEAD)",
+            "--format=%(refname:short)%00%(refname)%00%(upstream:short)%00%(upstream)%00%(objectname)%00%(HEAD)",
         ])
         .output()?;
 
@@ -254,15 +297,24 @@ fn list_branches_inner(path: &str) -> Result<BranchList, String> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let rows: Vec<Vec<&str>> = stdout
+        .lines()
+        .map(|line| line.split('\u{0}').collect::<Vec<&str>>())
+        .filter(|fields| fields.len() >= 6)
+        .collect();
+    // The listing already carries every remote-tracking tip, so resolving an
+    // upstream to its sha costs no second call to git.
+    let sha_by_ref: HashMap<&str, &str> = rows
+        .iter()
+        .map(|fields| (fields[1].trim(), fields[4].trim()))
+        .collect();
+
     let mut local: Vec<BranchInfo> = Vec::new();
     let mut remote: Vec<BranchInfo> = Vec::new();
     let mut current: Option<String> = None;
+    let mut tracked: Vec<(usize, (Oid, Oid))> = Vec::new();
 
-    for line in stdout.lines() {
-        let fields: Vec<&str> = line.split('\u{0}').collect();
-        if fields.len() < 6 {
-            continue;
-        }
+    for fields in &rows {
         let short_name = fields[0].trim();
         // `origin/HEAD` is an alias for the remote's default branch, not a
         // branch of its own.
@@ -276,20 +328,38 @@ fn list_branches_inner(path: &str) -> Result<BranchList, String> {
         if !is_remote && fields[5].trim() == "*" {
             current = Some(short_name.to_string());
         }
-        let (ahead, behind) = parse_ahead_behind(fields[3]);
+        let sha = fields[4].trim();
         let info = BranchInfo {
             name: short_name.to_string(),
-            sha: fields[4].trim().to_string(),
+            sha: sha.to_string(),
             is_remote,
             upstream: Some(fields[2].trim().to_string()).filter(|s| !s.is_empty()),
-            ahead,
-            behind,
+            ahead: 0,
+            behind: 0,
         };
 
         if is_remote {
             remote.push(info);
         } else {
+            // No row for the upstream means it is configured but pruned away,
+            // the case git reports as `[gone]` and the UI reads as no
+            // divergence — the same zeroes a branch without upstream gets.
+            let pair = sha_by_ref
+                .get(fields[3].trim())
+                .and_then(|tip| Some((Oid::from_str(sha).ok()?, Oid::from_str(tip).ok()?)));
+            if let Some(pair) = pair {
+                tracked.push((local.len(), pair));
+            }
             local.push(info);
+        }
+    }
+
+    let pairs: Vec<(Oid, Oid)> = tracked.iter().map(|&(_, pair)| pair).collect();
+    let counts = ahead_behind(path, &pairs, cache);
+    for (index, pair) in tracked {
+        if let Some((ahead, behind)) = counts.get(&pair).copied() {
+            local[index].ahead = ahead;
+            local[index].behind = behind;
         }
     }
 
@@ -358,8 +428,12 @@ fn list_tags_inner(path: &str) -> Result<Vec<TagInfo>, String> {
 
 /// Local and remote-tracking branches plus the checked-out branch.
 #[tauri::command]
-pub async fn list_branches(path: String) -> Result<BranchList, String> {
-    blocking(move || list_branches_inner(&path)).await
+pub async fn list_branches(
+    path: String,
+    cache: tauri::State<'_, AheadBehindCache>,
+) -> Result<BranchList, String> {
+    let cache = cache.inner().clone();
+    blocking(move || list_branches_inner(&path, &cache)).await
 }
 
 /// Check out a branch, a remote branch or any revision (detached).
@@ -403,13 +477,17 @@ mod tests {
         git_ok(path, &["checkout", "main"]);
     }
 
-    #[test]
-    fn ahead_behind_parses_every_shape() {
-        assert_eq!(parse_ahead_behind("[ahead 2, behind 5]"), (2, 5));
-        assert_eq!(parse_ahead_behind("[ahead 3]"), (3, 0));
-        assert_eq!(parse_ahead_behind("[behind 1]"), (0, 1));
-        assert_eq!(parse_ahead_behind("[gone]"), (0, 0));
-        assert_eq!(parse_ahead_behind(""), (0, 0));
+    /// A listing with a cache of its own, so nothing carries over between tests.
+    fn listing(path: &str) -> Result<BranchList, String> {
+        list_branches_inner(path, &AheadBehindCache::default())
+    }
+
+    fn branch<'a>(branches: &'a BranchList, name: &str) -> &'a BranchInfo {
+        branches
+            .local
+            .iter()
+            .find(|b| b.name == name)
+            .unwrap_or_else(|| panic!("no local branch {name}"))
     }
 
     #[test]
@@ -433,7 +511,7 @@ mod tests {
         let (_dir, path) = init_repo();
         branch_with_commit(&path, "feature/añadir", "b.txt", "b\n");
 
-        let branches = list_branches_inner(&path).unwrap();
+        let branches = listing(&path).unwrap();
 
         assert_eq!(branches.current.as_deref(), Some("main"));
         let names: Vec<&str> = branches.local.iter().map(|b| b.name.as_str()).collect();
@@ -448,23 +526,17 @@ mod tests {
         let (_remote, _clone, path) = init_remote_and_clone();
         branch_with_commit(&path, "feature", "b.txt", "b\n");
 
-        assert_eq!(
-            list_branches_inner(&path).unwrap().current.as_deref(),
-            Some("main")
-        );
+        assert_eq!(listing(&path).unwrap().current.as_deref(), Some("main"));
         git_ok(&path, &["checkout", "feature"]);
-        assert_eq!(
-            list_branches_inner(&path).unwrap().current.as_deref(),
-            Some("feature")
-        );
+        assert_eq!(listing(&path).unwrap().current.as_deref(), Some("feature"));
 
         git_ok(&path, &["checkout", "--detach", "HEAD"]);
-        let detached = list_branches_inner(&path).unwrap();
+        let detached = listing(&path).unwrap();
 
         assert_eq!(detached.current, None);
         // The marker is one more %x00 field: every field before it must still
         // land in its own slot.
-        let main = detached.local.iter().find(|b| b.name == "main").unwrap();
+        let main = branch(&detached, "main");
         assert!(!main.is_remote);
         assert_eq!(main.sha.len(), 40);
         assert_eq!(main.upstream.as_deref(), Some("origin/main"));
@@ -484,7 +556,7 @@ mod tests {
             &["symbolic-ref", "HEAD", &format!("refs/heads/{unborn}")],
         );
 
-        let branches = list_branches_inner(&path).unwrap();
+        let branches = listing(&path).unwrap();
 
         assert_eq!(branches.current.as_deref(), Some(unborn));
         assert!(branches.local.is_empty());
@@ -497,13 +569,93 @@ mod tests {
         write_file(&path, "a.txt", "ahead\n");
         git_ok(&path, &["commit", "-am", "ahead"]);
 
-        let branches = list_branches_inner(&path).unwrap();
-        let main = branches.local.iter().find(|b| b.name == "main").unwrap();
+        let branches = listing(&path).unwrap();
+        let main = branch(&branches, "main");
 
         assert_eq!(main.upstream.as_deref(), Some("origin/main"));
         assert_eq!(main.ahead, 1);
         assert_eq!(main.behind, 0);
         assert!(branches.remote.iter().all(|b| !b.name.ends_with("/HEAD")));
+    }
+
+    #[test]
+    fn divergence_matches_what_rev_list_counts() {
+        let (remote, _clone, path) = init_remote_and_clone();
+        advance_remote(remote.path(), "theirs 1\n");
+        advance_remote(remote.path(), "theirs 2\n");
+        write_file(&path, "ours.txt", "ours\n");
+        git_ok(&path, &["add", "."]);
+        git_ok(&path, &["commit", "-m", "ours"]);
+        git_ok(&path, &["fetch", "origin"]);
+
+        let branches = listing(&path).unwrap();
+        let main = branch(&branches, "main");
+
+        let counted = git_ok(
+            &path,
+            &["rev-list", "--left-right", "--count", "main...origin/main"],
+        );
+        let counts: Vec<u32> = counted
+            .split_whitespace()
+            .map(|n| n.parse().expect("count"))
+            .collect();
+        assert_eq!(counts, vec![1, 2], "the fixture must diverge both ways");
+        assert_eq!((main.ahead, main.behind), (counts[0], counts[1]));
+    }
+
+    #[test]
+    fn a_second_listing_reuses_the_counts_of_the_first() {
+        let (remote, _clone, path) = init_remote_and_clone();
+        advance_remote(remote.path(), "theirs\n");
+        git_ok(&path, &["fetch", "origin"]);
+        let cache = AheadBehindCache::default();
+
+        let first = list_branches_inner(&path, &cache).unwrap();
+        let walked = branch(&first, "main");
+        assert_eq!((walked.ahead, walked.behind), (0, 1));
+
+        // Nothing moved, so a listing that walked the commits again would
+        // overwrite these with the real counts.
+        for pairs in cache.0.lock().unwrap().values_mut() {
+            for counts in pairs.values_mut() {
+                *counts = (42, 7);
+            }
+        }
+        let second = list_branches_inner(&path, &cache).unwrap();
+
+        let main = branch(&second, "main");
+        assert_eq!((main.ahead, main.behind), (42, 7));
+    }
+
+    #[test]
+    fn a_pruned_upstream_keeps_its_name_and_reports_no_divergence() {
+        let (_remote, _clone, path) = init_remote_and_clone();
+        git_ok(&path, &["checkout", "-b", "feature"]);
+        write_file(&path, "b.txt", "feature\n");
+        git_ok(&path, &["add", "."]);
+        git_ok(&path, &["commit", "-m", "feature"]);
+        git_ok(&path, &["push", "-u", "origin", "feature"]);
+        git_ok(&path, &["push", "origin", "--delete", "feature"]);
+        git_ok(&path, &["fetch", "--prune"]);
+
+        let branches = listing(&path).unwrap();
+        let feature = branch(&branches, "feature");
+
+        assert_eq!(feature.upstream.as_deref(), Some("origin/feature"));
+        assert_eq!((feature.ahead, feature.behind), (0, 0));
+        assert!(branches.remote.iter().all(|b| b.name != "origin/feature"));
+    }
+
+    #[test]
+    fn a_branch_without_an_upstream_reports_no_divergence() {
+        let (_remote, _clone, path) = init_remote_and_clone();
+        branch_with_commit(&path, "solo-ñ", "b.txt", "solo\n");
+
+        let branches = listing(&path).unwrap();
+        let solo = branch(&branches, "solo-ñ");
+
+        assert_eq!(solo.upstream, None);
+        assert_eq!((solo.ahead, solo.behind), (0, 0));
     }
 
     #[test]
@@ -751,7 +903,7 @@ mod tests {
 
     #[test]
     fn invalid_paths_are_rejected() {
-        assert!(list_branches_inner("").is_err());
+        assert!(listing("").is_err());
         assert!(list_tags_inner("--exec=calc").is_err());
     }
 }

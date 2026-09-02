@@ -10,7 +10,8 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use git2::{Oid, Reference, Repository, Revwalk, Sort};
 
@@ -160,6 +161,8 @@ impl Scope {
 
 struct CachedHistory {
     ref_fingerprint: u64,
+    /// Ticket taken when `ref_fingerprint` was read; orders concurrent builds.
+    built_at: u64,
     oids: Vec<Oid>,
     head_set: HashSet<Oid>,
     ref_map: HashMap<Oid, Vec<RefInfo>>,
@@ -167,9 +170,106 @@ struct CachedHistory {
     graph: GraphData,
 }
 
-/// Managed state: one cached walk per repository path and scope.
+/// The walks cached for one repository, most recently used first.
+type RepoScopes = Vec<(String, Arc<CachedHistory>)>;
+
+/// A repository is browsed through one scope at a time; the spare slot keeps
+/// the previous one warm while the user switches back and forth. Every entry
+/// holds the whole walk, so an unbounded map would retain a repository's
+/// history for the life of the process.
+const SCOPES_PER_REPO: usize = 2;
+
+#[derive(Default)]
+struct CacheInner {
+    scopes: Mutex<HashMap<String, RepoScopes>>,
+    clock: AtomicU64,
+}
+
+/// Managed state: the cached walks per repository path and scope.
 #[derive(Default, Clone)]
-pub struct HistoryCache(Arc<Mutex<HashMap<String, CachedHistory>>>);
+pub struct HistoryCache(Arc<CacheInner>);
+
+impl HistoryCache {
+    fn scopes(&self) -> Result<MutexGuard<'_, HashMap<String, RepoScopes>>, String> {
+        self.0
+            .scopes
+            .lock()
+            .map_err(|_| "history cache is unavailable".to_string())
+    }
+
+    /// Ticket ordering two builds by the moment each one read the refs.
+    fn tick(&self) -> u64 {
+        self.0.clock.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// The cached walk for `path`/`scope_key`, if it still matches the refs.
+    fn get(
+        &self,
+        path: &str,
+        scope_key: &str,
+        fingerprint: u64,
+    ) -> Result<Option<Arc<CachedHistory>>, String> {
+        let mut scopes = self.scopes()?;
+        let Some(entries) = scopes.get_mut(path) else {
+            return Ok(None);
+        };
+        let Some(at) = entries.iter().position(|(key, _)| key == scope_key) else {
+            return Ok(None);
+        };
+        if entries[at].1.ref_fingerprint != fingerprint {
+            return Ok(None);
+        }
+        let hit = entries.remove(at);
+        let history = Arc::clone(&hit.1);
+        entries.insert(0, hit);
+        Ok(Some(history))
+    }
+
+    /// Publish `built` and return whichever walk ends up cached.
+    ///
+    /// Two threads can walk the same scope at once from different refs, and
+    /// fingerprints are hashes with no order of their own — the ticket has one.
+    /// The build that read the refs first saw a repository no newer than the
+    /// other, so it never replaces it.
+    fn store(
+        &self,
+        path: &str,
+        scope_key: &str,
+        built: Arc<CachedHistory>,
+    ) -> Result<Arc<CachedHistory>, String> {
+        let mut scopes = self.scopes()?;
+        let entries = scopes.entry(path.to_string()).or_default();
+        if let Some(at) = entries.iter().position(|(key, _)| key == scope_key) {
+            if entries[at].1.built_at > built.built_at {
+                let hit = entries.remove(at);
+                let winner = Arc::clone(&hit.1);
+                entries.insert(0, hit);
+                return Ok(winner);
+            }
+            entries.remove(at);
+        }
+        entries.insert(0, (scope_key.to_string(), Arc::clone(&built)));
+        entries.truncate(SCOPES_PER_REPO);
+        Ok(built)
+    }
+
+    /// Forget every walk cached for `path`, whose tab is gone.
+    pub fn evict(&self, path: &str) {
+        if let Ok(mut scopes) = self.0.scopes.lock() {
+            scopes.remove(path);
+        }
+    }
+
+    /// The scope keys cached for `path`, most recently used first.
+    #[cfg(test)]
+    fn cached_scopes(&self, path: &str) -> Vec<String> {
+        self.scopes()
+            .expect("cache lock")
+            .get(path)
+            .map(|entries| entries.iter().map(|(key, _)| key.clone()).collect())
+            .unwrap_or_default()
+    }
+}
 
 /// Cheap signature of every ref plus HEAD; any change invalidates the walk.
 ///
@@ -264,47 +364,64 @@ fn head_reachable(repo: &Repository) -> HashSet<Oid> {
     walk.filter_map(Result::ok).collect()
 }
 
-/// Lane assignment only reads sha and parents, so the rest stays empty.
-fn lane_stub(sha: String, parent_shas: Vec<String>) -> CommitInfo {
-    CommitInfo {
-        short_sha: String::new(),
-        sha,
-        message: String::new(),
-        author_name: String::new(),
-        author_email: String::new(),
-        date: String::new(),
-        parent_shas,
-        refs: Vec::new(),
-        on_current_branch: false,
+/// The commits of the walk that are reachable from HEAD.
+///
+/// `All` and `Head` push HEAD, so the walk already holds HEAD's whole ancestry
+/// and the parents collected during it answer what a second revwalk would. The
+/// walk is topological, so one pass suffices: by the time a row is reached
+/// every child that could have marked it has been seen. A branch scope need
+/// not contain HEAD, and only then does the repository have to be walked again.
+fn head_set(repo: &Repository, scope: &Scope, oids: &[Oid], parents: &[Vec<Oid>]) -> HashSet<Oid> {
+    if matches!(scope, Scope::Head) {
+        return oids.iter().copied().collect();
     }
+
+    let head = repo
+        .head()
+        .ok()
+        .and_then(|head| reference_commit_oid(&head))
+        .filter(|oid| oids.contains(oid));
+    let Some(head) = head else {
+        return head_reachable(repo);
+    };
+
+    let mut reachable = HashSet::with_capacity(oids.len());
+    reachable.insert(head);
+    for (oid, parent_oids) in oids.iter().zip(parents) {
+        if reachable.contains(oid) {
+            reachable.extend(parent_oids.iter().copied());
+        }
+    }
+    reachable
 }
 
 fn build_history(
     repo: &Repository,
     scope: &Scope,
     ref_fingerprint: u64,
+    built_at: u64,
 ) -> Result<CachedHistory, String> {
     let mut walk = repo.revwalk().map_err(|e| e.message().to_string())?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
         .map_err(|e| e.message().to_string())?;
     push_scope(repo, &mut walk, scope)?;
 
+    // Nothing here is formatted as a String: a page's shas are rendered from
+    // the oids when it is sliced, not once per commit of the whole walk.
     let mut oids = Vec::new();
-    let mut stubs = Vec::new();
+    let mut parents: Vec<Vec<Oid>> = Vec::new();
     for oid in walk {
         let oid = oid.map_err(|e| e.message().to_string())?;
         let commit = repo.find_commit(oid).map_err(|e| e.message().to_string())?;
-        stubs.push(lane_stub(
-            oid.to_string(),
-            commit.parent_ids().map(|id| id.to_string()).collect(),
-        ));
         oids.push(oid);
+        parents.push(commit.parent_ids().collect());
     }
 
     Ok(CachedHistory {
         ref_fingerprint,
-        graph: assign_lanes(&stubs),
-        head_set: head_reachable(repo),
+        built_at,
+        graph: assign_lanes(&oids, &parents),
+        head_set: head_set(repo, scope, &oids, &parents),
         ref_map: build_ref_map(repo)?,
         oids,
     })
@@ -322,21 +439,19 @@ pub(crate) fn history_page(
 ) -> Result<HistoryPage, String> {
     let repo = Repository::open(path).map_err(|e| e.message().to_string())?;
     let scope = Scope::new(branch, all);
-    let key = format!("{path}\u{0}{}", scope.key());
+    let scope_key = scope.key();
     let fingerprint = ref_fingerprint(&repo);
+    let built_at = cache.tick();
 
-    let mut cached = cache
-        .0
-        .lock()
-        .map_err(|_| "history cache is unavailable".to_string())?;
-
-    let stale = cached
-        .get(&key)
-        .is_none_or(|entry| entry.ref_fingerprint != fingerprint);
-    if stale {
-        cached.insert(key.clone(), build_history(&repo, &scope, fingerprint)?);
-    }
-    let entry = cached.get(&key).expect("entry was just inserted");
+    // The walk happens outside the lock: it is seconds long on a big history,
+    // and holding the cache for it stalls every other repository's pages.
+    let entry = match cache.get(path, &scope_key, fingerprint)? {
+        Some(hit) => hit,
+        None => {
+            let built = build_history(&repo, &scope, fingerprint, built_at)?;
+            cache.store(path, &scope_key, Arc::new(built))?
+        }
+    };
 
     let total = entry.oids.len();
     let start = (skip as usize).min(total);
@@ -414,11 +529,56 @@ pub(crate) mod testutil {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Barrier;
+    use std::time::{Duration, Instant};
+
     use super::testutil::*;
     use super::*;
 
     fn page(cache: &HistoryCache, repo: &str, limit: u32, skip: u32) -> HistoryPage {
         history_page(cache, repo, limit, skip, None, true).expect("history page")
+    }
+
+    fn fast_import(repo: &str, stream: &str) {
+        use std::io::Write;
+
+        let mut script = tempfile::NamedTempFile::new().expect("import script");
+        script
+            .write_all(stream.as_bytes())
+            .expect("write import script");
+        let out = std::process::Command::new("git")
+            .args(["-C", repo, "fast-import", "--quiet"])
+            .stdin(script.reopen().expect("reopen import script"))
+            .output()
+            .expect("git fast-import");
+        assert!(
+            out.status.success(),
+            "git fast-import failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// Extend `main` with `count` commits that all keep HEAD's tree.
+    ///
+    /// `fast-import` packs them in one pass; one `git commit` per depth level,
+    /// or one loose object per depth level through git2, makes the test take
+    /// minutes instead of seconds.
+    fn deepen(repo: &str, count: usize) {
+        let head = git_ok(repo, &["rev-parse", "HEAD"]);
+        let mut stream = String::new();
+        for i in 0..count {
+            let message = format!("deep {i}\n");
+            stream.push_str("commit refs/heads/main\n");
+            stream.push_str(&format!("mark :{}\n", i + 1));
+            stream.push_str("committer Test User <t@example.com> 1700000000 +0000\n");
+            stream.push_str(&format!("data {}\n{message}", message.len()));
+            match i {
+                0 => stream.push_str(&format!("from {head}\n")),
+                _ => stream.push_str(&format!("from :{i}\n")),
+            }
+            stream.push('\n');
+        }
+        fast_import(repo, &stream);
     }
 
     #[test]
@@ -501,8 +661,12 @@ mod tests {
         let cache = HistoryCache::default();
         let page_two = page(&cache, &repo, 2, 2);
         assert_eq!(page_two.commits.len(), page_two.graph.commits.len());
-        for (commit, row) in page_two.commits.iter().zip(&page_two.graph.commits) {
-            assert_eq!(commit.sha, row.sha);
+        // A row carries no sha of its own: the pairing is the index, and the
+        // edges it owns start at its absolute position in the history.
+        for (offset, row) in page_two.graph.commits.iter().enumerate() {
+            for edge in &row.edges {
+                assert_eq!(edge.from_row as usize, 2 + offset);
+            }
         }
     }
 
@@ -644,6 +808,72 @@ mod tests {
         let before = fingerprint_of(&repo);
         git_ok(&repo, &["checkout", "--detach"]);
         assert_ne!(fingerprint_of(&repo), before);
+    }
+
+    #[test]
+    fn evicting_a_path_drops_only_that_repositorys_walks() {
+        let (_one_dir, one) = init_repo();
+        let (_other_dir, other) = init_repo();
+        let cache = HistoryCache::default();
+        page(&cache, &one, 10, 0);
+        page(&cache, &other, 10, 0);
+
+        cache.evict(&one);
+
+        assert!(cache.cached_scopes(&one).is_empty());
+        assert_eq!(cache.cached_scopes(&other).len(), 1);
+    }
+
+    #[test]
+    fn a_repository_keeps_only_its_two_most_recent_scopes() {
+        let (_dir, repo) = init_repo();
+        git_ok(&repo, &["branch", "side"]);
+
+        let cache = HistoryCache::default();
+        history_page(&cache, &repo, 10, 0, None, true).expect("all scope");
+        history_page(&cache, &repo, 10, 0, None, false).expect("head scope");
+        history_page(&cache, &repo, 10, 0, Some("side"), false).expect("branch scope");
+
+        assert_eq!(
+            cache.cached_scopes(&repo),
+            vec!["branch:side".to_string(), "*head".to_string()]
+        );
+    }
+
+    /// The cache lock is only taken to look up and to publish, never while
+    /// walking, so a page of one repository never queues behind another's walk.
+    #[test]
+    fn a_long_walk_does_not_block_pages_of_another_repository() {
+        let (_deep_dir, deep) = init_repo();
+        deepen(&deep, 20_000);
+        let (_small_dir, small) = init_repo();
+
+        let cache = HistoryCache::default();
+        let gate = Barrier::new(2);
+        let (walk, waited) = std::thread::scope(|scope| {
+            let walker = scope.spawn(|| {
+                gate.wait();
+                let started = Instant::now();
+                page(&cache, &deep, 1, 0);
+                started.elapsed()
+            });
+            gate.wait();
+            // Long enough that the other thread is well inside its walk.
+            std::thread::sleep(Duration::from_millis(50));
+            let started = Instant::now();
+            page(&cache, &small, 10, 0);
+            let waited = started.elapsed();
+            (walker.join().expect("walk thread"), waited)
+        });
+
+        // Half the walk is a generous bar that a loaded machine still clears:
+        // under a lock held for the whole build the page would have waited for
+        // essentially all of it.
+        println!("deep walk {walk:?}, page of the other repository {waited:?}");
+        assert!(
+            waited * 2 < walk,
+            "a page of another repository waited {waited:?} on a {walk:?} walk"
+        );
     }
 
     #[test]

@@ -117,6 +117,6 @@ fi
 
 # YoruMerge drives the system git; the packages depend on it, the AppImage cannot.
 command -v git >/dev/null 2>&1 ||
-	warn "git was not found on PATH — YoruMerge needs git 2.25 or newer to do anything"
+	warn "git was not found on PATH — YoruMerge needs git 2.31 or newer to do anything"
 
 info "YoruMerge $tag installed. Launch it from your app menu, or run: yoru-merge"

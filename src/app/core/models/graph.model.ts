@@ -9,10 +9,12 @@ export interface GraphEdge {
   edge_type: EdgeType;
 }
 
+/**
+ * One row of the graph. It carries no sha: rows are sliced from the same walk
+ * as the page's commits, so row `k` belongs to `HistoryPage.commits[k]`.
+ */
 export interface GraphCommit {
-  sha: string;
   lane: number;
-  parent_shas: string[];
   edges: GraphEdge[];
 }
 

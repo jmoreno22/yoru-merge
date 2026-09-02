@@ -15,6 +15,7 @@ pub fn run() {
         .manage(commands::watcher::WatcherState::default())
         .manage(commands::history::HistoryCache::default())
         .manage(commands::repo::CloneState::default())
+        .manage(commands::branches::AheadBehindCache::default())
         .invoke_handler(tauri::generate_handler![
             commands::repo::open_repo,
             commands::repo::clone_repo,

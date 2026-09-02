@@ -31,12 +31,12 @@
 Every installer comes from the
 [latest release](https://github.com/jmoreno22/yoru-merge/releases/latest).
 
-**Requirements on every platform:** [Git](https://git-scm.com) **2.25 or
-newer** available on `PATH` — YoruMerge drives your own `git`, it does not
-bundle one. Authentication reuses whatever git already uses on your machine
-(Git Credential Manager, an SSH agent, a credential helper); the app never
-asks for or stores passwords, so if `git push` works in your terminal it works
-in YoruMerge.
+**Requirements on every platform:** [Git](https://git-scm.com) **2.31 or
+newer** (March 2021) available on `PATH` — YoruMerge drives your own `git`, it
+does not bundle one. Authentication reuses whatever git already uses on your
+machine (Git Credential Manager, an SSH agent, a credential helper); the app
+never asks for or stores passwords, so if `git push` works in your terminal it
+works in YoruMerge.
 
 ### Windows 10 / 11 (x64)
 

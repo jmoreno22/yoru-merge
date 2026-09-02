@@ -1,5 +1,9 @@
 //! Unified diffs for working-tree files and commits.
 
+use std::path::Path;
+
+use git2::Repository;
+
 use super::git::{blocking, validate_pathspec, validate_repo_path, validate_sha, GitCmd};
 
 const SIZE_LIMIT: usize = 10 * 1024 * 1024;
@@ -11,11 +15,19 @@ const NULL_DEVICE: &str = "NUL";
 #[cfg(not(windows))]
 const NULL_DEVICE: &str = "/dev/null";
 
+/// Whether the index knows `file`.
+///
+/// Stage 0 is the merged entry, but a conflicted path only has stages 1-3 and
+/// is still tracked, so every stage counts. An unreadable repository or index
+/// means "not tracked", the answer `ls-files` gave when git could not run.
 fn is_tracked(path: &str, file: &str) -> bool {
-    GitCmd::in_repo(path)
-        .args(["ls-files", "--error-unmatch", "--"])
-        .arg(file)
-        .succeeds()
+    let Ok(repo) = Repository::open(path) else {
+        return false;
+    };
+    let Ok(index) = repo.index() else {
+        return false;
+    };
+    (0..=3).any(|stage| index.get_path(Path::new(file), stage).is_some())
 }
 
 fn capped(stdout: Vec<u8>) -> String {
@@ -68,34 +80,24 @@ pub(super) fn get_diff_inner(
     }
 }
 
-/// Parent SHAs of `sha`, oldest first.
-fn parents(path: &str, sha: &str) -> Result<Vec<String>, String> {
-    Ok(GitCmd::in_repo(path)
-        .args(["show", "--no-patch", "--format=%P", sha])
-        .run()?
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect())
-}
-
 pub(super) fn get_commit_diff_inner(path: &str, sha: &str) -> Result<String, String> {
     validate_repo_path(path)?;
     validate_sha(sha)?;
 
-    // `git show` prints nothing for a merge; comparing against the first parent
-    // is what every git GUI shows instead.
-    let parents = parents(path, sha)?;
-    let out = if parents.len() > 1 {
-        GitCmd::in_repo(path)
-            .args(["diff", "--no-color", "--patch"])
-            .arg(&parents[0])
-            .arg(sha)
-            .output()?
-    } else {
-        GitCmd::in_repo(path)
-            .args(["show", "--no-color", "--patch", "--format=", sha])
-            .output()?
-    };
+    // Plain `git show` prints nothing for a merge; `--diff-merges=first-parent`
+    // (git 2.31+) makes it print the diff against the first parent, which is
+    // what every git GUI shows and what a separate `git diff <parent> <sha>`
+    // produced here before.
+    let out = GitCmd::in_repo(path)
+        .args([
+            "show",
+            "--diff-merges=first-parent",
+            "--no-color",
+            "--patch",
+            "--format=",
+            sha,
+        ])
+        .output()?;
 
     match out.status.code() {
         Some(0) | Some(1) => Ok(capped(out.stdout)),
@@ -118,7 +120,7 @@ pub async fn get_commit_diff(path: String, sha: String) -> Result<String, String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::git::test_support::{git_ok, init_repo, write_file};
+    use crate::commands::git::test_support::{git, git_ok, init_repo, write_file};
 
     #[test]
     fn invalid_input_is_rejected() {
@@ -174,12 +176,67 @@ mod tests {
         git_ok(&path, &["merge", "--no-ff", "--no-edit", "feature"]);
 
         let sha = git_ok(&path, &["rev-parse", "HEAD"]);
-        assert_eq!(parents(&path, &sha).unwrap().len(), 2);
+        let first_parent = git_ok(&path, &["rev-parse", "HEAD^1"]);
+        // `HEAD^2` only resolves when the fixture really produced a merge.
+        git_ok(&path, &["rev-parse", "HEAD^2"]);
 
         let diff = get_commit_diff_inner(&path, &sha).unwrap();
         assert!(
             diff.contains("b.txt"),
             "merge diff must not be empty; got: {diff}"
+        );
+        // The explicit `diff <first parent> <merge>` this used to run.
+        let previous = git(
+            &path,
+            &["diff", "--no-color", "--patch", &first_parent, &sha],
+        );
+        assert_eq!(diff, String::from_utf8_lossy(&previous.stdout));
+    }
+
+    #[test]
+    fn a_conflicted_file_is_tracked_and_gets_the_combined_diff() {
+        let (_dir, path) = init_repo();
+        git_ok(&path, &["checkout", "-b", "feature"]);
+        write_file(&path, "a.txt", "feature\n");
+        git_ok(&path, &["commit", "-am", "feature"]);
+
+        git_ok(&path, &["checkout", "main"]);
+        write_file(&path, "a.txt", "main\n");
+        git_ok(&path, &["commit", "-am", "main"]);
+        assert!(!git(&path, &["merge", "--no-edit", "feature"])
+            .status
+            .success());
+
+        assert!(is_tracked(&path, "a.txt"));
+        let diff = get_diff_inner(&path, Some("a.txt"), false).unwrap();
+        assert!(diff.contains("diff --cc a.txt"), "got: {diff}");
+    }
+
+    #[test]
+    fn a_file_deleted_from_the_work_tree_is_still_tracked() {
+        let (_dir, path) = init_repo();
+        std::fs::remove_file(Path::new(&path).join("a.txt")).unwrap();
+
+        assert!(is_tracked(&path, "a.txt"));
+        let diff = get_diff_inner(&path, Some("a.txt"), false).unwrap();
+        assert!(diff.contains("deleted file"), "got: {diff}");
+        assert!(diff.contains("-v1"), "got: {diff}");
+    }
+
+    #[test]
+    fn a_tracked_file_in_a_non_ascii_subdirectory_resolves() {
+        let (_dir, path) = init_repo();
+        write_file(&path, "documentación/año ñ.txt", "uno\n");
+        git_ok(&path, &["add", "."]);
+        git_ok(&path, &["commit", "-m", "nested"]);
+        write_file(&path, "documentación/año ñ.txt", "uno\ndos\n");
+
+        assert!(is_tracked(&path, "documentación/año ñ.txt"));
+        let diff = get_diff_inner(&path, Some("documentación/año ñ.txt"), false).unwrap();
+        assert!(diff.contains("+dos"), "got: {diff}");
+        assert!(
+            !diff.contains("+uno"),
+            "not an untracked patch; got: {diff}"
         );
     }
 

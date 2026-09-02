@@ -1,43 +1,44 @@
 use std::collections::HashMap;
 
-use crate::models::{CommitInfo, EdgeType, GraphCommit, GraphData, GraphEdge};
+use git2::Oid;
 
-/// Assign a lane and outgoing edges to every commit in `commits`.
+use crate::models::{EdgeType, GraphCommit, GraphData, GraphEdge};
+
+/// Assign a lane and outgoing edges to every commit of a walk.
 ///
-/// `commits` MUST be in reverse-chronological / topological order:
+/// `oids` MUST be in reverse-chronological / topological order:
 /// the first commit is the youngest, every parent appears AFTER its
 /// children (or is missing entirely — outside the visible window).
+/// `parents[row]` holds the parents of `oids[row]`.
 ///
 /// The algorithm is single-pass O(N · L) where L is the maximum number
 /// of concurrently active lanes (typically small, ≤ 20).
-pub fn assign_lanes(commits: &[CommitInfo]) -> GraphData {
-    if commits.is_empty() {
+pub fn assign_lanes(oids: &[Oid], parents: &[Vec<Oid>]) -> GraphData {
+    if oids.is_empty() {
         return GraphData {
             commits: vec![],
             max_lanes: 0,
         };
     }
 
-    let commit_to_row: HashMap<&str, usize> = commits
+    let commit_to_row: HashMap<Oid, usize> = oids
         .iter()
         .enumerate()
-        .map(|(row, commit)| (commit.sha.as_str(), row))
+        .map(|(row, oid)| (*oid, row))
         .collect();
-    let mut graph_commits: Vec<GraphCommit> = commits
+    let mut graph_commits: Vec<GraphCommit> = oids
         .iter()
-        .map(|commit| GraphCommit {
-            sha: commit.sha.clone(),
+        .map(|_| GraphCommit {
             lane: 0,
-            parent_shas: commit.parent_shas.clone(),
             edges: Vec::new(),
         })
         .collect();
 
-    let mut active_lanes: Vec<Option<String>> = Vec::new();
+    let mut active_lanes: Vec<Option<Oid>> = Vec::new();
     let mut max_lanes = 0usize;
 
-    for (row, commit) in commits.iter().enumerate() {
-        let chosen_lane = match find_expected_lane(&active_lanes, commit.sha.as_str()) {
+    for (row, (oid, parent_oids)) in oids.iter().zip(parents).enumerate() {
+        let chosen_lane = match find_expected_lane(&active_lanes, *oid) {
             Some(lane) => lane,
             None => leftmost_free_lane(&mut active_lanes),
         };
@@ -46,9 +47,7 @@ pub fn assign_lanes(commits: &[CommitInfo]) -> GraphData {
 
         let mut extra_lane = 0;
         while extra_lane < active_lanes.len() {
-            if extra_lane != chosen_lane
-                && active_lanes[extra_lane].as_deref() == Some(commit.sha.as_str())
-            {
+            if extra_lane != chosen_lane && active_lanes[extra_lane] == Some(*oid) {
                 active_lanes[extra_lane] = None;
                 graph_commits[row].edges.push(GraphEdge {
                     from_lane: extra_lane as u32,
@@ -63,7 +62,7 @@ pub fn assign_lanes(commits: &[CommitInfo]) -> GraphData {
 
         active_lanes[chosen_lane] = None;
 
-        for (parent_index, parent_sha) in commit.parent_shas.iter().enumerate() {
+        for (parent_index, parent) in parent_oids.iter().enumerate() {
             let parent_lane = if parent_index == 0 && active_lanes[chosen_lane].is_none() {
                 chosen_lane
             } else {
@@ -81,10 +80,10 @@ pub fn assign_lanes(commits: &[CommitInfo]) -> GraphData {
                 from_lane: chosen_lane as u32,
                 to_lane: parent_lane as u32,
                 from_row: row as u32,
-                to_row: resolve_parent_row(&commit_to_row, parent_sha, commits.len()),
+                to_row: resolve_parent_row(&commit_to_row, *parent, oids.len()),
                 edge_type,
             });
-            active_lanes[parent_lane] = Some(parent_sha.to_owned());
+            active_lanes[parent_lane] = Some(*parent);
         }
     }
 
@@ -94,13 +93,13 @@ pub fn assign_lanes(commits: &[CommitInfo]) -> GraphData {
     }
 }
 
-fn find_expected_lane(active_lanes: &[Option<String>], sha: &str) -> Option<usize> {
+fn find_expected_lane(active_lanes: &[Option<Oid>], oid: Oid) -> Option<usize> {
     active_lanes
         .iter()
-        .position(|expected_sha| expected_sha.as_deref() == Some(sha))
+        .position(|expected| *expected == Some(oid))
 }
 
-fn leftmost_free_lane(active_lanes: &mut Vec<Option<String>>) -> usize {
+fn leftmost_free_lane(active_lanes: &mut Vec<Option<Oid>>) -> usize {
     if let Some(lane) = active_lanes.iter().position(Option::is_none) {
         return lane;
     }
@@ -110,11 +109,11 @@ fn leftmost_free_lane(active_lanes: &mut Vec<Option<String>>) -> usize {
 }
 
 fn resolve_parent_row(
-    commit_to_row: &HashMap<&str, usize>,
-    parent_sha: &str,
+    commit_to_row: &HashMap<Oid, usize>,
+    parent: Oid,
     offscreen_row: usize,
 ) -> u32 {
-    match commit_to_row.get(parent_sha) {
+    match commit_to_row.get(&parent) {
         Some(row) => *row as u32,
         None => offscreen_row as u32,
     }
@@ -126,27 +125,19 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::*;
-    use crate::models::RefInfo;
 
-    fn commit(sha: &str, parents: &[&str]) -> CommitInfo {
-        commit_with_parents(
-            sha.to_string(),
-            parents.iter().map(|parent| parent.to_string()).collect(),
-        )
+    /// A distinct, stable oid per label, so the fixtures keep reading as shas.
+    fn oid(label: &str) -> Oid {
+        Oid::hash_object(git2::ObjectType::Blob, label.as_bytes()).expect("hash the label")
     }
 
-    fn commit_with_parents(sha: String, parent_shas: Vec<String>) -> CommitInfo {
-        CommitInfo {
-            short_sha: sha.chars().take(7).collect(),
-            sha,
-            message: "message".to_string(),
-            author_name: "author".to_string(),
-            author_email: "author@example.com".to_string(),
-            date: "2026-01-01T00:00:00Z".to_string(),
-            parent_shas,
-            refs: Vec::<RefInfo>::new(),
-            on_current_branch: true,
-        }
+    fn graph_of(rows: &[(&str, &[&str])]) -> GraphData {
+        let oids: Vec<Oid> = rows.iter().map(|(sha, _)| oid(sha)).collect();
+        let parents: Vec<Vec<Oid>> = rows
+            .iter()
+            .map(|(_, parents)| parents.iter().copied().map(oid).collect())
+            .collect();
+        assign_lanes(&oids, &parents)
     }
 
     fn assert_edge(
@@ -164,18 +155,18 @@ mod tests {
 
     #[test]
     fn assigns_zero_lane_for_linear_chain() {
-        let commits = vec![
-            commit("c0", &["c1"]),
-            commit("c1", &["c2"]),
-            commit("c2", &["c3"]),
-            commit("c3", &["c4"]),
-            commit("c4", &["c5"]),
+        let rows: &[(&str, &[&str])] = &[
+            ("c0", &["c1"]),
+            ("c1", &["c2"]),
+            ("c2", &["c3"]),
+            ("c3", &["c4"]),
+            ("c4", &["c5"]),
         ];
 
-        let graph = assign_lanes(&commits);
+        let graph = graph_of(rows);
 
         assert_eq!(graph.max_lanes, 1);
-        assert_eq!(graph.commits.len(), commits.len());
+        assert_eq!(graph.commits.len(), rows.len());
         for (row, graph_commit) in graph.commits.iter().enumerate() {
             assert_eq!(graph_commit.lane, 0);
             assert_eq!(graph_commit.edges.len(), 1);
@@ -191,16 +182,16 @@ mod tests {
 
     #[test]
     fn assigns_two_lanes_for_simple_branch_and_merge() {
-        let commits = vec![
-            // First parent is mainline B2, second parent is feature A1.
-            // A1 later reserves B2 on lane 1; B2 absorbs that lane with a Merge edge.
-            commit("M0", &["B2", "A1"]),
-            commit("A1", &["B2"]),
-            commit("B2", &["C3"]),
-            commit("C3", &[]),
+        // First parent is mainline B2, second parent is feature A1.
+        // A1 later reserves B2 on lane 1; B2 absorbs that lane with a Merge edge.
+        let rows: &[(&str, &[&str])] = &[
+            ("M0", &["B2", "A1"]),
+            ("A1", &["B2"]),
+            ("B2", &["C3"]),
+            ("C3", &[]),
         ];
 
-        let graph = assign_lanes(&commits);
+        let graph = graph_of(rows);
         let lanes: Vec<u32> = graph.commits.iter().map(|commit| commit.lane).collect();
 
         assert_eq!(lanes, vec![0, 1, 0, 0]);
@@ -222,9 +213,7 @@ mod tests {
 
     #[test]
     fn convergence_records_merge_edges_on_target() {
-        let commits = vec![commit("A", &["P"]), commit("B", &["P"]), commit("P", &[])];
-
-        let graph = assign_lanes(&commits);
+        let graph = graph_of(&[("A", &["P"]), ("B", &["P"]), ("P", &[])]);
 
         assert_eq!(graph.max_lanes, 2);
         assert_eq!(graph.commits[0].lane, 0);
@@ -238,14 +227,12 @@ mod tests {
 
     #[test]
     fn extra_parents_always_fork_to_fresh_lane() {
-        let commits = vec![
-            commit("M", &["P1", "P2", "P3"]),
-            commit("P1", &[]),
-            commit("P2", &[]),
-            commit("P3", &[]),
-        ];
-
-        let graph = assign_lanes(&commits);
+        let graph = graph_of(&[
+            ("M", &["P1", "P2", "P3"]),
+            ("P1", &[]),
+            ("P2", &[]),
+            ("P3", &[]),
+        ]);
         let lanes: Vec<u32> = graph.commits.iter().map(|commit| commit.lane).collect();
 
         assert_eq!(lanes, vec![0, 0, 1, 2]);
@@ -258,9 +245,7 @@ mod tests {
 
     #[test]
     fn parent_outside_window_uses_sentinel_row() {
-        let commits = vec![commit("A", &["outside"])];
-
-        let graph = assign_lanes(&commits);
+        let graph = graph_of(&[("A", &["outside"])]);
 
         assert_eq!(graph.max_lanes, 1);
         assert_eq!(graph.commits[0].lane, 0);
@@ -270,7 +255,7 @@ mod tests {
 
     #[test]
     fn empty_input_returns_empty_graph_data() {
-        let graph = assign_lanes(&[]);
+        let graph = assign_lanes(&[], &[]);
 
         assert!(graph.commits.is_empty());
         assert_eq!(graph.max_lanes, 0);
@@ -278,35 +263,33 @@ mod tests {
 
     #[test]
     fn max_lanes_is_the_peak_active_lane_count() {
-        let commits = vec![
-            commit("M", &["P1", "P2", "P3"]),
-            commit("P1", &[]),
-            commit("P2", &[]),
-            commit("P3", &[]),
-        ];
-
-        let graph = assign_lanes(&commits);
+        let graph = graph_of(&[
+            ("M", &["P1", "P2", "P3"]),
+            ("P1", &[]),
+            ("P2", &[]),
+            ("P3", &[]),
+        ]);
 
         assert_eq!(graph.max_lanes, 3);
     }
 
     #[test]
     fn performance_smoke_handles_1000_commits_under_100ms() {
-        let mut commits = Vec::new();
+        let oids: Vec<Oid> = (0..1000).map(|row| oid(&format!("c{row:04}"))).collect();
+        let mut parents: Vec<Vec<Oid>> = Vec::new();
         for row in 0..1000 {
-            let sha = format!("c{row:04}");
-            let mut parents = Vec::new();
+            let mut of_row = Vec::new();
             if row + 1 < 1000 {
-                parents.push(format!("c{:04}", row + 1));
+                of_row.push(oids[row + 1]);
             }
             if row % 50 == 0 && row + 2 < 1000 {
-                parents.push(format!("c{:04}", row + 2));
+                of_row.push(oids[row + 2]);
             }
-            commits.push(commit_with_parents(sha, parents));
+            parents.push(of_row);
         }
 
         let start = Instant::now();
-        let graph = assign_lanes(&commits);
+        let graph = assign_lanes(&oids, &parents);
         let elapsed = start.elapsed();
 
         println!("performance_smoke_1000_commits elapsed: {elapsed:?}");
