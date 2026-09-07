@@ -406,6 +406,29 @@ describe('collapsed-state preferences', () => {
   });
 });
 
+describe('open-behaviour preference (AC-22)', () => {
+  it('opens the workspace on a single click by default', () => {
+    expect(DEFAULT_PREFERENCES.commitFileClickOpensWorkspace).toBe(true);
+  });
+
+  it('round-trips both modes through the normaliser', () => {
+    expect(sanitizePreferences({ commitFileClickOpensWorkspace: false })).toEqual({
+      commitFileClickOpensWorkspace: false,
+    });
+    expect(sanitizePreferences({ commitFileClickOpensWorkspace: true })).toEqual({
+      commitFileClickOpensWorkspace: true,
+    });
+  });
+
+  it('falls back to the default when the stored value is not a boolean', () => {
+    const out = sanitizePreferences({ commitFileClickOpensWorkspace: 'yes' });
+    expect(out.commitFileClickOpensWorkspace).toBeUndefined();
+    expect({ ...DEFAULT_PREFERENCES, ...out }).toMatchObject({
+      commitFileClickOpensWorkspace: true,
+    });
+  });
+});
+
 describe('sanitizeSections', () => {
   it('keeps boolean entries only', () => {
     expect(sanitizeSections({ local: true, tags: 'no' })).toEqual({

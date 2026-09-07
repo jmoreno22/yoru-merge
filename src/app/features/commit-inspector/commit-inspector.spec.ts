@@ -941,3 +941,132 @@ describe('CommitInspector collapsed summary actions (AC-21)', () => {
     expect(confirm?.title).toContain(SHORT_SHA);
   });
 });
+
+describe('CommitInspector open-behaviour control (AC-22)', () => {
+  const PATHS = ['src/a.ts', 'src/b.ts'];
+
+  async function mounted(clickOpens: boolean): Promise<HTMLElement> {
+    prefs.set('commitFileClickOpensWorkspace', clickOpens);
+    repo.commitDetails.set(commitDetails(PATHS));
+    const { host } = mount();
+    await settle();
+    return host;
+  }
+
+  it('AC-22: a single click opens the diff workspace while the preference is on', async () => {
+    const host = await mounted(true);
+    const open = vi.spyOn(workspace, 'open');
+
+    click(fileRow(host, 'src/b.ts'));
+    await settle();
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open.mock.calls[0]?.[0]).toEqual({
+      source: { kind: 'commit', sha: COMMIT_SHA },
+      files: PATHS,
+      index: 1,
+      focusKey: 'src/b.ts',
+    });
+  });
+
+  it('AC-22: a single click only makes the row active while the preference is off', async () => {
+    const host = await mounted(false);
+    const open = vi.spyOn(workspace, 'open');
+
+    click(fileRow(host, 'src/b.ts'));
+    await settle();
+
+    expect(open).not.toHaveBeenCalled();
+    expect(workspace.isOpen()).toBe(false);
+    expect(activeRowPath(host)).toBe('src/b.ts');
+  });
+
+  it('AC-22: the control shows which of the two modes is live, not the one it would switch to', async () => {
+    const host = await mounted(true);
+
+    const button = (): HTMLElement => {
+      const found = host.querySelector<HTMLElement>(
+        '[data-testid="inspector-click-opens"]',
+      );
+      if (!found) throw new Error('The open-behaviour control is not rendered.');
+      return found;
+    };
+
+    expect(button().getAttribute('aria-pressed')).toBe('true');
+    expect(button().getAttribute('aria-label')).toBe(
+      'A single click opens the diff workspace',
+    );
+
+    click(button());
+    await settle();
+
+    expect(button().getAttribute('aria-pressed')).toBe('false');
+    expect(button().getAttribute('aria-label')).toBe(
+      'A single click only selects the file',
+    );
+  });
+
+  it('AC-22: the control writes the durable preference, like the two collapse states', async () => {
+    const host = await mounted(true);
+
+    click(
+      host.querySelector<HTMLElement>('[data-testid="inspector-click-opens"]') ??
+        document.body,
+    );
+    await settle();
+
+    expect(prefs.all().commitFileClickOpensWorkspace).toBe(false);
+
+    // What a restart sees: a second inspector reads the stored value, it is not
+    // component state that dies with the view.
+    const { host: remounted } = mount();
+    await settle();
+    expect(
+      remounted
+        .querySelector('[data-testid="inspector-click-opens"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('AC-22: the three explicit gestures keep working in BOTH modes', async () => {
+    for (const clickOpens of [true, false]) {
+      const host = await mounted(clickOpens);
+
+      // Double-click: the first click of the pair may open the workspace on
+      // its own when the preference is on, so what matters is that the gesture
+      // lands on the right file either way.
+      click(fileRow(host, 'src/b.ts'));
+      await settle();
+      fileRow(host, 'src/b.ts')
+        .closest('.file-row-wrap')
+        ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(workspace.isOpen()).toBe(true);
+      expect(workspace.current()?.file).toBe('src/b.ts');
+      workspace.close();
+      await settle();
+
+      // The open-large control on the row.
+      click(control(host, 'inspector-open-large-src/a.ts'));
+      await settle();
+      expect(workspace.isOpen()).toBe(true);
+      expect(workspace.current()?.file).toBe('src/a.ts');
+      workspace.close();
+      await settle();
+
+      // The shortcut, from the active row.
+      click(fileRow(host, 'src/b.ts'));
+      await settle();
+      if (workspace.isOpen()) {
+        workspace.close();
+        await settle();
+      }
+      press('d', { ctrlKey: true });
+      await settle();
+      expect(workspace.isOpen()).toBe(true);
+      expect(workspace.current()?.file).toBe('src/b.ts');
+      workspace.close();
+      await settle();
+    }
+  });
+});
