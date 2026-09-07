@@ -1,0 +1,506 @@
+{
+  "slug": "inspector-diff-workspace",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Write the inspector layout policy",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-01", "AC-03", "AC-04"],
+      "dod": "inspector-layout.spec.ts passes the table of spec configurations: rows floor 2 then clamp floor 1 at 960x640 with a long body and 30 files, exact rows for 1-6 files, 0 rows for 0 files, 6 rows for 7+, diff share >= 50 % expanded and >= 75 % with the header collapsed, stacked shares treated as fixed, both density token sets; no @angular/core import.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Write the diff workspace state machine",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-08", "AC-09", "AC-11", "AC-13", "AC-16", "AC-17"],
+      "dod": "diff-workspace-state.spec.ts passes: open replaces an open workspace, navigate is a no-op at the edges with canPrev/canNext false, setFiles returns advance/close/keep correctly and keeps an empty list open, close restores listScrollTop plus focus on the originating or now-active row, shouldCloseFor is true for any view/tab/commit/side change; no @angular/core import.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace-state.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Write the Esc layer registry",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-10"],
+      "dod": "escape-layers.spec.ts iterates all 64 combinations of the six ranks (text field via the focused-editable input) and asserts the resolved layer is always the highest rank present, null when none, and the next rank down after unregistering; no @angular/core import.",
+      "files_hint": [
+        "src/app/core/services/escape-layers.ts",
+        "src/app/core/services/escape-layers.spec.ts"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the two collapsed-state durable preferences",
+      "layer": "infra",
+      "deps": [],
+      "acs": ["AC-02", "AC-05"],
+      "dod": "preferences-schema.spec.ts asserts commitHeaderCollapsed and commitFileListCollapsed default to false, round-trip true/false through the normaliser and fall back on a non-boolean raw value; pnpm build green.",
+      "files_hint": [
+        "src/app/core/services/preferences-schema.ts",
+        "src/app/core/services/preferences-schema.spec.ts"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Ship the Esc layer service and migrate the six consumers",
+      "layer": "app",
+      "deps": ["T3"],
+      "acs": ["AC-10"],
+      "dod": "No keydown.escape / key === 'Escape' handler remains in src/app outside escape-layers.service.ts; dialog (6), palette (5), line selection (3), blame and file history (2) register through the service tied to DestroyRef; the built-in text-field rule clears the commit search, working-changes and sidebar filters; manual matrix recorded; build, test, lint green.",
+      "files_hint": [
+        "src/app/core/services/escape-layers.service.ts",
+        "src/app/shared/ui/yoru-dialog.ts",
+        "src/app/features/command-palette/command-palette.ts",
+        "src/app/features/commit-list/commit-search.html",
+        "src/app/features/commit-list/commit-search.ts",
+        "src/app/features/working-changes/working-changes.html",
+        "src/app/shared/components/sidebar/sidebar.html",
+        "src/app/features/diff-viewer/diff-view.ts",
+        "src/app/features/blame/blame-viewer.ts",
+        "src/app/features/file-history/file-history-panel.ts"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Ship the diff workspace service",
+      "layer": "app",
+      "deps": ["T2"],
+      "acs": ["AC-06", "AC-08", "AC-09", "AC-17"],
+      "dod": "DiffWorkspaceService exposes open/navigate/setFiles/close over the T2 state, builds the snapshot from CurrentRepoService, closes without replay on any selection/view/tab change, replays listScrollTop and focuses [data-focus-key] on close, registers the mod+d open shortcut delegating to the registered opener; commit-list rows carry data-focus-key; build and lint green.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/features/commit-list/commit-list.html"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Build the diff workspace component",
+      "layer": "ui",
+      "deps": ["T5", "T6"],
+      "acs": ["AC-06", "AC-07", "AC-10", "AC-11", "AC-12", "AC-14", "AC-20"],
+      "dod": "features/diff-workspace renders the SCR-02 / SCR-04 strip states (default, edge first/last, error via the hosted viewer, refreshing) with the declared test ids, hosts a CdkPortalOutlet, registers the rank-1 Esc layer and the close/next/prev shortcuts while open, offers no staging control; Keyboard settings page lists the six SCR-05 rows; build and lint green.",
+      "files_hint": ["src/app/features/diff-workspace/"]
+    },
+    {
+      "id": "T8",
+      "title": "Wire the centre view and re-host the diff viewer",
+      "layer": "wiring",
+      "deps": ["T7"],
+      "acs": ["AC-06", "AC-18", "AC-19"],
+      "dod": "main-content renders app-diff-workspace before the railView switch; the live app-diff-viewer element moves by DomPortal into the workspace outlet on open and back on close with no second diff fetch and first paint <= 150 ms on a 2 000-line diff; the inspector diff slot is the only flex-1 child and collapses to 0 px while the viewer is away; diff height at the bottom or with stacked panels >= the 1.0.5 build; build and lint green.",
+      "files_hint": [
+        "src/app/shared/components/main-content/main-content.html",
+        "src/app/shared/components/main-content/main-content.ts",
+        "src/app/features/diff-viewer/diff-viewer.ts",
+        "src/app/features/diff-viewer/diff-viewer.html"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Make the commit header collapsible with a clamped body",
+      "layer": "ui",
+      "deps": ["T4"],
+      "acs": ["AC-01", "AC-02", "AC-12", "AC-20"],
+      "dod": "SCR-01 default (body clamped to --inspector-clamp-lines with show more only when overflowing), body-expanded and header-collapsed (summary line at --panel-head-h with avatar, subject, author, sha-chip, expand control) render from PreferencesService.commitHeaderCollapsed read synchronously; mod+shift+h toggles and is listed in the Keyboard page; restart paints the remembered state with 0 px shift; build and lint green.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/features/commit-inspector/commit-inspector.css"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Put the six commit actions inline in the collapsed header with overflow into More",
+      "layer": "ui",
+      "deps": ["T9"],
+      "acs": ["AC-21"],
+      "dod": "The collapsed summary line shows Branch, Tag, Cherry-pick, Revert, Reset, More as icon buttons with tooltips, one click each; a ResizeObserver moves the actions that do not fit into the More context menu where Reset keeps its Soft/Mixed/Hard submenu and Hard its danger confirmation; no commit action gains a shortcut; build and lint green.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Make the commit file list compact and apply the layout policy",
+      "layer": "ui",
+      "deps": ["T1", "T4", "T9"],
+      "acs": ["AC-03", "AC-04", "AC-05", "AC-12", "AC-18", "AC-19", "AC-20"],
+      "dod": "A ResizeObserver feeds the T1 policy with density tokens, file count, collapsed states and stacked-panel height and applies --inspector-list-rows / --inspector-clamp-lines; 30 files show 6 rows with scroll, 2 files exactly 2 rows, 0 files the header with 0 and 'No files changed'; the list collapses to its header via control or mod+shift+l with the state remembered and 0 px shift on restart; measured diff share >= 50 % expanded and >= 75 % collapsed at 960x640 and 1280x800 in both densities; build and lint green.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/features/commit-inspector/commit-inspector.css"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Add the open-large gesture to the commit inspector",
+      "layer": "ui",
+      "deps": ["T6", "T11"],
+      "acs": ["AC-06", "AC-07", "AC-08", "AC-09", "AC-11", "AC-17"],
+      "dod": "Double-click, the row control and mod+d open the workspace on the active file with the files in the displayed order (tree or flat, folders skipped) and a snapshot with the row's data-focus-key; the list re-publishes setFiles on order or content change and an empty list when the commit was removed; the active row follows prev/next; clicking another row navigates instead of opening a second workspace; Close restores scroll and focus; build and lint green.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/features/commit-inspector/commit-files.ts"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Add the open-large gesture to the working-changes lists",
+      "layer": "ui",
+      "deps": ["T6"],
+      "acs": ["AC-06", "AC-13", "AC-15", "AC-16"],
+      "dod": "Staged and unstaged rows (not Conflicts) open the workspace on their side with that side's displayed order; the filter strip, lists and composer are hidden while open; the commit and commit-draft shortcuts are guarded by !workspace.isOpen(); the shown side's files are re-published after every refresh so the workspace advances or closes with the AC-13 or AC-16 toast; build and lint green.",
+      "files_hint": [
+        "src/app/features/working-changes/working-changes.ts",
+        "src/app/features/working-changes/working-changes.html",
+        "src/app/features/working-changes/file-row.html",
+        "src/app/features/working-changes/file-row.ts",
+        "src/app/features/working-changes/changes-list.ts",
+        "src/app/features/working-changes/commit-composer.ts"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Document the inspector layout, the diff workspace and the Esc layer order",
+      "layer": "docs",
+      "deps": ["T8", "T12", "T13"],
+      "acs": ["AC-10", "AC-12"],
+      "dod": "DESIGN.md §App shell, §Density and the keyboard notes describe the content-sized inspector blocks, the diff workspace centre state, the two layout CSS variables, the six Esc ranks and the six new shortcuts, with no stale flex-[2]/flex-[3] mention; History and Changes screenshots refreshed.",
+      "files_hint": ["DESIGN.md", "docs/screenshots/"]
+    },
+    {
+      "id": "T15",
+      "title": "Enable the component test tier in the existing unit runner",
+      "layer": "infra",
+      "deps": [],
+      "acs": [],
+      "dod": "pnpm test compiles and runs a component spec (jsdom environment, TestBed rendering an existing small component) next to the pure-TS specs, which keep running in node; src/testing/ provides a ResizeObserver stand-in and a typed stub of the invoke wrapper; AGENTS.md §TESTING, the vitest.config.ts docblock and .claude/sdd.local.md state that component specs may import @angular/core; lint and build green. Review 2026-09-03 F-9.",
+      "files_hint": [
+        "vitest.config.ts",
+        "package.json",
+        "tsconfig.spec.json",
+        "angular.json",
+        "src/testing/",
+        "AGENTS.md",
+        ".claude/sdd.local.md"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Add the collapsed-header 75 % floor to the layout policy and drop the dead token",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-02"],
+      "dod": "computeInspectorLayout applies a 0.75 floor when headerCollapsed (the list yields to its 2-row floor before the 0.5 branch is considered); panelPad is removed from InspectorLayoutTokens and the getComputedStyle read in commit-inspector.ts goes with it; inspector-layout.spec.ts tables the collapsed share over fileCount 2 / 6 / 30 at 540 and 700 px in both density sets and asserts >= 75 % wherever the 2-row floor allows it, naming the configuration where it cannot; no @angular/core import. Review 2026-09-03 F-2, F-15.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Scope the Esc text-field rule to fields that opt in",
+      "layer": "app",
+      "deps": [],
+      "acs": ["AC-10", "AC-15"],
+      "dod": "The built-in rank-4 rule clears only fields carrying an opt-in attribute (data-escape-clears), set on the commit search, the working-changes filter and the sidebar filter; the commit composer subject and body are untouched by Esc and the press falls through to the layer below; escape-layers.spec.ts gains a hasContent:false axis, a field-with-content-under-rank-3 case and a non-opted-in-field case; tasks/escape-layers-service-migration.md DoD names the two documented exceptions (context menu, tooltip); build, test, lint green. Review 2026-09-03 F-1, F-18.",
+      "files_hint": [
+        "src/app/core/services/escape-layers.ts",
+        "src/app/core/services/escape-layers.service.ts",
+        "src/app/core/services/escape-layers.spec.ts",
+        "src/app/features/commit-list/commit-search.html",
+        "src/app/features/working-changes/working-changes.html",
+        "src/app/shared/components/sidebar/sidebar.html",
+        "docs/features/inspector-diff-workspace/tasks/escape-layers-service-migration.md"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Register the six workspace shortcuts from root-alive services",
+      "layer": "app",
+      "deps": [],
+      "acs": ["AC-12"],
+      "dod": "diff-workspace.close / .next / .prev are registered once by DiffWorkspaceService with when guards on isOpen / canNext / canPrev, and the header and file-list toggles by a root-provided service, so KeyboardShortcutsService.shortcuts() lists all six SCR-05 rows in History and Changes with the workspace closed; DiffWorkspace keeps only its Esc layer binding; a spec asserts the six ids are registered after root injection; build, lint green. Review 2026-09-03 F-3.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/features/diff-workspace/diff-workspace.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Refresh the workspace diff on watcher events and close on external emptying",
+      "layer": "app",
+      "deps": [],
+      "acs": ["AC-13", "AC-16"],
+      "dod": "runRefresh reloads the active diff (refreshActiveDiff) on worktree / index kinds while the workspace shows a working-tree file; the own-vs-external verdict is a flag the staging operations set on the refresh they trigger (OWN_ACTION_WINDOW_MS and ownStagingAt are gone); setFiles receives that verdict and returns close for an external change that removed the shown file regardless of what else remains, advance only for the app's own action, and the advance branch sets navigated:true; diff-workspace-state.spec.ts covers own-advance, external-close and advance-then-close focus; the AC-13 / AC-16 notices are selected from the flag; build, test, lint green. Review 2026-09-03 F-4, F-5, F-12.",
+      "files_hint": [
+        "src/app/core/services/ops/repo-ops.ts",
+        "src/app/core/services/ops/staging-ops.ts",
+        "src/app/core/services/workspace.store.ts",
+        "src/app/core/services/diff-workspace-state.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts",
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/features/working-changes/working-changes.ts"
+      ]
+    },
+    {
+      "id": "T20",
+      "title": "Restore focus on close reliably, including the commit-row branch",
+      "layer": "app",
+      "deps": [],
+      "acs": ["AC-08"],
+      "dod": "On close the service scrolls the owning virtual viewport to the target row's index before focusing it and runs after the commit list has applied its restored offset (a row at a restored offset > 0 receives focus); mod+d pressed while the commit list holds focus opens the active file with the commit row's sha as focusKey so data-focus-key on commit rows is exercised; snapshot.activeFile and shownFile() are removed; focusRow takes the injected DOCUMENT; diff-workspace-state.spec.ts fixtures use the real key shapes (bare path, side:path, sha); tasks/diff-workspace-service.md DoD reads «scrolls into view and focuses»; build, test, lint green. Review 2026-09-03 F-6, F-14, F-16.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/core/services/diff-workspace-state.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts",
+        "src/app/features/commit-list/commit-list.ts",
+        "src/app/features/commit-list/commit-list.html",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "docs/features/inspector-diff-workspace/tasks/diff-workspace-service.md"
+      ]
+    },
+    {
+      "id": "T21",
+      "title": "Reconcile AC-07 with AC-17 and clear the stale diff",
+      "layer": "app",
+      "deps": [],
+      "acs": ["AC-07", "AC-17"],
+      "dod": "Per the amended AC-07 (review 2026-09-03), a refresh that removes the shown commit closes the workspace through the AC-17 path when the selection moves; when the sha stays and the published list empties, repo.diffText is cleared so the hosted viewer renders its existing empty explanation instead of the stale diff, and a spec asserts the clear; the republish comment in commit-inspector.ts, sad.md flow F4 and ux-flows.md US-03 branch H→I describe the residual case only; build, test, lint green. Review 2026-09-03 F-7.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/core/services/diff-workspace-state.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md"
+      ]
+    },
+    {
+      "id": "T22",
+      "title": "Inspector fixes: header measurement, filter republish, double fetch, docs bound",
+      "layer": "ui",
+      "deps": ["T16"],
+      "acs": ["AC-01", "AC-03", "AC-06", "AC-11"],
+      "dod": "applyLayout feeds the policy the header's rendered fixed height (bounding box, body excluded) and the stale max-height:50 % rule and its comment are removed, with the decision noted in DESIGN.md §App shell; a filter keystroke that hides the shown file leaves the workspace on that file (filter-driven removal is keep; the list republishes only on real content or order changes); the row click handler skips the diff load when the path is already active, so a double-click issues exactly one diff request in both the commit file list and the changes lists; the DESIGN.md --inspector-list-rows bound cell notes the workspace-open exception; build, lint green. Review 2026-09-03 F-8, F-10, F-11, F-20.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/features/commit-inspector/commit-inspector.css",
+        "src/app/features/working-changes/changes-list.html",
+        "src/app/features/working-changes/changes-list.ts",
+        "DESIGN.md"
+      ]
+    },
+    {
+      "id": "T23",
+      "title": "Reuse the diff strip, hide the composer once, break the core→shared barrel import",
+      "layer": "ui",
+      "deps": [],
+      "acs": ["AC-06", "AC-13"],
+      "dod": "diff-workspace.service.ts imports KeyboardShortcutsService by module path and no file under core/ imports the shared/ui barrel (grep-checked); the composer and lists are hidden by the panel-level guards only (the outer hidden class binding in main-content.html is gone) and a draft still survives a workspace round-trip; the source chip and the faint-dirname / strong-basename path spans live in one shared piece used by diff-viewer.html and diff-workspace.html; the open-large, Close, next and previous tooltips derive their key hint from formatCombo of the registered combo in diff-workspace.html, commit-inspector.html and file-row.html; DESIGN.md registers the shared piece; build, lint green. Review 2026-09-03 F-13, F-17, F-19.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/features/diff-workspace/diff-workspace.html",
+        "src/app/features/diff-workspace/diff-workspace.ts",
+        "src/app/features/diff-viewer/diff-viewer.html",
+        "src/app/features/diff-viewer/diff-viewer.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/working-changes/file-row.html",
+        "src/app/features/working-changes/file-row.ts",
+        "src/app/features/working-changes/working-changes.html",
+        "src/app/shared/components/main-content/main-content.html",
+        "src/app/shared/ui/",
+        "DESIGN.md"
+      ]
+    },
+    {
+      "id": "T24",
+      "title": "Component specs: commit inspector, open-large gesture and shortcuts help",
+      "layer": "ui",
+      "deps": ["T15", "T16", "T17", "T18", "T20", "T21", "T22"],
+      "acs": ["AC-01", "AC-02", "AC-04", "AC-05", "AC-08", "AC-11", "AC-12", "AC-21"],
+      "dod": "Every component / automated row of test-plan.md backed by T9, T10, T11, T12 and the Keyboard page passes under pnpm test: clamp + show-more, collapse / expand with the remembered state read synchronously, 30 / 2 / 0 files rows and count label, file-list collapse keeps the active file, the three open gestures produce one open call in displayed order, close restores focus to the originating or now-active row including a row outside the viewport, six actions inline with overflow into More and Reset confirmation, six SCR-05 rows listed with the workspace closed; lint green. Review 2026-09-03 F-9.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "src/app/features/settings/settings-dialog.spec.ts",
+        "src/testing/"
+      ]
+    },
+    {
+      "id": "T25",
+      "title": "Component specs: diff workspace, centre wiring and working changes",
+      "layer": "ui",
+      "deps": ["T15", "T17", "T18", "T19", "T21", "T23"],
+      "acs": ["AC-06", "AC-07", "AC-13", "AC-14", "AC-15", "AC-16", "AC-17", "AC-18"],
+      "dod": "Every component / automated row of test-plan.md backed by T7, T8 and T13 passes under pnpm test: strip states (default, first / last edges, error via the hosted viewer, refreshing), no staging control for a commit source and staging shortcuts inert, lists and composer hidden and commit shortcuts guarded while open, own-stage advance versus external close with the right notice, close on view / tab / selection change without replay, the inspector diff slot collapses while the viewer is away and the bottom placement keeps the viewer as the only growing child; lint green. Review 2026-09-03 F-9.",
+      "files_hint": [
+        "src/app/features/diff-workspace/diff-workspace.spec.ts",
+        "src/app/features/working-changes/working-changes.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/testing/"
+      ]
+    },
+    {
+      "id": "T26",
+      "title": "Record the task-boundary widenings and refresh the screenshots",
+      "layer": "docs",
+      "deps": ["T22", "T23"],
+      "acs": [],
+      "dod": "tasks/collapsed-header-actions.md, tasks/centre-and-portal-wiring.md and tasks/docs-design-shell.md list the files their commits touched beyond files_hint with a one-line reason; docs/screenshots/history-dark.png and changes-light.png are recaptured from the built app plus one new shot with the workspace open, referenced from README.md; if the capture cannot run unattended the task reports blocked for the owner instead of marking done. Review 2026-09-03 F-21, F-22.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/collapsed-header-actions.md",
+        "docs/features/inspector-diff-workspace/tasks/centre-and-portal-wiring.md",
+        "docs/features/inspector-diff-workspace/tasks/docs-design-shell.md",
+        "docs/screenshots/",
+        "README.md"
+      ]
+    },
+    {
+      "id": "T27",
+      "title": "Component rows the plan declared: header, shortcuts, squeezed column, rows while open, commit-list restore, Esc layers, filter guard, hunk keys, watcher trigger",
+      "layer": "ui",
+      "deps": ["T24", "T25"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-06", "AC-08", "AC-10", "AC-11", "AC-12", "AC-13", "AC-16"],
+      "dod": "Every test-plan.md row marked component / automated that the re-review of 2026-09-04 found unwritten passes under pnpm test, red first: expanded header metadata and six actions (AC-01); mod+shift+h / mod+shift+l pressed, summary line and preference asserted (AC-02); inspector at minimum height with a long body and 30 files carries --inspector-list-rows: 2 and --inspector-clamp-lines: 1 (AC-03); --inspector-list-rows grows past six while the workspace is open and returns on close (AC-04, AC-06); CommitList rendered, mod+d from a focused commit row at a non-zero offset, close replays the offset and focuses the commit row (AC-08); dialog, palette, opted-in filter with content and line selection layered over an open workspace, one layer per Esc, workspace last (AC-10); a filter term hiding the shown file leaves isOpen() and current().file unchanged (AC-11); n advances a hunk with the workspace open and the collision row reads the viewer's registered combos (AC-12); one advance driven through the Stage control, not by writing stagingBusy (AC-13); the AC-16 row drives the stub's repo-changed emitter or is amended to name the manual link (AC-16); the double-click row counts get_commit_file_diff calls (AC-06). Test hygiene: the icon set is provided in every component TestBed so jsdom logs no missing-icon warning; the inspector spec reuses the shared CommitDetails factory; the unreachable ng_on_destroy stub entries and their comments, the TEST_CONFIG export and the DISPLAYED duplicate are gone. pnpm lint green. Re-review 2026-09-04 G1-G9, C3, C5, D6, D8, D11, D13, D14.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "src/app/features/commit-list/commit-list.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/app/features/settings/settings-dialog.spec.ts",
+        "src/app/features/working-changes/working-changes.spec.ts",
+        "src/app/features/diff-workspace/diff-workspace.spec.ts",
+        "src/testing/",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T28",
+      "title": "Edge fixes: refresh race, shared origin, expiring focus key, residual AC-07 reset, bounded header, view-scoped toggles, zero-height restore; repo docs",
+      "layer": "app",
+      "deps": ["T19", "T20", "T21", "T22", "T23"],
+      "acs": ["AC-03", "AC-07", "AC-08", "AC-12", "AC-13", "AC-16"],
+      "dod": "refreshActiveDiff re-checks diffSource after its await before writing diffText (AC-16); loadChanges writes the origin together with the changes it belongs to, so an interleaved staging refresh and watcher refresh cannot publish under each other's origin (AC-13, AC-16); a list that owns a pending focus key whose row is gone reports the restore taken so the key expires (AC-08); the residual AC-07 path resets activeCommitFile with diffText so the file reloads once the list repopulates (AC-07); the commit header is bounded again - a policy-derived max-height with overflow, or a wrapper that can shrink - so a many-refs commit at 960 x 640 cannot take the diff slot below the AC-03 floor (AC-03); the two inspector toggles are inert while the inspector is unmounted, i.e. in the Changes view (AC-12); focusVirtualRow copes with a viewport whose cached height is 0, remeasuring first or bounding the wait (AC-08). Each fix has a pinning test, red first. Docs match HEAD: DESIGN.md rank-4 Esc row names data-escape-clears and the fall-through; DESIGN.md Density prose states the 75 % collapsed-header floor and the yield order; AGENTS.md names the four src/testing stand-ins or points at the directory; src/app/shared/ui/README.md lists focusVirtualRow as a DOM-only helper; ARCHITECTURE.md Layers records that core may import template-less services from shared/ui by module path, never the barrel; the unused DiffSourceSide barrel export is gone. pnpm test, pnpm lint, pnpm build green. Re-review 2026-09-04 D1-D5, D12, C2, C6-C9, D15, D16.",
+      "files_hint": [
+        "src/app/core/services/ops/repo-ops.ts",
+        "src/app/core/services/diff-workspace.service.ts",
+        "src/app/core/services/diff-workspace.service.spec.ts",
+        "src/app/features/working-changes/changes-list.ts",
+        "src/app/features/commit-list/commit-list.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.css",
+        "src/app/shared/components/main-content/main-content.html",
+        "src/app/shared/ui/virtual-row-focus.ts",
+        "src/app/shared/ui/index.ts",
+        "src/app/shared/ui/README.md",
+        "DESIGN.md",
+        "AGENTS.md",
+        "ARCHITECTURE.md"
+      ]
+    },
+    {
+      "id": "T29",
+      "title": "Round-3 fixes: owned focus keys, header cap feedback, the AC-03 and AC-09 rows, test hygiene",
+      "layer": "app",
+      "deps": ["T27", "T28"],
+      "acs": ["AC-03", "AC-04", "AC-06", "AC-08", "AC-09", "AC-13", "AC-16"],
+      "dod": "The commit list expires only focus keys it can own, tested positively (a prefixed commit-row key or a sha-shape match), never by the absence of a colon; a component row with MainContent rendered proves a close from an inspector file row lands focus on that row with focusRestored called once, and a second row proves a sha dropped from repo.commits before Close expires without focusing anything (AC-08). inspector-layout.ts floors headerMaxH at panelHeadH, rounds it to whole pixels and uses min(headerHeight, headerMaxH) as the header term of diffHeight so it never reports below the floor when the cap binds; the pure table asserts headerMaxH and the bound, and the AC-03 row in main-content.spec.ts asserts the host's --inspector-header-max-h equals the policy value (AC-03, AC-04, AC-06). The AC-09 component row exists: one workspace element in the DOM while clicking another row and pressing previous / next, the strip updated, no second open (AC-09). AGENTS.md lists the six src/testing/ stand-ins or points at the directory. Test hygiene: virtual-row-focus.spec.ts settles in one tick; the AC-16 row derives its wait from an exported WATCHER_DEBOUNCE_MS or fake timers and awaits every emitRepoChanged; the interleave row asserts changesOrigin() is own and no second toast after the staging answer (AC-13, AC-16). Each production change red first; pnpm test, pnpm lint, pnpm build green; files outside files_hint recorded in the task file. Review round 3 R1-R5, R7-R9, R11-R14.",
+      "files_hint": [
+        "src/app/features/commit-list/commit-list.ts",
+        "src/app/features/commit-list/commit-list.html",
+        "src/app/features/commit-list/commit-list.spec.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts",
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/app/features/diff-workspace/diff-workspace.spec.ts",
+        "src/app/features/working-changes/working-changes.spec.ts",
+        "src/app/shared/ui/virtual-row-focus.spec.ts",
+        "src/app/core/services/current-repo.service.ts",
+        "AGENTS.md",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T30",
+      "title": "Round-4 fixes: the inspector expires its own key, the cap pinned on host and table, shared row-key shapes, exact debounce wait",
+      "layer": "app",
+      "deps": ["T29"],
+      "acs": ["AC-03", "AC-08", "AC-16"],
+      "dod": "The commit inspector expires a pending focus key it owns (a commit file row's bare path, tested positively through shared shapes) when no file row carries it, as the changes list does for side: keys; a component row proves that after an external republish without the path pendingFocusKey() is null and nothing is focused, also once the path returns (AC-08). The commit-row key shape (commit:<sha>) is exported from diff-workspace-state.ts next to focusKeyFor and imported by commit-list.ts and by the T20 shape row, so a changed prefix fails the row (AC-08). The AC-03 row in main-content.spec.ts asserts the host's --inspector-header-max-h equals the policy value computed for the fixture; inspector-layout.spec.ts pins headerMaxH 116 (comfortable) and 120 (compact) in the squeeze rows (AC-03). The policy comment says the clamp yield never lowers the reported diffHeight. afterDebounce in working-changes.spec.ts sleeps no longer than WATCHER_DEBOUNCE_MS per call (exact wait plus a macrotask flush, or fake timers) (AC-16). Each production change red first; pnpm test, pnpm lint, pnpm build green; files outside files_hint recorded in the task file. Review round 4 Q1, Q2, Q4-Q7.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace-state.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts",
+        "src/app/features/commit-list/commit-list.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/app/features/working-changes/working-changes.spec.ts",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T31",
+      "title": "Round-5 fixes: pin the shared key owner, type the working sides, fix the host cap's literal, test hygiene",
+      "layer": "app",
+      "deps": ["T30"],
+      "acs": ["AC-03", "AC-08"],
+      "dod": "A unit row in diff-workspace-state.spec.ts asserts focusKeyOwner on the three real shapes (commit:<sha> -> commit-row, staged:/unstaged: keys -> working-tree, a bare path -> commit-file) and fails if any arm is changed or removed; WORKING_SIDES in diff-workspace-state.ts is typed from the DiffWorkspaceSource side union so a renamed side fails to compile (AC-08). The AC-03 host row in main-content.spec.ts asserts expected.headerMaxH is 126 next to the existing equality with computeInspectorLayout and injects AppearanceService once; the RED note in tasks/round4-fixes.md describes the mutation that really applies (AC-03). The Q2 row in commit-inspector.spec.ts carries no assertion that cannot fail (AC-08). pnpm test, pnpm lint, pnpm build green; files outside files_hint recorded in the task file. Review round 5 V1-V5.",
+      "files_hint": [
+        "src/app/core/services/diff-workspace-state.ts",
+        "src/app/core/services/diff-workspace-state.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "docs/features/inspector-diff-workspace/tasks/round4-fixes.md",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T32",
+      "title": "Round-6 fixes: drop the unfailable focus line from the Q2 row and correct the two documents that report V4 closed",
+      "layer": "app",
+      "deps": ["T31"],
+      "acs": ["AC-08"],
+      "dod": "The Q2 row in commit-inspector.spec.ts carries no assertion that passes in both branches of the expiry: expect(host.contains(document.activeElement)).toBe(false) and the comment calling it the failable half are removed, pendingFocusKey() at :738 and the returning-path block at :750-755 stay, and removing focusRestored from commit-inspector.ts:345 turns the row red at pendingFocusKey() (verified by running the mutation) (AC-08). test-plan.md:111 and tasks/round5-fixes.md:33 describe what landed and no longer report an assertion that is gone. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; no src-tauri change; files outside files_hint recorded in the task file. Review round 6 F1 / S1.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/round5-fixes.md"
+      ]
+    },
+    {
+      "id": "T33",
+      "title": "Round-7 fixes: drop the branch-independent focus field from the Q2 row and correct the claims that call the returning-path block mutation-verified",
+      "layer": "app",
+      "deps": ["T32"],
+      "acs": ["AC-08"],
+      "dod": "The Q2 row in commit-inspector.spec.ts carries no assertion advertised against a mutation it cannot detect: focusedTheRow is removed from the returning-path toEqual and every remaining assertion is named in the row comments with the mutation that reddens it (AC-08). Verified by running both mutations: removing focusRestored from commit-inspector.ts:345 reddens the row at pendingFocusKey() (1 failed / 27 passed), and removing it from both :345 and :351 reddens the returning-path key assertion; both outputs recorded in the task file and the tree restored with git checkout --. The comment at :739-741 says the block proves the key expired, not where the focus went. tasks/round6-fixes.md carries an outcome note that its DoD bullet 1 second clause was disproved in round 7, and test-plan.md:111 describes what landed. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; no production file and no src-tauri change. Review round 7 R7-F1 / S1 / S2.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/round6-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    }
+  ]
+}
