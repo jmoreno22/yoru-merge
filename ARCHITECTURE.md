@@ -107,6 +107,11 @@ src/app/
 State is Angular Signals. RxJS is present but is not the state model.
 Components are standalone with `ChangeDetectionStrategy.OnPush`.
 
+Dependencies run downwards, with one recorded exception: `core` may import a
+template-less service from `shared/ui` — `KeyboardShortcutsService` — and only
+by its module path, never through the barrel, which re-exports `yoru-dialog`
+and so imports back into `core`.
+
 ### Multi-repository state
 
 `WorkspaceStore` holds one `RepoState` per open repository — the tabs in the

@@ -21,6 +21,7 @@ import {
   ClipboardService,
   KeyboardShortcutsService,
   YoruButton,
+  YoruDiffSource,
   YoruEmptyState,
   YoruSegmented,
 } from '../../shared/ui';
@@ -63,7 +64,14 @@ const CONTEXT_OPTIONS: readonly SegmentedOption[] = [
  */
 @Component({
   selector: 'app-diff-viewer',
-  imports: [DiffView, NgIcon, YoruButton, YoruEmptyState, YoruSegmented],
+  imports: [
+    DiffView,
+    NgIcon,
+    YoruButton,
+    YoruDiffSource,
+    YoruEmptyState,
+    YoruSegmented,
+  ],
   templateUrl: './diff-viewer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -124,10 +132,8 @@ export class DiffViewer {
   protected readonly heading = computed(() => {
     const source = this.diffSource();
     if (source.kind === 'workingFile') {
-      const slash = source.file.lastIndexOf('/');
       return {
-        dirname: slash < 0 ? '' : source.file.slice(0, slash + 1),
-        basename: slash < 0 ? source.file : source.file.slice(slash + 1),
+        label: source.file,
         chip: source.staged ? 'Staged' : 'Unstaged',
         copy: source.file,
         title: source.file,
@@ -135,8 +141,7 @@ export class DiffViewer {
     }
     if (source.kind === 'commit') {
       return {
-        dirname: '',
-        basename: shortSha(source.sha),
+        label: shortSha(source.sha),
         chip: 'Commit',
         copy: source.sha,
         title: source.sha,

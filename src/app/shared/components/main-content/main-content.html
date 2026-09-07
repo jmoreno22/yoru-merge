@@ -45,33 +45,52 @@
         [style.height.px]="inspectorPlacement() === 'bottom' ? centrePx() : null"
         data-testid="centre-column"
       >
+        <!-- The workspace outranks the rail: it replaces whichever view the
+             gesture came from, and Close puts that view back (ADR-0001). -->
+        @if (workspace.isOpen()) {
+          <app-diff-workspace [portal]="viewerPortal()" />
+        }
+
         @switch (view()) {
           @case ('changes') {
-            <div class="flex min-h-0 flex-1 flex-col">
+            <!-- Hidden rather than unmounted: the panel owns the file order the
+                 workspace steps through and re-publishes it after a stage or a
+                 watcher refresh, which is what makes it advance or close
+                 (AC-13, AC-16), and a draft in the composer has to survive the
+                 round trip. This class is the only thing that hides it — the
+                 panel itself hides nothing. -->
+            <div
+              class="flex min-h-0 flex-1 flex-col"
+              [class.hidden]="workspace.isOpen()"
+            >
               <app-working-changes />
             </div>
           }
           @case ('reflog') {
-            <div class="flex min-h-0 flex-1 flex-col">
-              <app-reflog-view />
-            </div>
+            @if (!workspace.isOpen()) {
+              <div class="flex min-h-0 flex-1 flex-col">
+                <app-reflog-view />
+              </div>
+            }
           }
           @default {
-            <app-commit-search />
-            <div class="flex min-h-0 min-w-0 flex-1">
-              @if (graphWidth() > 0) {
-                <app-branch-graph
-                  class="shrink-0 border-r border-[var(--app-border)]/60"
-                  [style.width.px]="graphWidth()"
-                  [graphData]="repo.graphData()"
-                  [scrollTop]="repo.listScrollTop()"
-                  [rowHeight]="appearance.rowHeight()"
-                />
-              }
-              <div class="flex min-w-0 flex-1 flex-col">
-                <app-commit-list [showSearch]="false" />
+            @if (!workspace.isOpen()) {
+              <app-commit-search />
+              <div class="flex min-h-0 min-w-0 flex-1">
+                @if (graphWidth() > 0) {
+                  <app-branch-graph
+                    class="shrink-0 border-r border-[var(--app-border)]/60"
+                    [style.width.px]="graphWidth()"
+                    [graphData]="repo.graphData()"
+                    [scrollTop]="repo.listScrollTop()"
+                    [rowHeight]="appearance.rowHeight()"
+                  />
+                }
+                <div class="flex min-w-0 flex-1 flex-col">
+                  <app-commit-list [showSearch]="false" />
+                </div>
               </div>
-            </div>
+            }
           }
         }
       </section>
@@ -90,13 +109,20 @@
         data-testid="inspector-column"
       >
         @if (view() !== 'changes') {
-          <div class="flex min-h-0 flex-[2] flex-col">
+          <div class="flex min-h-0 flex-none flex-col">
             <app-commit-inspector />
           </div>
         }
 
+        <!-- The diff viewer's home. It is the only growing child, so every
+             pixel the inspector releases lands here; while the workspace holds
+             the element the slot has nothing to show and takes no height. -->
         <div
-          class="flex min-h-0 flex-[3] flex-col border-t border-[var(--app-border)]"
+          class="flex min-h-0 flex-col border-[var(--app-border)]"
+          [class.flex-1]="!workspace.isOpen()"
+          [class.border-t]="!workspace.isOpen()"
+          [class.h-0]="workspace.isOpen()"
+          data-testid="inspector-diff-slot"
         >
           <app-diff-viewer
             (openBlame)="onOpenBlame($event)"
@@ -106,7 +132,8 @@
 
         @if (blameFile(); as file) {
           <div
-            class="flex min-h-0 flex-[3] flex-col border-t border-[var(--app-border)]"
+            class="flex min-h-0 flex-col border-t border-[var(--app-border)]"
+            [style.flex]="blameFlex()"
           >
             <app-blame-viewer
               class="block h-full min-h-0"
@@ -119,7 +146,8 @@
 
         @if (fileHistoryFile(); as file) {
           <div
-            class="flex min-h-0 flex-[2] flex-col border-t border-[var(--app-border)]"
+            class="flex min-h-0 flex-col border-t border-[var(--app-border)]"
+            [style.flex]="fileHistoryFlex()"
           >
             <app-file-history-panel
               class="block h-full min-h-0"

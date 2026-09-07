@@ -1,8 +1,9 @@
+import { DomPortal } from '@angular/cdk/portal';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  type ElementRef,
+  ElementRef,
   effect,
   HostListener,
   inject,
@@ -11,6 +12,7 @@ import {
 } from '@angular/core';
 import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
+import { DiffWorkspaceService } from '../../../core/services/diff-workspace.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { BlameViewer } from '../../../features/blame/blame-viewer';
 import { BranchGraph } from '../../../features/branch-graph/branch-graph';
@@ -18,6 +20,7 @@ import { CommitInspector } from '../../../features/commit-inspector/commit-inspe
 import { CommitList } from '../../../features/commit-list/commit-list';
 import { CommitSearch } from '../../../features/commit-list/commit-search';
 import { DiffViewer } from '../../../features/diff-viewer/diff-viewer';
+import { DiffWorkspace } from '../../../features/diff-workspace/diff-workspace';
 import { FileHistoryPanel } from '../../../features/file-history/file-history-panel';
 import { RepoManager } from '../../../features/repo-manager/repo-manager';
 import { WorkingChangesPanel } from '../../../features/working-changes/working-changes';
@@ -64,6 +67,7 @@ const MIN_GRAPH_PX = 4 * LANE_WIDTH;
     CommitList,
     CommitSearch,
     DiffViewer,
+    DiffWorkspace,
     FileHistoryPanel,
     ReflogView,
     RepoManager,
@@ -83,6 +87,7 @@ export class MainContent {
   protected readonly repo = inject(CurrentRepoService);
   protected readonly prefs = inject(PreferencesService);
   protected readonly appearance = inject(AppearanceService);
+  protected readonly workspace = inject(DiffWorkspaceService);
 
   protected readonly view = this.prefs.railView;
   protected readonly sidebarSide = this.prefs.sidebarSide;
@@ -118,6 +123,22 @@ export class MainContent {
   private readonly centreWidthPx = computed(() =>
     this.inspectorPlacement() === 'bottom' ? this.splitSize().width : this.centrePx(),
   );
+
+  // ── diff viewer re-hosting ───────────────────────────────────────────────
+
+  private readonly viewerHost = viewChild(DiffViewer, { read: ElementRef });
+
+  /**
+   * The one diff viewer element as a portal, so the workspace can host it at
+   * full centre width without a second instance (ADR-0003). One portal per
+   * element: the query only changes identity when the inspector column is
+   * rebuilt. Detaching is CDK's — destroying the outlet puts the element back
+   * where the anchor comment marks its place, which is the inspector slot.
+   */
+  protected readonly viewerPortal = computed(() => {
+    const host = this.viewerHost();
+    return host ? new DomPortal<HTMLElement>(host.nativeElement) : null;
+  });
 
   // ── refs panel width ─────────────────────────────────────────────────────
 
@@ -236,6 +257,21 @@ export class MainContent {
   }
 
   // ── stacked file panels ──────────────────────────────────────────────────
+
+  /**
+   * The share of the inspector column each stacked panel keeps, frozen as a
+   * fixed basis instead of a growth proportion. The percentages are the ones
+   * the 1.0.5 build gave them — 3/8 and 2/7 alone, 3/10 and 2/10 together —
+   * so a panel that grew would take a cut of every pixel the commit inspector
+   * releases, which belongs to the diff slot alone (AC-19).
+   */
+  protected readonly blameFlex = computed(() =>
+    this.fileHistoryFile() ? '0 0 30%' : '0 0 37.5%',
+  );
+
+  protected readonly fileHistoryFlex = computed(() =>
+    this.blameFile() ? '0 0 20%' : '0 0 28.6%',
+  );
 
   protected onOpenBlame(file: string): void {
     void this.repo.loadBlame(file);

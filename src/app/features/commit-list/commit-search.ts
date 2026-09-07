@@ -78,8 +78,4 @@ export class CommitSearch {
     this.repo.clearSearch();
     this.field()?.nativeElement.focus();
   }
-
-  protected onEscape(): void {
-    if (this.isActive()) this.onClear();
-  }
 }

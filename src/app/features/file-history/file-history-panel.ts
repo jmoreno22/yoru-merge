@@ -13,6 +13,8 @@ import { NgIcon } from '@ng-icons/core';
 import type { CommitInfo } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { EscapeRank } from '../../core/services/escape-layers';
+import { EscapeLayersService } from '../../core/services/escape-layers.service';
 import { absoluteTime, relativeTime } from '../../core/utils';
 import type { MenuItem } from '../../shared/ui';
 import {
@@ -43,16 +45,14 @@ interface HistoryRow {
   imports: [NgIcon, ScrollingModule, YoruAvatar, YoruEmptyState, YoruSkeleton],
   templateUrl: './file-history-panel.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    'data-testid': 'file-history-host',
-    '(document:keydown.escape)': 'onEscape()',
-  },
+  host: { 'data-testid': 'file-history-host' },
 })
 export class FileHistoryPanel {
   private readonly service = inject(CurrentRepoService);
   private readonly appearance = inject(AppearanceService);
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
+  private readonly escapeLayers = inject(EscapeLayersService);
 
   /** File whose history to show; `null` keeps the panel closed. */
   readonly file = input.required<string | null>();
@@ -83,6 +83,12 @@ export class FileHistoryPanel {
   );
 
   constructor() {
+    this.escapeLayers.bind(
+      EscapeRank.stackedPanel,
+      computed(() => this.file() !== null),
+      () => this.close.emit(),
+    );
+
     effect(() => {
       const target = this.file();
       this.selectedSha.set(null);
@@ -100,10 +106,6 @@ export class FileHistoryPanel {
 
   protected onClose(): void {
     this.close.emit();
-  }
-
-  protected onEscape(): void {
-    if (this.file()) this.close.emit();
   }
 
   /**

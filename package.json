@@ -14,7 +14,7 @@
     "tauri": "tauri",
     "lint": "biome check src",
     "format": "biome format --write src",
-    "test": "vitest run"
+    "test": "ng test --no-watch"
   },
   "private": true,
   "dependencies": {

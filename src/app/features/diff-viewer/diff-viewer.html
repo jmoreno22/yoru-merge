@@ -13,21 +13,13 @@
       <header
         class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
       >
-        <span
-          class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
-          data-testid="diff-source-chip"
-        >
-          {{ head.chip }}
-        </span>
-
-        <span
-          class="min-w-0 truncate font-mono text-xs"
-          [title]="head.title"
-          data-testid="diff-source-label"
-        >
-          <span class="text-[var(--app-text-faint)]">{{ head.dirname }}</span
-          ><span class="text-[var(--app-text)]">{{ head.basename }}</span>
-        </span>
+        <yoru-diff-source
+          [chip]="head.chip"
+          [path]="head.label"
+          [pathTitle]="head.title"
+          chipTestId="diff-source-chip"
+          pathTestId="diff-source-label"
+        />
 
         <button
           type="button"

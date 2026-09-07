@@ -333,6 +333,32 @@ TypeScript (`COMMIT_ROW_HEIGHT`, `FILE_ROW_HEIGHT`), and a token that disagrees
 with `itemSize` misplaces every row and drifts the graph lanes off their
 commits. Changing them means changing both sides together.
 
+**Inspector layout variables.** Three more custom properties exist, and none
+is a density token: `core/services/inspector-layout.ts` computes them from the
+measured column and `CommitInspector` writes them on its own host element, once
+per layout pass. Never author them in CSS, never persist them.
+
+| Variable | Meaning | Bounds |
+| --- | --- | --- |
+| `--inspector-list-rows` | how tall the commit file list is, in rows (`rows × --file-row-h`) | 1 to 6, and past 6 while the diff workspace is open, where the list takes the freed diff height up to the file count (see below); 0 when the list is collapsed or the commit touched no file |
+| `--inspector-clamp-lines` | `-webkit-line-clamp` on the commit message body | 1 to 4; a collapsed header hides the body rather than clamping it to zero |
+| `--inspector-header-max-h` | how tall the expanded commit header may grow before it scrolls inside the cap | whatever the diff slot's floor and the file list leave of the column, rounded to whole pixels and never under one panel head |
+
+The policy's rule is that the diff slot keeps at least half of the column left
+by the stacked panels, and at least 75 % of it once the header is collapsed —
+collapsing the header is the developer asking for the diff, so the stricter
+floor is checked first and the list yields to its 2-row floor if that alone
+reaches it. Then the standing 50 % floor runs, where rows yield before lines:
+the list drops to its floor of 2 rows first, the clamp to its floor of 1 line
+only if that was not enough, and the floors then hold even if the diff stays
+under half. Last in that order comes the header: what the diff's floor leaves
+over is its cap, so an expanded header with more content than that — a commit
+with many refs — scrolls inside the cap instead of taking the slot's floor.
+While the diff workspace holds the viewer element the list takes the rows the
+empty diff slot is not using. The policy writes these three variables and
+nothing else: **`--file-row-h` stays pinned** to the CDK `itemSize` above and
+is never overridden.
+
 ### Z-layers
 
 Four layers, declared in `styles.css`. Nothing may invent a z-index outside the
@@ -359,14 +385,49 @@ The window has no native decorations. Top to bottom:
    Tags and Stashes are not separate views — they open the refs panel on that
    section, because everything they would show already lives there.
 4. **Workbench** — refs panel (collapsible, width persisted), the centre view,
-   and the inspector column (commit inspector or diff, with blame and file
-   history stacked below). One splitter, persisted as `workbenchSplit`.
+   and the inspector column. One splitter, persisted as `workbenchSplit`.
 5. **Repository-state banner** — above the workbench whenever git is parked in a
    merge, rebase, cherry-pick, revert or bisect. Sakura tone, and the only place
    Continue / Skip / Abort / Resolve live.
 6. **Status bar** — watcher light, branch and upstream, ahead/behind, HEAD sha,
    detached-HEAD chip, change count, sequencer state, fetch progress, git
    version.
+
+**The inspector column.** Four blocks, top to bottom, and only one of them
+grows:
+
+| Block | Height |
+| --- | --- |
+| Commit header | content-sized; collapses to a one-line summary (avatar, subject, author, sha chip) whose inline actions overflow into the More menu as the line runs out of room |
+| Commit file list | content-sized, at most six rows — more while the diff workspace is open; collapses to its own header |
+| Diff slot | `flex-1` — the only growing child, kept at half the column or more |
+| Blame · file history | fixed shares of the column: 37.5 % / 28.6 % on their own, 30 % / 20 % when both are stacked |
+
+The header is content-sized: no CSS caps it, because a cap would clip exactly
+what the layout policy has to measure. What bounds it is the policy — it clamps
+the commit message body, and when the column is still too short it yields the
+file list down to its floor of two rows and the clamp down to one line, then
+stops (§Density).
+
+The header and the file list are measured and sized in TypeScript rather than
+by CSS ratios (§Density), so every pixel they release lands in the diff slot.
+Both collapsed states are durable preferences (`commitHeaderCollapsed`,
+`commitFileListCollapsed`) read at first paint, so the column does not re-flow
+after it appears. In the Changes view the header and the file list are absent —
+the centre view already owns the file lists.
+
+**The diff workspace.** One file's diff at full width in the **centre view** —
+a state of that column, never a route, a window, a tab or an overlay, so it
+takes no z-index. It is opened from the commit file list or from a staged or
+unstaged row in Changes, carries a header strip with the source, the path,
+previous / next and Close, and hosts **the** diff viewer: the single
+`<app-diff-viewer>` element is moved into it from the inspector's diff slot
+through a CDK `DomPortal` and moved back on close, so the slot takes no height
+while the element is away. Closing restores what was there — the same view,
+commit or side, the list's scroll offset, and focus on the row the file came
+from. While it is open the Changes panel stays mounted but hidden, because it
+owns the file order the workspace steps through; the History and Reflog content
+is unmounted instead and rebuilt on close.
 
 Use vertical separators sparingly. Prefer translucent borders and layered surfaces over heavy divider lines.
 
@@ -476,6 +537,7 @@ density and focus behaviour identical across features. Full API and examples:
 | `yoru-avatar` | author initials with a deterministic gradient from the email |
 | `yoru-empty-state` | zero-state copy with optional kanji watermark |
 | `yoru-section-header` | 34 px panel header: caps label, count, actions slot |
+| `yoru-diff-source` | diff strip head: source chip, optional detail, path with faint directory and strong file name |
 | `yoru-field`, `yoru-switch`, `yoru-segmented` | settings and dialog form controls |
 | `yoru-kbd` | key caps rendered from the registered combo string |
 | `yoru-spinner`, `yoru-skeleton` | activity and loading placeholders |
@@ -546,6 +608,13 @@ Diffs must prioritize readability over atmosphere.
 - Current hunk border: cyan.
 - Conflict hunk border: sakura pink.
 - Code font: `JetBrains Mono`.
+
+There is exactly one viewer element in the app. Its home is the inspector's
+diff slot; the diff workspace borrows it through a CDK `DomPortal` and hands it
+back on close, which is what keeps the loaded diff, the options bar and the
+scroll position identical on both sides. Staging controls follow the diff's
+source wherever the element is hosted — none for a commit diff, hunk and line
+staging for a working-tree one.
 
 ### Branch graph
 
@@ -810,6 +879,48 @@ Recommended reduced motion rule:
   }
 }
 ```
+
+### Keyboard
+
+**Escape closes exactly one layer.** The app has one `keydown` listener for
+Escape (`core/services/escape-layers.service.ts`). A dismissable surface
+registers a callback at a fixed rank while it is open, and the highest open
+rank wins; nothing else may listen for Escape.
+
+| Rank | Layer | What Escape does |
+| --- | --- | --- |
+| 6 | dialog | closes the dialog |
+| 5 | command palette | closes the palette |
+| 4 | text field that declares `data-escape-clears`, with content | clears the value and keeps focus — built in, nothing registers it; any other field falls through to the next layer |
+| 3 | diff line selection | clears the selection |
+| 2 | stacked blame or file history | closes that panel |
+| 1 | diff workspace | closes it and restores the previous view |
+
+Two surfaces stay outside the registry on purpose. The context menu keeps its
+own two-level Escape and consumes the event on its own element, so the service
+skips a press that was already handled. Tooltips hide passively and register
+nothing.
+
+**Shortcuts of the inspector and the diff workspace.** Both the command palette
+and *Settings › Keyboard* render `KeyboardShortcutsService`, so a combo written
+here is the combo the app shows. `mod` is `Ctrl`, `Cmd` on macOS builds; the
+full user-facing list lives in [README.md](README.md).
+
+| Id | Combo | Label |
+| --- | --- | --- |
+| `diff.next-hunk` | `n` | Next hunk |
+| `diff.previous-hunk` | `p` | Previous hunk |
+| `diff-workspace.open` | `mod+d` | Open in diff workspace |
+| `diff-workspace.close` | `escape` | Close diff workspace |
+| `diff-workspace.next` | `shift+n` | Next file |
+| `diff-workspace.prev` | `shift+p` | Previous file |
+| `inspector.toggle-header` | `mod+shift+h` | Collapse or expand commit header |
+| `inspector.toggle-files` | `mod+shift+l` | Collapse or expand commit file list |
+
+Hunk navigation keeps the bare `n` / `p`: modifier matching is exact, so the
+workspace's `shift+n` / `shift+p` do not collide with it. Escape is never a
+command shortcut — `diff-workspace.close` is registered so the help lists it
+and never runs; the dismissal is the rank-1 layer above.
 
 ## Naming Guidance
 

@@ -1,19 +1,24 @@
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
   effect,
+  Injector,
   inject,
   input,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { CommitInfo, RefInfo } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
+import { commitRowKey, focusKeyOwner } from '../../core/services/diff-workspace-state';
 import type { DragPayload } from '../../core/services/drag-payload.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { absoluteTime, relativeTime } from '../../core/utils';
@@ -98,9 +103,11 @@ export class CommitList {
   private readonly repo = inject(CurrentRepoService);
   private readonly actions = inject(CommitActions);
   private readonly layout = inject(CommitListLayout);
+  private readonly workspace = inject(DiffWorkspaceService);
   private readonly prefs = inject(PreferencesService);
   private readonly appearance = inject(AppearanceService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
   /** Set to false once the layout mounts `<app-commit-search>` in the header. */
   readonly showSearch = input<boolean>(true);
@@ -197,12 +204,30 @@ export class CommitList {
 
     // The sibling graph paints from this offset; the viewport is remounted
     // whenever the list leaves its empty state, so re-subscribe each time.
+    let hadViewport = false;
     effect(() => {
       const viewport = this.viewport();
       if (!viewport) {
-        this.repo.listScrollTop.set(0);
+        // The query is still empty on the first pass after a remount; only a
+        // list that really emptied forgets its offset, or the offset Close just
+        // restored is thrown away before the viewport can scroll to it (AC-08).
+        if (hadViewport) this.repo.listScrollTop.set(0);
         return;
       }
+      hadViewport = true;
+      // A new viewport starts at the top, so the offset the diff workspace
+      // restores on close only shows up if the list is scrolled back to it.
+      // Untracked: the subscription below writes this same signal.
+      const offset = untracked(this.repo.listScrollTop);
+      // The focus restore rides along behind the offset: a row focused while
+      // the list is still at the top would scroll it away again (AC-08).
+      afterNextRender(
+        () => {
+          if (offset > 0) viewport.scrollToOffset(offset);
+          this.restoreRowFocus(viewport);
+        },
+        { injector: this.injector },
+      );
       viewport
         .elementScrolled()
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -236,6 +261,30 @@ export class CommitList {
     });
   }
 
+  /**
+   * The row Close of the diff workspace hands back. A commit row is not
+   * focusable itself: the viewport holds the tabindex and names the row
+   * through `aria-activedescendant` (AC-08).
+   */
+  private restoreRowFocus(viewport: CdkVirtualScrollViewport): void {
+    const key = this.workspace.pendingFocusKey();
+    if (key === null || focusKeyOwner(key) !== 'commit-row') return;
+    const index = this.order().findIndex((sha) => commitRowKey(sha) === key);
+    if (index < 0) {
+      // The commit is gone from the list — a rewrite dropped it. Expiring the
+      // key keeps a sha that comes back later from taking the focus then
+      // (AC-08); a key this list does not own left above, unexpired, for the
+      // list that does.
+      this.workspace.focusRestored(key);
+      return;
+    }
+    this.workspace.focusRestored(key);
+    this.activeIndex.set(index);
+    // The restored offset is the one the row was visible at, so it needs no
+    // scrolling of its own.
+    viewport.getElementRef().nativeElement.focus();
+  }
+
   /** Focus target for `Ctrl+F` and the command palette. */
   focusSearch(): void {
     this.search()?.focus();
@@ -245,6 +294,10 @@ export class CommitList {
 
   protected rowId(sha: string): string {
     return `commit-row-${sha}`;
+  }
+
+  protected rowFocusKey(sha: string): string {
+    return commitRowKey(sha);
   }
 
   protected isSelected(sha: string): boolean {

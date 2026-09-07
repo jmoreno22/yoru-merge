@@ -7,6 +7,7 @@
 <input
   #field
   type="search"
+  data-escape-clears
   placeholder="Search commits or path:src/app"
   title="Add path:src/app to keep only commits touching that path. Quote it when it has spaces: path:&quot;my docs&quot;."
   data-testid="commit-search-input"
@@ -14,7 +15,6 @@
   [attr.aria-busy]="isSearching()"
   [value]="query()"
   (input)="onInput($any($event.target).value)"
-  (keydown.escape)="onEscape()"
   class="h-[24px] min-w-0 flex-1 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
 />
 @if (isActive()) {

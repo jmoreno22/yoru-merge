@@ -12,6 +12,8 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { EscapeRank } from '../../core/services/escape-layers';
+import { EscapeLayersService } from '../../core/services/escape-layers.service';
 import type { MenuItem } from '../../shared/ui';
 import {
   ClipboardService,
@@ -226,6 +228,7 @@ export class DiffView {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
+  private readonly escapeLayers = inject(EscapeLayersService);
 
   /** The unified patch to render. */
   readonly text = input<string>('');
@@ -480,6 +483,12 @@ export class DiffView {
   readonly hunkPosition = computed(() => this.hunkCursor() + 1);
 
   constructor() {
+    this.escapeLayers.bind(
+      EscapeRank.lineSelection,
+      computed(() => this.selection() !== null),
+      () => this.selection.set(null),
+    );
+
     if (!this.canHighlight()) {
       void loadHighlightGrammars().then(() => this.canHighlight.set(true));
     }
@@ -745,12 +754,6 @@ export class DiffView {
         indexes: [...hunk.selectable],
       });
       return;
-    }
-
-    if (event.key === 'Escape' && this.selection() !== null) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.selection.set(null);
     }
   }
 

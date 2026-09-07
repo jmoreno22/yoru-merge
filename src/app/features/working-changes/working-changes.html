@@ -8,9 +8,9 @@
     aria-hidden="true"
   />
   <input
+    data-escape-clears
     [value]="filter()"
     (input)="onFilterInput($event)"
-    (keydown.escape)="clearFilter()"
     placeholder="Filter files"
     aria-label="Filter changed files"
     class="h-6 min-w-0 flex-1 bg-transparent font-mono text-xs text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)]"
@@ -72,6 +72,7 @@
       (rowSelect)="onRowSelect('staged', $event)"
       (rowActivate)="onRowActivate('staged', $event)"
       (rowPrimary)="onRowPrimary('staged', $event)"
+      (rowOpenLarge)="openLarge('staged', $event)"
       (rowMenu)="onRowMenu('staged', $event)"
       (folderToggle)="onFolderToggle($event)"
       (activeChange)="onActiveChange('staged', $event)"
@@ -103,6 +104,7 @@
       (rowSelect)="onRowSelect('changes', $event)"
       (rowActivate)="onRowActivate('changes', $event)"
       (rowPrimary)="onRowPrimary('changes', $event)"
+      (rowOpenLarge)="openLarge('unstaged', $event)"
       (rowDiscard)="onRowDiscard('changes', $event)"
       (rowMenu)="onRowMenu('changes', $event)"
       (folderToggle)="onFolderToggle($event)"

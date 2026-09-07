@@ -82,6 +82,10 @@ export interface DurablePreferences {
   animations: boolean;
 
   inspectorPlacement: InspectorPlacement;
+  /** Collapsed state of the commit header in the inspector, like the splitters. */
+  commitHeaderCollapsed: boolean;
+  /** Collapsed state of the commit file list in the inspector, like the splitters. */
+  commitFileListCollapsed: boolean;
   sidebarSide: SidebarSide;
   showToolbar: boolean;
   showStatusBar: boolean;
@@ -169,6 +173,8 @@ export const DEFAULT_PREFERENCES: DurablePreferences = {
   colorPalette: DEFAULT_PALETTE_ID,
   animations: true,
   inspectorPlacement: 'right',
+  commitHeaderCollapsed: false,
+  commitFileListCollapsed: false,
   sidebarSide: 'left',
   showToolbar: true,
   showStatusBar: true,
@@ -320,6 +326,16 @@ export function sanitizePreferences(
   const inspectorPlacement = raw['inspectorPlacement'];
   if (isOneOf(inspectorPlacement, INSPECTOR_PLACEMENTS)) {
     out.inspectorPlacement = inspectorPlacement;
+  }
+
+  const commitHeaderCollapsed = raw['commitHeaderCollapsed'];
+  if (typeof commitHeaderCollapsed === 'boolean') {
+    out.commitHeaderCollapsed = commitHeaderCollapsed;
+  }
+
+  const commitFileListCollapsed = raw['commitFileListCollapsed'];
+  if (typeof commitFileListCollapsed === 'boolean') {
+    out.commitFileListCollapsed = commitFileListCollapsed;
   }
 
   const sidebarSide = raw['sidebarSide'];

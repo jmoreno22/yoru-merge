@@ -25,6 +25,7 @@ import {
   type TagInfo,
   type WorkingChanges,
 } from '../models';
+import type { SetFilesOrigin } from './diff-workspace-state';
 import { PreferencesService } from './preferences.service';
 import { TauriGitService } from './tauri-git.service';
 
@@ -90,6 +91,12 @@ function repoStateDefaults() {
 
     // ── staging ───────────────────────────────────────────────────────
     stagingBusy: false,
+    /**
+     * Who caused the working tree the last load published: a staging action
+     * this app ran, or anything else (the watcher, a manual refresh). The diff
+     * workspace advances on the first and closes on the second (AC-13, AC-16).
+     */
+    changesOrigin: 'external' as SetFilesOrigin,
 
     // ── branches / tags ───────────────────────────────────────────────
     branchBusy: false,
@@ -204,6 +211,7 @@ export class RepoState {
 
   // ── staging / branches / sequencer ────────────────────────────────────
   readonly stagingBusy = this.fields.stagingBusy;
+  readonly changesOrigin = this.fields.changesOrigin;
   readonly branchBusy = this.fields.branchBusy;
   readonly sequencerBusy = this.fields.sequencerBusy;
   readonly advancedOpError = this.fields.advancedOpError;

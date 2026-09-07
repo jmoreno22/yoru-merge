@@ -1,9 +1,9 @@
-/* Scrolls on its own, and never past half the panel: the file list below is a
- * virtual viewport, which needs a bounded box, and a long commit message would
- * otherwise leave it nothing to live in. */
+/* Content-sized up to the cap the layout policy writes: the clamp bounds a
+ * long commit message, but nothing else in the header shrinks, so a commit
+ * with many refs would otherwise push the diff below its floor (AC-03). */
 .inspector-header {
   display: flex;
-  max-height: 50%;
+  max-height: var(--inspector-header-max-h, none);
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
@@ -87,6 +87,35 @@
   color: var(--app-text-muted);
 }
 
+/* Nothing is reserved here: a body shorter than the clamp is the only child
+ * and the gap never applies. */
+.body-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The line count is the height policy's lever, so it arrives as a variable;
+ * four lines is what the panel opens with. */
+.body.is-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--inspector-clamp-lines, 4);
+  overflow: hidden;
+}
+
+/* The collapsed header, one row of the same fixed height as .files-header. */
+.inspector-summary {
+  display: flex;
+  height: var(--panel-head-h);
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 var(--panel-pad);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
 .files-header {
   display: flex;
   height: var(--panel-head-h);
@@ -147,6 +176,14 @@
   color: var(--app-accent-text);
 }
 
+/* The layout policy's other half: a virtual viewport has no natural height, so
+ * the row allowance is what gives it one and anything past it scrolls. The row
+ * height itself is the density token and is never overridden here. */
+.file-list {
+  flex: none;
+  height: calc(var(--inspector-list-rows, 6) * var(--file-row-h));
+}
+
 /* The CDK positions its content wrapper absolutely, so its width is
  * shrink-to-fit and grows to the widest row's max-content; without a ceiling a
  * long path stops truncating and the list scrolls sideways instead. */
@@ -163,22 +200,38 @@
   height: var(--file-row-h);
   align-items: center;
   gap: 6px;
-  padding-right: var(--panel-pad);
   text-align: left;
   font-size: var(--text-y-md);
   color: var(--app-text);
 }
 
 .folder-row {
+  padding-right: var(--panel-pad);
   color: var(--app-text-muted);
 }
 
+/* Shrinks beside the open-large control; the padding is the gap to it. */
+.file-row {
+  min-width: 0;
+  padding-right: 6px;
+}
+
+/* The row and its open-large control, which is a button of its own and so
+ * cannot live inside the row's. */
+.file-row-wrap {
+  display: flex;
+  width: 100%;
+  height: var(--file-row-h);
+  align-items: center;
+  padding-right: var(--panel-pad);
+}
+
 .folder-row:hover,
-.file-row:hover {
+.file-row-wrap:hover {
   background: var(--app-panel);
 }
 
-.file-row.is-active {
+.file-row-wrap.is-active {
   background: color-mix(in srgb, var(--app-accent) 14%, transparent);
 }
 

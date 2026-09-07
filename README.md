@@ -230,6 +230,10 @@ the command palette shows the real combo, so this table cannot drift silently.
 | `Ctrl+,` | settings |
 | `Ctrl+Shift+T` | switch theme |
 | `n` / `p` | next / previous hunk in the diff viewer |
+| `Ctrl+D` | open the selected file in the diff workspace |
+| `Shift+N` / `Shift+P` | next / previous file in the diff workspace |
+| `Esc` | close the diff workspace — or whatever is topmost above it |
+| `Ctrl+Shift+H` / `Ctrl+Shift+L` | collapse or expand the commit header / file list |
 
 Lists (refs, commits, changed files) are fully keyboard-navigable with the
 arrow keys, `Home`/`End`, `Enter` and `Space`.

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
 import { TauriGitService } from '../../core/services/tauri-git.service';
 import { ToastService } from '../../core/services/toast.service';
 import { CONVENTIONAL_TYPES } from '../../core/utils/conventional-commit';
@@ -82,6 +83,7 @@ export class CommitComposer {
   private readonly toasts = inject(ToastService);
   private readonly focusRequests = inject(CommitComposerFocus);
   private readonly settings = inject(SettingsDialogService);
+  private readonly workspace = inject(DiffWorkspaceService);
 
   private readonly subjectInput =
     viewChild<ElementRef<HTMLInputElement>>('subjectInput');
@@ -264,7 +266,9 @@ export class CommitComposer {
       combo: 'mod+enter',
       label: 'Commit staged changes',
       allowInInputs: true,
-      when: () => this.readiness().canCommit,
+      // The composer is hidden while the diff workspace is open, and a commit
+      // from a message nobody can see would be a blind commit (AC-15).
+      when: () => !this.workspace.isOpen() && this.readiness().canCommit,
       run: () => void this.commit('commit'),
     });
     const offDraft = this.shortcuts.register({
@@ -272,7 +276,7 @@ export class CommitComposer {
       combo: 'mod+shift+enter',
       label: 'Draft a commit message with AI',
       allowInInputs: true,
-      when: () => this.aiConfigured() && this.canDraft(),
+      when: () => !this.workspace.isOpen() && this.aiConfigured() && this.canDraft(),
       run: () => void this.draftMessage(),
     });
     inject(DestroyRef).onDestroy(() => {

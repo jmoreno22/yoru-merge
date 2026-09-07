@@ -67,7 +67,11 @@ touching both sides plus the matching model in both `models/` directories.
 - Shelling out goes through the `GitCmd` builder — never `cmd /c` or `sh -c`.
 
 ## TESTING
-- Frontend: `pnpm test` → vitest over `src/**/*.spec.ts`, **pure TypeScript only** (no `@angular/core` imports, node environment). Component contracts are checked by `ng build` with `strictTemplates`.
+- Frontend: `pnpm test` → `ng test` (the `@angular/build:unit-test` builder driving vitest) over `src/**/*.spec.ts`, in two tiers:
+  - **Pure TypeScript** — helpers, parsers, validators. The default: node environment, no framework import.
+  - **Component** — one component rendered through `TestBed`. May import `@angular/core`; opts into the DOM with a first-line `// @vitest-environment jsdom` docblock. `src/testing/` holds the six shared stand-ins: `resize-observer.ts` (the `ResizeObserver` jsdom lacks), `virtual-scroll.ts` (sizing a CDK viewport that measures zero), `tauri-git-stub.ts` (the typed `invoke` wrapper), `tauri-events.ts` (Tauri's own event bus, for the `repo-changed` watcher that bypasses `invoke`), `repo-fixtures.ts` (repository, commit and diff fixtures) and `icons.ts` (the icon set `app.config.ts` registers and no `TestBed` goes through).
+  - One file: `pnpm exec ng test --include <path under src>` (add `--no-watch` outside CI). Discovery lives in the `test` target of `angular.json`, runner settings in `vitest.config.ts`.
+  Component contracts are additionally checked by `ng build` with `strictTemplates`.
 - Rust: `cargo test --all-features`. Lint gate: `cargo clippy --all-targets -- -D warnings`; format gate: `cargo fmt --all -- --check`.
 
 ## COMMANDS
@@ -79,7 +83,7 @@ pnpm tauri build --debug # debug bundle, what CI's bundle-smoke runs
 pnpm build               # frontend-only production build (budgets 1.2 / 1.6 MB)
 pnpm lint                # biome check src
 pnpm format              # biome format --write src
-pnpm test                # vitest run
+pnpm test                # ng test --no-watch (vitest, both tiers)
 cd src-tauri && cargo clippy --all-targets -- -D warnings
 cd src-tauri && cargo test --all-features
 ```

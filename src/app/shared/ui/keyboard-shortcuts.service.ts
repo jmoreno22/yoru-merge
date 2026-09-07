@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import { matchesCombo, type ParsedCombo, parseCombo } from './combo';
+import { formatCombo, matchesCombo, type ParsedCombo, parseCombo } from './combo';
 
 export interface Shortcut {
   /** Stable id, also used to unregister and to key the settings table. */
@@ -65,6 +65,17 @@ export class KeyboardShortcutsService {
     ]);
     this.listen();
     return () => this.unregister(shortcut.id);
+  }
+
+  /**
+   * `label` followed by the combo `id` is registered with — `Close (Esc)` —
+   * or the bare label while nothing owns `id`. Tooltips read it at render
+   * time, so a rebind, or a registration that changes owner, cannot leave a
+   * stale key in a hint.
+   */
+  hint(label: string, id: string): string {
+    const combo = this._shortcuts().find((s) => s.id === id)?.combo;
+    return combo === undefined ? label : `${label} (${formatCombo(combo).join('+')})`;
   }
 
   unregister(id: string): void {

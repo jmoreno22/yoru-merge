@@ -13,6 +13,8 @@ import { NgIcon } from '@ng-icons/core';
 import type { BlameLine } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { EscapeRank } from '../../core/services/escape-layers';
+import { EscapeLayersService } from '../../core/services/escape-layers.service';
 import { relativeTime, shortSha } from '../../core/utils';
 import type { MenuItem } from '../../shared/ui';
 import {
@@ -46,16 +48,14 @@ interface BlameRow {
   templateUrl: './blame-viewer.html',
   styleUrl: './blame-viewer.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    'data-testid': 'blame-viewer-host',
-    '(document:keydown.escape)': 'onEscape()',
-  },
+  host: { 'data-testid': 'blame-viewer-host' },
 })
 export class BlameViewer {
   private readonly service = inject(CurrentRepoService);
   private readonly appearance = inject(AppearanceService);
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
+  private readonly escapeLayers = inject(EscapeLayersService);
 
   /** Path of the file to blame, or `null` to hide the overlay. */
   readonly file = input.required<string | null>();
@@ -104,6 +104,12 @@ export class BlameViewer {
   });
 
   constructor() {
+    this.escapeLayers.bind(
+      EscapeRank.stackedPanel,
+      computed(() => this.file() !== null),
+      () => this.close.emit(),
+    );
+
     effect(() => {
       const target = this.file();
       const rev = this.rev();
@@ -121,10 +127,6 @@ export class BlameViewer {
 
   protected onClose(): void {
     this.close.emit();
-  }
-
-  protected onEscape(): void {
-    if (this.file()) this.close.emit();
   }
 
   /** Reveals the commit in the history and steps out of the way. */
