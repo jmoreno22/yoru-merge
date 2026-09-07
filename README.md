@@ -127,7 +127,9 @@ repository that arrived as a folder or a zip the way you would before running
 
 - **History** — commit list with a canvas branch graph, ref pills, author
   avatars, infinite scroll over large repositories, and a commit inspector with
-  the full message, file list and per-file diff.
+  the full message and file list — a file's diff opens at full centre width in
+  the diff workspace, on a single click or, with that turned off, on
+  double-click, the open-large control or `Ctrl+D`.
 - **Working tree** — stage and unstage by file, hunk or line selection, discard,
   ignore, assume-unchanged, and a commit composer with conventional-commit
   chips, amend, sign-off and GPG signing.
