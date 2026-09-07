@@ -63,6 +63,7 @@ const USER_PREFERENCES: DurablePreferences = {
   commitsColumns: ['message', 'date'],
   commitHeaderCollapsed: true,
   commitFileListCollapsed: true,
+  commitFileClickOpensWorkspace: false,
 };
 
 /** What `initStore` does with whatever the migration hands back. */

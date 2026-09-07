@@ -242,6 +242,26 @@
       >
         <ng-icon name="lucideList" size="14px" aria-hidden="true" />
       </button>
+      <button
+        type="button"
+        class="mode-button"
+        [attr.aria-label]="
+          clickOpensWorkspace()
+            ? 'A single click opens the diff workspace'
+            : 'A single click only selects the file'
+        "
+        [attr.aria-pressed]="clickOpensWorkspace()"
+        [class.is-active]="clickOpensWorkspace()"
+        data-testid="inspector-click-opens"
+        [yoruTooltip]="
+          clickOpensWorkspace()
+            ? 'A single click opens the diff workspace'
+            : 'A single click only selects the file — double-click to open'
+        "
+        (click)="toggleClickOpens()"
+      >
+        <ng-icon name="lucideMaximize2" size="14px" aria-hidden="true" />
+      </button>
       <yoru-button
         class="shrink-0"
         size="sm"

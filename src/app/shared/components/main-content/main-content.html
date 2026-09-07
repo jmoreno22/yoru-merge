@@ -109,19 +109,20 @@
         data-testid="inspector-column"
       >
         @if (view() !== 'changes') {
-          <div class="flex min-h-0 flex-none flex-col">
+          <div class="flex min-h-0 flex-1 flex-col">
             <app-commit-inspector />
           </div>
         }
 
-        <!-- The diff viewer's home. It is the only growing child, so every
-             pixel the inspector releases lands here; while the workspace holds
-             the element the slot has nothing to show and takes no height. -->
+        <!-- The diff viewer's parking home. In Changes it is the working
+             tree's inline viewer and the only growing child; in History it
+             stays at zero height, because the commit diff is read only in the
+             workspace (AC-06) and the commit file list is what grows. -->
         <div
           class="flex min-h-0 flex-col border-[var(--app-border)]"
-          [class.flex-1]="!workspace.isOpen()"
-          [class.border-t]="!workspace.isOpen()"
-          [class.h-0]="workspace.isOpen()"
+          [class.flex-1]="view() === 'changes' && !workspace.isOpen()"
+          [class.border-t]="view() === 'changes' && !workspace.isOpen()"
+          [class.h-0]="view() !== 'changes' || workspace.isOpen()"
           data-testid="inspector-diff-slot"
         >
           <app-diff-viewer

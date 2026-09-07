@@ -188,6 +188,11 @@ export class CommitInspector {
     () => this.prefs.all().commitFileListCollapsed,
   );
 
+  /** AC-22: whether a single click on a file row opens the diff workspace. */
+  protected readonly clickOpensWorkspace = computed<boolean>(
+    () => this.prefs.all().commitFileClickOpensWorkspace,
+  );
+
   /** «Show more» pressed: the clamp stays off until another commit is picked. */
   protected readonly bodyExpanded = signal(false);
 
@@ -522,6 +527,10 @@ export class CommitInspector {
     this.prefs.set('commitFileListCollapsed', !this.fileListCollapsed());
   }
 
+  protected toggleClickOpens(): void {
+    this.prefs.set('commitFileClickOpensWorkspace', !this.clickOpensWorkspace());
+  }
+
   /**
    * Hands the layout policy what only the DOM knows and applies its answer as
    * the two variables the stylesheet and the header clamp read.
@@ -541,7 +550,6 @@ export class CommitInspector {
     const fileListCollapsed = this.fileListCollapsed();
     const fileRowH = this.rowHeight();
     const panelHeadH = this.appearance.panelHeadHeight();
-    const workspaceOpen = this.workspace.isOpen();
 
     const host = this.host.nativeElement;
     const column = host.closest(INSPECTOR_COLUMN);
@@ -577,11 +585,11 @@ export class CommitInspector {
     // Never zero: the header collapses a frame before this pass agrees, and a
     // zero clamp would blank the body for that frame.
     const clampLines = Math.max(layout.clampLines, 1);
-    // W-01d: the diff viewer element is away in the workspace, so the share the
-    // policy kept back for it is the list's — as many rows as fit, still capped
-    // by the file count and never fewer than the policy already granted.
+    // The History inspector hosts no diff viewer (AC-06), so the share the
+    // policy still keeps back for one is always the list's — as many rows as
+    // fit, capped by the file count and never fewer than the policy granted.
     const listRows =
-      workspaceOpen && layout.listRows > 0
+      layout.listRows > 0
         ? Math.max(
             layout.listRows,
             Math.min(
@@ -682,6 +690,12 @@ export class CommitInspector {
       const index = current.files.indexOf(path);
       if (index < 0) this.openLarge(path);
       else this.workspace.navigate(index);
+      return;
+    }
+
+    // AC-22: with the preference on, the row itself is the open gesture.
+    if (this.clickOpensWorkspace()) {
+      this.openLarge(path);
       return;
     }
 
