@@ -585,26 +585,13 @@ export class CommitInspector {
     // Never zero: the header collapses a frame before this pass agrees, and a
     // zero clamp would blank the body for that frame.
     const clampLines = Math.max(layout.clampLines, 1);
-    // The History inspector hosts no diff viewer (AC-06), so the share the
-    // policy still keeps back for one is always the list's — as many rows as
-    // fit, capped by the file count and never fewer than the policy granted.
-    const listRows =
-      layout.listRows > 0
-        ? Math.max(
-            layout.listRows,
-            Math.min(
-              fileCount,
-              layout.listRows + Math.floor(layout.diffHeight / fileRowH),
-            ),
-          )
-        : layout.listRows;
     // The row height is in the key because the list's box is rows x token: a
     // density change resizes it without moving the row count.
-    const applied = `${listRows}/${clampLines}/${fileRowH}/${layout.headerMaxH}`;
+    const applied = `${layout.listRows}/${clampLines}/${fileRowH}/${layout.headerMaxH}`;
     if (applied === this.appliedLayout) return;
     this.appliedLayout = applied;
 
-    host.style.setProperty('--inspector-list-rows', String(listRows));
+    host.style.setProperty('--inspector-list-rows', String(layout.listRows));
     host.style.setProperty('--inspector-clamp-lines', String(clampLines));
     host.style.setProperty('--inspector-header-max-h', `${layout.headerMaxH}px`);
     // The CDK caches the viewport height and re-reads it only on a window

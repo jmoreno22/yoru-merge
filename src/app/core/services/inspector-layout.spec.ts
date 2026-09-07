@@ -18,8 +18,19 @@ const COMPACT_TOKENS = {
   headerFixedH: 96,
 };
 
+// The share the spec measures is the height the list BLOCK receives, not
+// rows x rowH: with two files the list takes two rows and leaves the rest
+// empty (AC-04, AC-05), so counting rows would report a false starvation.
+// What the policy guarantees is that the header never eats into the share,
+// and `headerMaxH` is exactly the line it may not cross.
+const listShare = (
+  availableHeight: number,
+  stacked: number,
+  headerMaxH: number,
+): number => (availableHeight - stacked - headerMaxH) / (availableHeight - stacked);
+
 describe('computeInspectorLayout', () => {
-  it('yields the file list to 2 rows then the body clamp to 1 line at the 960x640 squeeze', () => {
+  it('gives the whole remainder to the list at the 960x640 squeeze: no yield is needed once the diff is gone', () => {
     const result = computeInspectorLayout({
       availableHeight: 420,
       fileCount: 30,
@@ -29,18 +40,17 @@ describe('computeInspectorLayout', () => {
       stackedPanelsHeight: 0,
       tokens: COMFORTABLE_TOKENS,
     });
-    // unshrunk: listRows 6, clampLines 4 -> diffHeight 22, far under the
-    // 210 floor, so both yields fire in order. Both still leave a 130 px
-    // header against a 116 px cap, so the header scrolls inside it and the
-    // clamp lands the squeeze case exactly on the floor.
-    expect(result.listRows).toBe(2);
-    expect(result.clampLines).toBe(1);
-    expect(result.diffHeight).toBe(210);
-    // 420 − 210 floor − (34 head + 2 × 30 rows) = 116 (T30 — Q5).
-    expect(result.headerMaxH).toBe(116);
+    // The list is the growing child now (ADR-0004 amendment): the header at
+    // its full 4-line clamp is 184 px against a 210 px cap, so nothing yields
+    // and the list keeps 420 - 184 - 34 = 202 px, six whole rows of 30.
+    expect(result.listRows).toBe(6);
+    expect(result.clampLines).toBe(4);
+    // 420 - max(50 % floor 210, 2-row floor 94) = 210.
+    expect(result.headerMaxH).toBe(210);
+    expect(listShare(420, 0, result.headerMaxH)).toBeGreaterThanOrEqual(0.5);
   });
 
-  it('yields the same way in compact density, with the floor met after both shrinks', () => {
+  it('yields the same way in compact density, where the shorter head fits a seventh row', () => {
     const result = computeInspectorLayout({
       availableHeight: 420,
       fileCount: 30,
@@ -50,16 +60,13 @@ describe('computeInspectorLayout', () => {
       stackedPanelsHeight: 0,
       tokens: COMPACT_TOKENS,
     });
-    expect(result.listRows).toBe(2);
-    expect(result.clampLines).toBe(1);
-    expect(result.diffHeight).toBe(216);
-    expect(result.diffHeight / 420).toBeGreaterThanOrEqual(0.5);
-    // 420 − 210 floor − (30 head + 2 × 30 rows) = 120, and the 114 px header
-    // fits under it, which is why the diff keeps its unclamped 216 (T30 — Q5).
-    expect(result.headerMaxH).toBe(120);
+    expect(result.listRows).toBe(7);
+    expect(result.clampLines).toBe(4);
+    expect(result.headerMaxH).toBe(210);
+    expect(listShare(420, 0, result.headerMaxH)).toBeGreaterThanOrEqual(0.5);
   });
 
-  it('takes exactly two rows for two files with no shrink needed, diff well over half', () => {
+  it('takes exactly two rows for two files and reserves no empty rows beyond them (AC-04)', () => {
     const result = computeInspectorLayout({
       availableHeight: 640,
       fileCount: 2,
@@ -71,8 +78,20 @@ describe('computeInspectorLayout', () => {
     });
     expect(result.listRows).toBe(2);
     expect(result.clampLines).toBe(0);
-    expect(result.diffHeight).toBe(434);
-    expect(result.diffHeight / 640).toBeGreaterThanOrEqual(0.6);
+    expect(result.headerMaxH).toBe(320);
+  });
+
+  it('gives a single file a single row, never the 2-row floor as padding (AC-04)', () => {
+    const result = computeInspectorLayout({
+      availableHeight: 600,
+      fileCount: 1,
+      bodyLines: 2,
+      headerCollapsed: false,
+      fileListCollapsed: false,
+      stackedPanelsHeight: 0,
+      tokens: COMFORTABLE_TOKENS,
+    });
+    expect(result.listRows).toBe(1);
   });
 
   it('reserves no clamp height beyond the actual body length for a short body', () => {
@@ -87,7 +106,6 @@ describe('computeInspectorLayout', () => {
     });
     expect(result.listRows).toBe(3);
     expect(result.clampLines).toBe(1);
-    expect(result.diffHeight).toBe(346);
   });
 
   it('reports 0 rows for 0 files, never a row for the empty-state line', () => {
@@ -103,7 +121,7 @@ describe('computeInspectorLayout', () => {
     expect(result.listRows).toBe(0);
   });
 
-  it('caps at 6 rows for 7 or more files at a comfortable height', () => {
+  it('has no upper cap on the rows: nine files get nine rows when the column fits them (AC-04)', () => {
     const result = computeInspectorLayout({
       availableHeight: 800,
       fileCount: 9,
@@ -113,12 +131,27 @@ describe('computeInspectorLayout', () => {
       stackedPanelsHeight: 0,
       tokens: COMFORTABLE_TOKENS,
     });
-    expect(result.listRows).toBe(6);
+    // The pre-reversal policy capped this at 6 to protect the diff slot.
+    expect(result.listRows).toBe(9);
     expect(result.clampLines).toBe(2);
-    expect(result.diffHeight).toBe(438);
   });
 
-  it('zeroes the clamp and shrinks the header to a summary line when it is collapsed, diff at least 75%', () => {
+  it('shows as many rows as the column fits when the file count exceeds them (AC-04)', () => {
+    const result = computeInspectorLayout({
+      availableHeight: 800,
+      fileCount: 30,
+      bodyLines: 2,
+      headerCollapsed: false,
+      fileListCollapsed: false,
+      stackedPanelsHeight: 0,
+      tokens: COMFORTABLE_TOKENS,
+    });
+    // 800 - (112 + 2 x 18) - 34 = 618 -> 20 whole rows, and the list scrolls
+    // the remaining ten files.
+    expect(result.listRows).toBe(20);
+  });
+
+  it('zeroes the clamp when the header is collapsed and hands the list at least 75 %', () => {
     const result = computeInspectorLayout({
       availableHeight: 700,
       fileCount: 2,
@@ -130,11 +163,11 @@ describe('computeInspectorLayout', () => {
     });
     expect(result.clampLines).toBe(0);
     expect(result.listRows).toBe(2);
-    expect(result.diffHeight).toBe(572);
-    expect(result.diffHeight / 700).toBeGreaterThanOrEqual(0.75);
+    expect(result.headerMaxH).toBe(175);
+    expect(listShare(700, 0, result.headerMaxH)).toBeGreaterThanOrEqual(0.75);
   });
 
-  it('reaches the same 75% collapsed-header floor in compact density', () => {
+  it('reaches the same 75 % collapsed-header floor in compact density', () => {
     const result = computeInspectorLayout({
       availableHeight: 700,
       fileCount: 2,
@@ -145,8 +178,8 @@ describe('computeInspectorLayout', () => {
       tokens: COMPACT_TOKENS,
     });
     expect(result.clampLines).toBe(0);
-    expect(result.diffHeight).toBe(580);
-    expect(result.diffHeight / 700).toBeGreaterThanOrEqual(0.75);
+    expect(result.headerMaxH).toBe(175);
+    expect(listShare(700, 0, result.headerMaxH)).toBeGreaterThanOrEqual(0.75);
   });
 
   it('drops the list to its header-only height when the file list is collapsed', () => {
@@ -160,7 +193,9 @@ describe('computeInspectorLayout', () => {
       tokens: COMFORTABLE_TOKENS,
     });
     expect(result.listRows).toBe(0);
-    expect(result.diffHeight).toBe(418);
+    // A collapsed list claims no share (AC-05: the released height is left
+    // empty when nothing is stacked), so the cap is everything but its head.
+    expect(result.headerMaxH).toBe(566);
   });
 
   it('treats a stacked panel share as fixed, subtracted before the floor is computed', () => {
@@ -173,12 +208,11 @@ describe('computeInspectorLayout', () => {
       stackedPanelsHeight: 200,
       tokens: COMFORTABLE_TOKENS,
     });
-    // remainder is 500, not 700: the list still yields to 2 rows to keep
-    // the diff at half of the 500 remainder, not half of the raw 700.
-    expect(result.listRows).toBe(2);
+    // remainder is 500, not 700: the floor is half of the 500 remainder.
+    expect(result.listRows).toBe(4);
     expect(result.clampLines).toBe(2);
-    expect(result.diffHeight).toBe(258);
-    expect(result.diffHeight / (700 - 200)).toBeGreaterThanOrEqual(0.5);
+    expect(result.headerMaxH).toBe(250);
+    expect(listShare(700, 200, result.headerMaxH)).toBeGreaterThanOrEqual(0.5);
   });
 
   it('never drops the list below 2 rows or the clamp below 1 line while yielding', () => {
@@ -201,150 +235,65 @@ describe('computeInspectorLayout', () => {
     }
   });
 
-  describe('T16 — collapsed-header 75% floor', () => {
-    // Reachability check done by hand before writing these rows: with the
-    // header collapsed, the fixed cost is 2 * panelHeadH (summary-line
-    // header + file-list header) plus the list's 2-row floor
-    // (2 * fileRowH); the 75% floor is reachable only when that fixed cost
-    // is <= 25% of availableHeight. Every combination below clears it —
-    // comfortable at 540 px is the tightest, at 412 / 540 = 76.30% against
-    // a 405 px floor (a 7 px margin) — so none of these twelve
-    // configurations is the "cannot reach 75%" case the task's DoD asks to
-    // document; that case only starts below ~512 px (comfortable) /
-    // ~480 px (compact), outside this table's 540 / 700 px range.
-    const collapsedCases: Array<{
-      tokenLabel: string;
-      tokens: typeof COMFORTABLE_TOKENS;
-      availableHeight: number;
-      fileCount: number;
-      expectedDiffHeight: number;
-    }> = [
-      {
-        tokenLabel: 'comfortable',
-        tokens: COMFORTABLE_TOKENS,
-        availableHeight: 540,
-        fileCount: 2,
-        expectedDiffHeight: 412,
-      },
-      {
-        tokenLabel: 'comfortable',
-        tokens: COMFORTABLE_TOKENS,
-        availableHeight: 540,
-        fileCount: 6,
-        expectedDiffHeight: 412,
-      },
-      {
-        tokenLabel: 'comfortable',
-        tokens: COMFORTABLE_TOKENS,
-        availableHeight: 540,
-        fileCount: 30,
-        expectedDiffHeight: 412,
-      },
-      {
-        tokenLabel: 'comfortable',
-        tokens: COMFORTABLE_TOKENS,
-        availableHeight: 700,
-        fileCount: 2,
-        expectedDiffHeight: 572,
-      },
-      {
-        tokenLabel: 'comfortable',
-        tokens: COMFORTABLE_TOKENS,
-        availableHeight: 700,
-        fileCount: 6,
-        expectedDiffHeight: 572,
-      },
-      {
-        tokenLabel: 'comfortable',
-        tokens: COMFORTABLE_TOKENS,
-        availableHeight: 700,
-        fileCount: 30,
-        expectedDiffHeight: 572,
-      },
-      {
-        tokenLabel: 'compact',
-        tokens: COMPACT_TOKENS,
-        availableHeight: 540,
-        fileCount: 2,
-        expectedDiffHeight: 420,
-      },
-      {
-        tokenLabel: 'compact',
-        tokens: COMPACT_TOKENS,
-        availableHeight: 540,
-        fileCount: 6,
-        expectedDiffHeight: 420,
-      },
-      {
-        tokenLabel: 'compact',
-        tokens: COMPACT_TOKENS,
-        availableHeight: 540,
-        fileCount: 30,
-        expectedDiffHeight: 420,
-      },
-      {
-        tokenLabel: 'compact',
-        tokens: COMPACT_TOKENS,
-        availableHeight: 700,
-        fileCount: 2,
-        expectedDiffHeight: 580,
-      },
-      {
-        tokenLabel: 'compact',
-        tokens: COMPACT_TOKENS,
-        availableHeight: 700,
-        fileCount: 6,
-        expectedDiffHeight: 580,
-      },
-      {
-        tokenLabel: 'compact',
-        tokens: COMPACT_TOKENS,
-        availableHeight: 700,
-        fileCount: 30,
-        expectedDiffHeight: 580,
-      },
-    ];
-
-    it.each(collapsedCases)(
-      'yields the list to its 2-row floor to keep the collapsed-header diff at >= 75% ($tokenLabel, $availableHeight px, $fileCount files)',
-      ({ tokens, availableHeight, fileCount, expectedDiffHeight }) => {
-        const result = computeInspectorLayout({
-          availableHeight,
-          fileCount,
-          bodyLines: 12,
-          headerCollapsed: true,
-          fileListCollapsed: false,
-          stackedPanelsHeight: 0,
-          tokens,
-        });
-        expect(result.listRows).toBe(2);
-        expect(result.diffHeight).toBe(expectedDiffHeight);
-        expect(result.diffHeight / availableHeight).toBeGreaterThanOrEqual(0.75);
-      },
-    );
-
-    it('does not apply the collapsed-header floor when the header is expanded', () => {
+  describe('the inverted yield order (AC-03)', () => {
+    it('shrinks the body clamp before the list gives up a single row', () => {
+      // A 300 px column: the 50 % floor leaves the header 150 px, which fits
+      // 112 fixed + 2 lines. The clamp gives up its 3rd and 4th line; the
+      // list keeps every row the remaining space fits.
       const result = computeInspectorLayout({
-        availableHeight: 1000,
-        fileCount: 6,
+        availableHeight: 300,
+        fileCount: 30,
         bodyLines: 12,
         headerCollapsed: false,
         fileListCollapsed: false,
         stackedPanelsHeight: 0,
         tokens: COMFORTABLE_TOKENS,
       });
-      // Share here is 602 / 1000 = 60.2%: under 75%, but the existing 50%
-      // floor (AC-03) is already met, so nothing should yield. A fix that
-      // applied the 75% floor without gating on headerCollapsed would
-      // wrongly shrink listRows to 2 here.
-      expect(result.listRows).toBe(6);
-      expect(result.clampLines).toBe(4);
-      expect(result.diffHeight).toBe(602);
-      expect(result.diffHeight / 1000).toBeGreaterThanOrEqual(0.5);
+      expect(result.clampLines).toBe(2);
+      expect(result.listRows).toBe(3);
+      expect(listShare(300, 0, result.headerMaxH)).toBeGreaterThanOrEqual(0.5);
+    });
+
+    it('scrolls the expanded header inside its cap once the clamp is at its floor, rather than starving the list', () => {
+      // A commit with thirty refs: the fixed header alone (400 px) is taller
+      // than the 320 px the list's floor leaves it, so the cap binds and the
+      // header scrolls inside it. The list still gets its half.
+      const result = computeInspectorLayout({
+        availableHeight: 640,
+        fileCount: 30,
+        bodyLines: 12,
+        headerCollapsed: false,
+        fileListCollapsed: false,
+        stackedPanelsHeight: 0,
+        tokens: { ...COMFORTABLE_TOKENS, headerFixedH: 400 },
+      });
+      expect(result.headerMaxH).toBe(320);
+      expect(result.headerMaxH).toBeLessThan(400);
+      expect(result.clampLines).toBe(1);
+      expect(result.listRows).toBe(9);
+      expect(listShare(640, 0, result.headerMaxH)).toBeGreaterThanOrEqual(0.5);
+    });
+
+    it('holds the 2-row floor when even the floors cannot all be met', () => {
+      // 150 px of column: the 50 % floor is 75 px, under the list's own
+      // 94 px 2-row floor, so the harder floor wins and the cap collapses to
+      // 56 px. The list never drops under two rows.
+      const result = computeInspectorLayout({
+        availableHeight: 150,
+        fileCount: 30,
+        bodyLines: 12,
+        headerCollapsed: false,
+        fileListCollapsed: false,
+        stackedPanelsHeight: 0,
+        tokens: COMFORTABLE_TOKENS,
+      });
+      expect(result.listRows).toBe(2);
+      expect(result.clampLines).toBe(1);
+      expect(result.headerMaxH).toBe(56);
     });
   });
 
-  describe('T29 — the header cap the policy hands back (AC-03, AC-04, AC-06)', () => {
+  describe('T29 — the header cap the policy hands back (AC-03, AC-04)', () => {
     const heights = [200, 300, 420, 560, 700, 900];
     const fileCounts = [0, 1, 2, 6, 7, 30];
 
@@ -385,38 +334,39 @@ describe('computeInspectorLayout', () => {
       }
     });
 
-    it('floors the cap at one panel head when the remainder leaves almost nothing over (R8)', () => {
-      // 75 px of diff floor against a 94 px file list: the cap would be
-      // negative, and a header of 0 px hides the commit entirely.
-      const result = computeInspectorLayout({
-        availableHeight: 150,
-        fileCount: 30,
-        bodyLines: 12,
-        headerCollapsed: false,
-        fileListCollapsed: false,
-        stackedPanelsHeight: 0,
-        tokens: COMFORTABLE_TOKENS,
-      });
-
-      expect(result.headerMaxH).toBe(COMFORTABLE_TOKENS.panelHeadH);
-    });
-
-    it('keeps the diff at its floor when the header is taller than the cap allows (R3)', () => {
-      // A commit with 30 refs: the fixed header alone is taller than the
-      // share the diff floor leaves it, so the header scrolls inside the cap
-      // and the height the policy reports for the diff stays at the floor.
-      const result = computeInspectorLayout({
-        availableHeight: 640,
-        fileCount: 30,
-        bodyLines: 12,
-        headerCollapsed: false,
-        fileListCollapsed: false,
-        stackedPanelsHeight: 0,
-        tokens: { ...COMFORTABLE_TOKENS, headerFixedH: 400 },
-      });
-
-      expect(result.headerMaxH).toBeLessThan(400);
-      expect(result.diffHeight).toBeGreaterThanOrEqual(0.5 * 640);
+    it('keeps the list at or over its share in every configuration where the list is expanded', () => {
+      for (const tokens of [COMFORTABLE_TOKENS, COMPACT_TOKENS]) {
+        for (const availableHeight of heights) {
+          for (const fileCount of fileCounts) {
+            for (const headerCollapsed of [false, true]) {
+              const result = computeInspectorLayout({
+                availableHeight,
+                fileCount,
+                bodyLines: 12,
+                headerCollapsed,
+                fileListCollapsed: false,
+                stackedPanelsHeight: 0,
+                tokens,
+              });
+              const floor = headerCollapsed ? 0.75 : 0.5;
+              const share = listShare(availableHeight, 0, result.headerMaxH);
+              // The 2-row floor is the one exception: on a very short column
+              // it is taller than the share, and hiding rows is worse than
+              // missing the ratio.
+              const twoRowFloorBinds =
+                tokens.panelHeadH + 2 * tokens.fileRowH > (1 - floor) * availableHeight;
+              expect({ availableHeight, fileCount, headerCollapsed, ok: true }).toEqual(
+                {
+                  availableHeight,
+                  fileCount,
+                  headerCollapsed,
+                  ok: share >= floor || twoRowFloorBinds,
+                },
+              );
+            }
+          }
+        }
+      }
     });
 
     it('rounds the cap to whole pixels when the measured inputs carry fractions (R9)', () => {

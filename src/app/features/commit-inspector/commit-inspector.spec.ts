@@ -27,15 +27,18 @@ import { DialogsService } from '../dialogs/dialogs.service';
 import { CommitInspector } from './commit-inspector';
 
 const SHORT_SHA = COMMIT_SHA.slice(0, 7);
-/** Rows the layout policy grants the file list at the column heights used here. */
+/** Rows of viewport box the specs give the CDK list; jsdom sizes nothing. */
 const LIST_ROWS = 6;
-/** Thirty files: past the six-row cap, so the list has to scroll (AC-04). */
+/** Thirty files: more than the column fits, so the list has to scroll (AC-04). */
 const THIRTY = Array.from({ length: 30 }, (_, i) => `file${i}.ts`);
 /**
  * Column height at which the policy has to spend both of its floors, and the
  * body line height jsdom reports as `normal` unless a spec sets it (AC-03).
  */
 const SQUEEZED_COLUMN_H = 300;
+// Taller than the half of SQUEEZED_COLUMN_H the list floor leaves the header,
+// so the cap binds and the clamp has to yield (AC-03).
+const TALL_HEADER_H = 200;
 const BODY_LINE_H = 16;
 const DIFF = '@@ -1 +1 @@\n-old\n+new\n';
 
@@ -124,7 +127,7 @@ interface Mounted {
 
 /**
  * Renders the inspector inside a column `columnHeight` pixels tall, with the
- * file list given the six-row box the layout policy grants it.
+ * file list given a fixed viewport box the CDK can scroll inside.
  */
 function mount(columnHeight = 800): Mounted {
   const fixture = TestBed.createComponent(InspectorColumn);
@@ -191,6 +194,22 @@ function measureBodyAs(
   Object.defineProperty(body, 'scrollHeight', { configurable: true, get: () => total });
   observer.resize(body, { width: 320, height: shown });
   return body;
+}
+
+/**
+ * Gives the commit header the scroll height a browser would have measured for
+ * a commit carrying many refs. The policy derives `headerFixedH` from the
+ * header's `scrollHeight` minus the body's box, so this is what makes the part
+ * the clamp CANNOT shrink cost anything in jsdom.
+ */
+function measureHeaderAs(host: HTMLElement, total: number): HTMLElement {
+  const header = host.querySelector<HTMLElement>('.inspector-header');
+  if (!header) throw new Error('The commit header is not rendered.');
+  Object.defineProperty(header, 'scrollHeight', {
+    configurable: true,
+    get: () => total,
+  });
+  return header;
 }
 
 /** The `--inspector-*` variables the layout pass writes on the panel host. */
@@ -396,34 +415,48 @@ describe('CommitInspector header collapse (AC-02)', () => {
 });
 
 describe('CommitInspector squeezed column (AC-03)', () => {
-  it('AC-03: the minimum height writes two list rows and one clamp line (T27)', async () => {
+  it('AC-03: the squeezed column takes it out of the clamp, never out of the list floor', async () => {
+    // The exact pixel arithmetic is pinned in inspector-layout.spec.ts; every
+    // box is zero high in jsdom, so a row here that asserted a row COUNT would
+    // be pinning the environment. What it can prove is the yield ORDER the
+    // reversal inverted (AC-03, ADR-0004 amendment): the clamp gives way
+    // first, and the list still holds its two-row floor.
     repo.commitDetails.set(commitDetails(THIRTY, { body: lines(12) }));
     const { host } = mount(SQUEEZED_COLUMN_H);
     await settle();
 
-    // A 12-line body clamped to four: the policy has both a long message and
-    // thirty files to fit into a column that cannot hold either in full.
-    measureBodyAs(host, 4 * BODY_LINE_H, 12 * BODY_LINE_H, BODY_LINE_H);
+    const body = measureBodyAs(host, 4 * BODY_LINE_H, 12 * BODY_LINE_H, BODY_LINE_H);
+    // The header has to cost something for the yield to be observable: jsdom
+    // gives every box zero height, which would leave the policy room it never
+    // has at 960x640. A commit with many refs is what makes it real.
+    measureHeaderAs(host, TALL_HEADER_H + body.clientHeight);
     TestBed.tick();
 
-    expect(layoutVariable(host, '--inspector-list-rows')).toBe('2');
-    expect(layoutVariable(host, '--inspector-clamp-lines')).toBe('1');
+    expect(Number(layoutVariable(host, '--inspector-clamp-lines'))).toBe(1);
+    expect(
+      Number(layoutVariable(host, '--inspector-list-rows')),
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 
 describe('CommitInspector file list (AC-04)', () => {
-  it('AC-04: thirty files get six rows of height and the total count', async () => {
+  it('AC-04: thirty files get every row the column fits, with no six-row cap', async () => {
     const paths = Array.from({ length: 30 }, (_, i) => `file${i}.ts`);
     repo.commitDetails.set(commitDetails(paths));
     const { fixture, host } = mount();
     await settle();
 
-    const inspector = host.querySelector<HTMLElement>('app-commit-inspector');
-    expect(inspector?.style.getPropertyValue('--inspector-list-rows')).toBe('6');
+    // The pre-reversal policy pinned this at exactly 6 to hold height back
+    // for the diff slot. With no diff slot in History the list is the growing
+    // child (AC-04), so what the row proves is that the cap is gone: more
+    // than six rows, and never more than the file count.
+    const rows = Number(layoutVariable(host, '--inspector-list-rows'));
+    expect(rows).toBeGreaterThan(6);
+    expect(rows).toBeLessThanOrEqual(30);
     expect(host.querySelector('.files-header .meta-label')?.textContent).toContain(
       '30 files',
     );
-    // Six rows of height for thirty items is what makes the list scroll.
+    // Fewer rows of height than items is what makes the list scroll.
     expect(viewportOf(fixture)?.getDataLength()).toBe(30);
   });
 
@@ -437,13 +470,14 @@ describe('CommitInspector file list (AC-04)', () => {
     expect(host.querySelectorAll('[data-focus-key]')).toHaveLength(2);
   });
 
-  it('AC-04 / AC-06: the list takes the diff share while the workspace is open (T27)', async () => {
+  it('AC-04 / AC-06: the inspector column does not change shape when the workspace opens', async () => {
     repo.commitDetails.set(commitDetails(THIRTY));
     const { host } = mount();
     await settle();
 
     const rows = (): number => Number(layoutVariable(host, '--inspector-list-rows'));
-    expect(rows()).toBe(LIST_ROWS);
+    const closed = rows();
+    expect(closed).toBeGreaterThan(0);
 
     workspace.open({
       source: { kind: 'commit', sha: COMMIT_SHA },
@@ -453,15 +487,16 @@ describe('CommitInspector file list (AC-04)', () => {
     });
     await settle();
 
-    // W-01d: the diff viewer is away in the workspace, so the height the
-    // policy kept for it goes to the list — up to the file count.
-    expect(rows()).toBeGreaterThan(LIST_ROWS);
-    expect(rows()).toBeLessThanOrEqual(THIRTY.length);
+    // Before the reversal the list grew here, taking over the height the diff
+    // slot released. Now there is no diff share to hand over: the list already
+    // owns the column, so opening and closing the workspace must leave it
+    // exactly as it was — «the inspector column does not change shape» (AC-06).
+    expect(rows()).toBe(closed);
 
     workspace.close();
     await settle();
 
-    expect(rows()).toBe(LIST_ROWS);
+    expect(rows()).toBe(closed);
   });
 
   it('AC-04: zero files leave the header with the count and one «No files changed» line', async () => {
@@ -509,7 +544,15 @@ describe('CommitInspector open-large gesture (AC-06)', () => {
   /** Also the displayed order: tree order with the `src` folder row skipped. */
   const PATHS = ['src/a.ts', 'src/b.ts', 'README.md'];
 
+  /**
+   * The three gestures below are the ones AC-06 lists for the preference OFF
+   * («with that preference off — double-click, its open-large control, or the
+   * shortcut»), so the preference is pinned rather than inherited: with it on,
+   * the click that makes the row active would itself open the workspace and
+   * these rows would be measuring the wrong gesture. The ON path is T36's.
+   */
   async function withActiveRow(): Promise<HTMLElement> {
+    prefs.set('commitFileClickOpensWorkspace', false);
     repo.commitDetails.set(commitDetails(PATHS));
     const { host } = mount();
     await settle();
