@@ -135,9 +135,9 @@ const MIN_COLUMN_HEIGHT = 560;
 const FIXTURE_FILE_ROWS = 4;
 
 /**
- * Everything on screen that keeps the commit header from pushing the diff slot
- * below its floor (AC-03): a cap the header scrolls inside, or a wrapper that
- * can give way. jsdom lays nothing out, so the row asserts the bound itself
+ * Everything on screen that keeps the commit header from pushing the commit
+ * file list below its floor (AC-03): a cap the header scrolls inside, or a
+ * wrapper that can give way. jsdom lays nothing out, so the row asserts the bound itself
  * rather than the pixels it produces; either shape satisfies it.
  *
  * `overflow-y` carries the cap here, not `max-height`: jsdom drops a
@@ -186,6 +186,15 @@ function sizeColumn(host: HTMLElement, height: number): void {
   });
 }
 
+/** The block that hosts the commit header and file list — the growing child. */
+function inspectorBlock(host: HTMLElement): HTMLElement {
+  const element = host
+    .querySelector('[data-testid="inspector-column"] app-commit-inspector')
+    ?.closest<HTMLElement>('div');
+  if (!element) throw new Error('The commit inspector block is not on screen.');
+  return element;
+}
+
 /** Direct children of the inspector column that flex-grow. */
 function growingChildren(host: HTMLElement): HTMLElement[] {
   const column = host.querySelector<HTMLElement>('[data-testid="inspector-column"]');
@@ -212,12 +221,16 @@ describe('Workbench centre wiring', () => {
     observer.restore();
   });
 
-  it('AC-06: the viewer option controls render once, inside the workspace, and the diff slot collapses', async () => {
+  it('AC-06: the viewer option controls render once, inside the workspace, and the History slot only parks the element', async () => {
     const bench = await renderWorkbench();
 
-    // Before: the viewer is at home in the inspector and the slot grows.
+    // Before: the viewer element is parked at home, but in History the slot is
+    // already at zero height — the commit diff is read only in the workspace,
+    // so the slot never grows there and the commit file list is what does
+    // (AC-06 as amended 2026-09-07).
     expect(slot(bench.host).querySelector('app-diff-viewer')).not.toBeNull();
-    expect(slot(bench.host).classList.contains('flex-1')).toBe(true);
+    expect(slot(bench.host).classList.contains('h-0')).toBe(true);
+    expect(slot(bench.host).classList.contains('flex-1')).toBe(false);
 
     await openWorkspace(bench);
 
@@ -238,11 +251,23 @@ describe('Workbench centre wiring', () => {
 
     const back = slot(bench.host);
     expect(back.querySelector('app-diff-viewer')).not.toBeNull();
-    expect(back.classList.contains('flex-1')).toBe(true);
-    expect(back.classList.contains('h-0')).toBe(false);
+    // Home again, and still parked: closing restores the element, not a slot
+    // that grows — that only happens in Changes.
+    expect(back.classList.contains('h-0')).toBe(true);
+    expect(back.classList.contains('flex-1')).toBe(false);
     for (const selector of OPTION_CONTROLS) {
       expect(bench.host.querySelectorAll(selector)).toHaveLength(1);
     }
+  });
+
+  it('AC-06: the Changes view keeps a real, growing slot for the working tree', async () => {
+    // The reversal is History-only: the working tree still reads its diff
+    // inline, which is why the slot is conditional rather than always h-0.
+    const bench = await renderWorkbench((prefs) => prefs.setRailView('changes'));
+
+    expect(slot(bench.host).querySelector('app-diff-viewer')).not.toBeNull();
+    expect(slot(bench.host).classList.contains('flex-1')).toBe(true);
+    expect(slot(bench.host).classList.contains('h-0')).toBe(false);
   });
 
   it('AC-17: changing the rail view closes the workspace and the Changes view shows its list', async () => {
@@ -299,7 +324,9 @@ describe('Workbench centre wiring', () => {
     expect(bench.host.querySelectorAll('.inspector-header yoru-badge')).toHaveLength(
       MANY_REFS.length,
     );
-    expect(growingChildren(bench.host)).toEqual([slot(bench.host)]);
+    // The list block is the growing child now, not the diff slot: the header
+    // is what the cap binds, and the height it gives up lands in the list.
+    expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
 
     expect(headerBounds(bench.host)).not.toEqual([]);
 
@@ -334,14 +361,16 @@ describe('Workbench centre wiring', () => {
       },
     });
     expect(written).toBe(`${expected.headerMaxH}px`);
-    // round(560 − 280 − (34 + 4 × 30)) (T31 — V3).
-    expect(expected.headerMaxH).toBe(126);
+    // round(560 − max(50 % floor 280, 2-row floor 34 + 2 × 30)) — the cap is
+    // what the list's share leaves the header, not what the diff's did
+    // (T31 — V3, re-pinned for the 2026-09-07 reversal).
+    expect(expected.headerMaxH).toBe(280);
   });
 
   it('AC-03: the header cap is written in whole pixels when the column height is odd (T29 — R9)', async () => {
     const bench = await renderWorkbench();
 
-    // Half of an odd remainder is the diff floor, so every term downstream of
+    // Half of an odd remainder is the list floor, so every term downstream of
     // it carries the fraction the layout pass then keys and writes.
     sizeColumn(bench.host, MIN_COLUMN_HEIGHT + 1);
     bench.repo.commitDetails.set({ ...commitDetails(), refs: [...MANY_REFS] });
@@ -350,7 +379,7 @@ describe('Workbench centre wiring', () => {
     expect(headerMaxH(bench.host)).toMatch(/^\d+px$/);
   });
 
-  it('AC-18: the inspector at the bottom renders both collapsible blocks and only the diff slot grows', async () => {
+  it('AC-18: the inspector at the bottom renders both collapsible blocks and only the commit file list grows', async () => {
     const bench = await renderWorkbench((prefs) =>
       prefs.setInspectorPlacement('bottom'),
     );
@@ -371,7 +400,7 @@ describe('Workbench centre wiring', () => {
     );
     expect(collapseHeader).not.toBeNull();
     expect(collapseFiles).not.toBeNull();
-    expect(growingChildren(bench.host)).toEqual([slot(bench.host)]);
+    expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
 
     collapseHeader?.click();
     await bench.settle();
@@ -379,7 +408,7 @@ describe('Workbench centre wiring', () => {
     expect(
       bench.host.querySelector('[data-testid="inspector-expand-header"]'),
     ).not.toBeNull();
-    expect(growingChildren(bench.host)).toEqual([slot(bench.host)]);
+    expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
 
     bench.host
       .querySelector<HTMLElement>('[data-testid="inspector-collapse-files"] button')
@@ -389,6 +418,6 @@ describe('Workbench centre wiring', () => {
     expect(
       bench.host.querySelector('[data-testid="inspector-expand-files"]'),
     ).not.toBeNull();
-    expect(growingChildren(bench.host)).toEqual([slot(bench.host)]);
+    expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
   });
 });
