@@ -21,6 +21,7 @@ import type { CommitInfo } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { TauriGitService } from '../../core/services/tauri-git.service';
 import { MainContent } from '../../shared/components/main-content/main-content';
 
@@ -91,6 +92,12 @@ async function renderHistoryWorkbench(): Promise<Workbench> {
       },
     ],
   });
+
+  // Pinned rather than inherited: with the default on, the click that makes a
+  // file row active would itself open the workspace (AC-22), and the rows below
+  // would never reach the gesture they are about. The click-to-open path is
+  // covered where it belongs, in the commit inspector's own spec.
+  TestBed.inject(PreferencesService).set('commitFileClickOpensWorkspace', false);
 
   const repo = TestBed.inject(CurrentRepoService);
   repo.repo.set(TEST_REPO);
