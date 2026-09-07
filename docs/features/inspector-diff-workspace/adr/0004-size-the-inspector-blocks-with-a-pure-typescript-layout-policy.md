@@ -2,14 +2,14 @@
 status: Accepted
 owner: "Jhoan Moreno"
 reviewers: ["Tech Lead"]
-updated_at: "2026-09-02"
+updated_at: "2026-09-07"
 feature_size: "M"
 ticket: "none — owner interview 2026-09-02"
 ---
 
 # 0004 — Size the inspector blocks with a pure-TypeScript layout policy
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-09-07 — see below)
 - **Date:** 2026-09-02
 - **Deciders:** Jhoan Moreno (Owner / Architect), during the design Socratic walk
 
@@ -44,6 +44,34 @@ The inspector column is a fixed flex split today: commit inspector `flex-[2]`, d
 
 **Neutral**
 - The 50 % floor is measured on the inspector column as a whole; with blame or file history stacked, the policy treats their share as fixed (AC-19) and computes floors on the remainder.
+
+## Amendment — 2026-09-07 (owner)
+
+The **decision stands**: the inspector blocks are still sized by a pure-TypeScript policy fed by a
+`ResizeObserver`, for the same reason (a sequential yield with floors is not expressible in CSS and
+is not unit-testable without a browser tier). What changes is *what the policy protects*.
+
+The owner reversed the composition of the History inspector: it no longer hosts a diff viewer at
+all — the commit diff is read only in the diff workspace (spec AC-06, AC-22, and the reversal
+recorded in spec §8). Consequences for this ADR:
+
+- **The protected block is now the commit file list, not the diff.** The 50 % / 75 % floors keep
+  their numbers and their measurement, but they are floors on the list's share.
+- **The yield order inverts.** AC-03 used to shrink the file list first to protect the diff; now the
+  body clamp shrinks first, down to one line plus «show more», and the expanded header then scrolls
+  inside `headerMaxH`, so the list is the last block to give anything up.
+- **`listRows` loses its upper bound.** The 6-row cap existed to stop a long list from starving the
+  diff slot (spec AC-04). With no diff slot in History the list is the growing child and shows as
+  many rows as the column fits; the 2-row floor stays.
+- **`diffHeight` stops being an output the History view consumes.** The Changes view keeps its
+  inline viewer, so the diff slot and ADR-0003's portal are unaffected — in History the slot is
+  simply a zero-height parking home for the element.
+- **Consequence added:** the policy's surface shrinks to the header clamp, the header cap and the
+  list floor. The 16 rows of `inspector-layout.spec.ts` that assert `diffHeight` and the diff floors
+  are rewritten against the list's share; the numbers do not change, the subject does.
+
+Not superseded: no alternative was reconsidered, and the CSS-only option is rejected for the same
+reasons as in 2026-09-02.
 
 ## Links
 

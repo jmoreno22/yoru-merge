@@ -2,7 +2,7 @@
 status: Draft
 owner: "Jhoan Moreno"
 reviewers: ["Tech Lead"]
-updated_at: "2026-09-02"
+updated_at: "2026-09-07"
 feature_size: "M"
 ---
 
@@ -17,13 +17,13 @@ In the History view the inspector stacks three blocks in a fixed two-to-three pr
 
 Why now: the 1.0.5 release closed the toolchain upgrade work, and the owner's daily use since then surfaced this as the top friction: the commit file list and the diff read as two views of the same thing competing for space in one column. No roadmap item touches the workbench layout, so a layout change now does not collide with other UI work. A survey of ten adjacent products (desktop Git clients, terminal clients and web review tools) found none that combines a collapsible commit header, a diff-dominant column and a click-to-open large view with a one-gesture return and file-to-file navigation; two terminal clients each have half of it. The combination is a genuine differentiator.
 
-Committed approach: the commit header opens expanded, with a long message body clamped to four lines and expandable in place, and collapses on demand into a one-line summary (subject, author, short sha) that keeps the commit actions one gesture away. The commit file list becomes compact, bounded in height and collapsible. The diff viewer takes all remaining height and never receives less than half the inspector: header and file list yield first. Any file can be opened in the **diff workspace**, a centre view state that replaces the commit list (or, in Changes, the working-changes lists and the commit composer) at full width and is closed by Esc or Close, restoring the exact previous selection, scroll and focus. «Split» stays the existing unified / side-by-side diff layout. History, and every view that shows a selected commit, gets the full treatment; Changes gets only the diff workspace gesture. The sharpest risk found in the failure-mode review is keyboard precedence: Esc and the hunk shortcuts already have several consumers and the app has no priority order between them, so layer precedence and shortcut distinctness are acceptance criteria here rather than design details. Success is measured as the share of inspector height the diff viewer receives (expanded and collapsed) and as the gesture count to read a file at full width and return.
+Committed approach: the commit header opens expanded, with a long message body clamped to four lines and expandable in place, and collapses on demand into a one-line summary (subject, author, short sha) that keeps the commit actions one gesture away. The commit file list becomes collapsible and takes all remaining height in the inspector, never receiving less than half of it: the header yields first. The inspector hosts no diff viewer of its own — every commit diff is read in the diff workspace <!-- amended 2026-09-07 (owner): the inspector's diff slot is dropped; see AC-06 and AC-22 -->. Any file can be opened in the **diff workspace**, a centre view state that replaces the commit list (or, in Changes, the working-changes lists and the commit composer) at full width and is closed by Esc or Close, restoring the exact previous selection, scroll and focus. «Split» stays the existing unified / side-by-side diff layout. History, and every view that shows a selected commit, gets the full treatment; Changes gets only the diff workspace gesture. The sharpest risk found in the failure-mode review is keyboard precedence: Esc and the hunk shortcuts already have several consumers and the app has no priority order between them, so layer precedence and shortcut distinctness are acceptance criteria here rather than design details. Success is measured as the share of inspector height the commit file list receives (header expanded and collapsed) and as the gesture count to read a file at full width and return.
 
 Traceability: the shell vocabulary (rail, refs panel, centre view, inspector, workbench) follows `DESIGN.md` §«App shell» and is fixed in the project glossary; density and minimum-window figures follow `DESIGN.md` §«Density» and the app's minimum window size (960 × 640). Decision overrides from the critic pass, if any, are listed below.
 
 ## 2. Goals
 
-- The diff viewer is the dominant surface of the inspector whenever a commit is selected; the commit header and the commit file list shrink to orientation aids that yield height before the diff does.
+- The commit file list is the dominant surface of the inspector whenever a commit is selected, and the diff itself is read at centre width in the diff workspace; the commit header shrinks to an orientation aid that yields height before the list does.
 - A developer can read any single file's diff at full centre width and come back to exactly where they were, one gesture each way, from both the History and the Changes view.
 - Every existing layout mode (inspector right or bottom, compact density, stacked blame and file history, persisted splitter, light theme) keeps working unchanged, so the redesign is additive for existing habits.
 
@@ -42,18 +42,18 @@ Traceability: the shell vocabulary (rail, refs panel, centre view, inspector, wo
 
 **As a** developer
 **I want** the commit header to open expanded with a long message body clamped to four lines (expandable in place) and to collapse the whole header into a one-line summary (subject, author, short sha)
-**So that** I read the message without scrolling and hand the whole column to the diff when I am reviewing the changes
+**So that** I read the message without scrolling and hand the whole column to the commit file list when I am reviewing the changes
 
 ### US-02: Keep the commit file list compact
 
 **As a** developer
-**I want** the commit file list bounded to six rows with its own scroll, shrinking to the real file count and collapsible to its header
-**So that** a thirty-file commit never pushes the diff off the column
+**I want** the commit file list to take the height the inspector column has left, with its own scroll, shrinking to the real file count and collapsible to its header
+**So that** a thirty-file commit is reachable at a glance instead of through a six-row window
 
 ### US-03: Open a file in the diff workspace
 
 **As a** developer
-**I want** to open the active file's diff in the centre view by double-click, a visible control or a shortcut
+**I want** to open the active file's diff in the centre view by a single click, by double-click, a visible control or a shortcut, and to choose from the file list itself which of the two a single click does
 **So that** I can read a wide diff at full width without leaving the workbench
 
 ### US-04: Return from the diff workspace
@@ -92,37 +92,37 @@ Traceability: the shell vocabulary (rail, refs panel, centre view, inspector, wo
 
 **Given** a developer selects a commit whose message has a subject and a long body
 **When** the inspector shows the commit
-**Then** the commit header opens expanded with the body clamped to four lines (no height is reserved when the body is shorter) plus a «show more» control, author, dates, short sha, ref badges and commit actions visible, and the diff viewer keeps at least half the inspector height
+**Then** the commit header opens expanded with the body clamped to four lines (no height is reserved when the body is shorter) plus a «show more» control, author, dates, short sha, ref badges and commit actions visible, and the commit file list keeps at least half the inspector height <!-- amended 2026-09-07 (owner): the commit inspector no longer hosts a diff viewer; the diff is read only in the workspace -->
 
 ### AC-02 (US-01) — happy path
 
 **Given** the commit header is expanded
 **When** the developer collapses it with its control or shortcut
-**Then** the header becomes one summary line (subject, author, short sha), the diff viewer takes at least three quarters of the inspector height, and expanding it again restores the previous state; the collapsed / expanded state is remembered across app restarts, like the workbench splitters
+**Then** the header becomes one summary line (subject, author, short sha), the commit file list takes at least three quarters of the inspector height, and expanding it again restores the previous state; the collapsed / expanded state is remembered across app restarts, like the workbench splitters
 
 ### AC-03 (US-01) — domain invariant
 
 **Given** the window is at its minimum supported size and the selected commit has a long body and many changed files
 **When** the inspector lays out
-**Then** the diff viewer never receives less than half the inspector height: the commit file list shrinks first, down to two visible rows with its own scroll, then the body clamp shrinks, down to one line plus «show more»; neither goes below those floors, and the diff never shrinks below half
+**Then** the commit file list never receives less than half the inspector height: the body clamp shrinks first, down to one line plus «show more», and past that the expanded header scrolls inside its cap; the file list keeps at least two visible rows with its own scroll and never goes below that floor <!-- amended 2026-09-07 (owner): the yield order is inverted — the diff slot is gone, so the header now yields to the file list rather than the list to the diff -->
 
 ### AC-04 (US-02) — happy path
 
 **Given** a commit with thirty changed files
 **When** the inspector shows it
-**Then** the commit file list shows at most six rows in either density (the row height follows the density token), with its own scroll and the total file count; given a commit with two changed files, the list takes exactly two rows with no reserved empty space; and given a commit with no changed files, only the list header with the count 0 and a single «No files changed» line show
+**Then** the commit file list shows as many rows as the inspector column fits in either density (the row height follows the density token), with its own scroll and the total file count; given a commit with two changed files, the list takes exactly two rows with no reserved empty space; and given a commit with no changed files, only the list header with the count 0 and a single «No files changed» line show <!-- amended 2026-09-07 (owner): the six-row cap existed to protect the diff slot and is dropped with it -->
 
 ### AC-05 (US-02) — happy path
 
 **Given** the commit file list is visible
 **When** the developer collapses it
-**Then** only its header with the file count remains, the released height goes to the diff viewer, and the active file stays the one shown in the diff viewer; the collapsed state is remembered across app restarts
+**Then** only its header with the file count remains, the released height goes to blame or file history when either is stacked below and is left empty when neither is, and the active file stays the one the diff workspace shows; the collapsed state is remembered across app restarts <!-- amended 2026-09-07 (owner) -->
 
 ### AC-06 (US-03) — happy path
 
 **Given** a file is active in the commit file list
-**When** the developer double-clicks it, uses its open-large control, or presses the open-large shortcut
-**Then** the centre view becomes the diff workspace showing that file's diff, with a header carrying the file path, the source commit (short sha and subject), previous / next file controls and Close, and with layout, whitespace, wrap and context settings matching the diff viewer's current ones; those four settings are the diff viewer's own preferences, not a copy: changing one in the diff workspace changes it in the diff viewer and persists as today. While the diff workspace is open the inspector's diff viewer is hidden and its height goes to the commit header and the commit file list, which then shows as many file rows as fit; closing the diff workspace brings the inspector's diff viewer back
+**When** the developer clicks it with the open-on-click preference on, or — with that preference off — double-clicks it, uses its open-large control, or presses the open-large shortcut
+**Then** the centre view becomes the diff workspace showing that file's diff, with a header carrying the file path, the source commit (short sha and subject), previous / next file controls and Close, and with layout, whitespace, wrap and context settings matching the diff viewer's current ones; those four settings are the diff viewer's own preferences, not a copy: changing one in the diff workspace changes it in the diff viewer and persists as today. The commit inspector hosts no diff viewer at all: its column is the commit header and the commit file list, which shows as many file rows as fit, whether the diff workspace is open or closed. Closing the diff workspace returns the centre view to its list, and the inspector column does not change shape. The working-tree side keeps its inline diff viewer, which the diff workspace hides while it is open and restores on close (AC-13) <!-- amended 2026-09-07 (owner) -->
 
 ### AC-07 (US-03) — error
 
@@ -195,13 +195,13 @@ Traceability: the shell vocabulary (rail, refs panel, centre view, inspector, wo
 
 **Given** the inspector is placed at the bottom
 **When** a commit is selected
-**Then** the commit header (expanded or collapsed) and the compact commit file list apply, and the diff viewer keeps at least the height it has today in that placement; collapsing the header or the file list hands the released height to the diff viewer exactly as on the right (the 50 % and 75 % shares are measured only with the inspector on the right)
+**Then** the commit header (expanded or collapsed) and the commit file list apply, and the commit file list keeps at least the height it keeps with the inspector on the right; collapsing the header hands the released height to the file list exactly as on the right (the 50 % and 75 % shares are measured only with the inspector on the right) <!-- amended 2026-09-07 (owner) -->
 
 ### AC-19 (US-07) — cross-context
 
-**Given** blame or file history is open under the diff viewer
+**Given** blame or file history is open under the commit file list
 **When** the developer collapses the commit header
-**Then** blame and file history keep their current share and the released height goes to the diff viewer; the three-quarters target is measured only without stacked panels
+**Then** blame and file history keep their current share and the released height goes to the commit file list; the three-quarters target is measured only without stacked panels <!-- amended 2026-09-07 (owner) -->
 
 ### AC-20 (US-07) — happy path
 
@@ -215,12 +215,19 @@ Traceability: the shell vocabulary (rail, refs panel, centre view, inspector, wo
 **When** the developer looks at the summary line
 **Then** the same six action buttons as in the expanded header (Branch, Tag, Cherry-pick, Revert, Reset, More) sit inline as icons with tooltips, one click each; buttons that do not fit the available width move into More, and Reset keeps its confirmation
 
+### AC-22 (US-03) — happy path
+
+**Given** the commit file list is visible
+**When** the developer uses the open-behaviour control in the file list header
+**Then** the list switches between «a single click opens the diff workspace» and «a single click only makes the row active, and the workspace opens on double-click, the open-large control or the shortcut»; the control shows which of the two is active, and the choice is remembered across app restarts like the header and file-list collapse states. The control changes nothing else: both modes keep the double-click, the open-large control and the shortcut working
+<!-- added 2026-09-07 (owner): reverses the 2026-09-02 «gesture only» resolution in §8 -->
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
 |---|---|---|
-| Diff viewer share of inspector height · header expanded (default), no stacked panels, inspector right | ≥ 50 % at every window size from 960 × 640 upward | element-height measurement in the built app at 960 × 640 and 1280 × 800, both densities |
-| Diff viewer share of inspector height · header collapsed, no stacked panels, inspector right | ≥ 75 % | same |
+| Commit file list share of inspector height · header expanded (default), no stacked panels, inspector right | ≥ 50 % at every window size from 960 × 640 upward | element-height measurement in the built app at 960 × 640 and 1280 × 800, both densities | <!-- amended 2026-09-07 (owner) -->
+| Commit file list share of inspector height · header collapsed, no stacked panels, inspector right | ≥ 75 % | same | <!-- amended 2026-09-07 (owner) -->
 | Diff viewer height · inspector at the bottom, or blame / file history stacked | ≥ the height it has in the 1.0.5 build in the same configuration | side-by-side measurement against the 1.0.5 build |
 | Open the diff workspace from a diff already shown in the viewer | first paint ≤ 150 ms; the diff is not loaded a second time | performance-panel timing on a 2 000-line diff |
 | Close the diff workspace | previous centre view back in ≤ 100 ms with the identical scroll offset and selection | pure-TypeScript unit test on the restore logic, plus manual check |
@@ -250,6 +257,6 @@ Traceability: the shell vocabulary (rail, refs panel, centre view, inspector, wo
 
 ## 8. Open questions
 
-- [x] Should a sticky «always open diffs in the diff workspace» preference exist (the single-file mode some web review tools offer) besides the per-file gesture? — owner: Jhoan Moreno · **Resolved 2026-09-02 (ux-flows): no, gesture only**; a single click keeps showing the diff in the inspector (see `ux-flows.md` §Platform decisions).
+- [x] Should a sticky «always open diffs in the diff workspace» preference exist (the single-file mode some web review tools offer) besides the per-file gesture? — owner: Jhoan Moreno · Resolved 2026-09-02 (ux-flows): no, gesture only — **reopened and reversed 2026-09-07 (owner): yes**. The preference exists (AC-22) and the inspector loses its diff viewer entirely, so a single click can no longer «show the diff in the inspector»: with the preference off it only makes the row active. `ux-flows.md` §Platform decisions carries the same reversal.
 - [x] Where do blame and file history open when launched from inside the diff workspace: stacked in the inspector as today, or replacing the diff workspace content? — owner: Jhoan Moreno · **Resolved 2026-09-02 (ux-flows): stacked in the inspector, the diff workspace stays open** (see `ux-flows.md` flow US-03).
 - [ ] Does WebKitGTK omit a scroll container's bottom padding from `scrollHeight`, so the header measurement in `commit-inspector.ts` understates the fixed part by one `--panel-pad` and the header cap lands low on the Linux build only? — owner: Jhoan Moreno · due: ship (manual check of the expanded header with 30 refs at 960 × 640 on Linux; if confirmed, measure an inner content wrapper instead of the scroll container). Raised by [review 2026-09-04 round 3](./_review/review-2026-09-04-round3.md), R15 (PLAUSIBLE).

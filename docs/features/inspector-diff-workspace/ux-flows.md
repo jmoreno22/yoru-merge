@@ -1,7 +1,7 @@
 ---
 status: draft
 feature_size: "M"
-updated_at: "2026-09-02"
+updated_at: "2026-09-07"
 ---
 
 # UX flows — inspector-diff-workspace
@@ -17,12 +17,12 @@ updated_at: "2026-09-02"
 
 ## Platform decisions
 
-- **Posture:** desktop-first — `docs/design-system.md` does not exist, so the posture is deduced from `DESIGN.md` §Layout («desktop productivity app»), the Tauri desktop binary and the minimum window of 960 × 640, and confirmed by the owner on 2026-09-02. Pointer + keyboard only: double-click, shortcuts and Esc are first-class gestures; no touch or narrow-window variants.
+- **Posture:** desktop-first — `docs/design-system.md` does not exist, so the posture is deduced from `DESIGN.md` §Layout («desktop productivity app»), the Tauri desktop binary and the minimum window of 960 × 640, and confirmed by the owner on 2026-09-02. Pointer + keyboard only: single click (when the open-on-click preference is on), double-click, shortcuts and Esc are first-class gestures; no touch or narrow-window variants. <!-- amended 2026-09-07 (owner): single click added with AC-22 -->
 - **Navigation shape:** the diff workspace is a *state of the centre view*, not a route, window, tab or overlay (spec §3, feature CONTEXT «Out of scope»). It replaces the centre content in place and Close / Esc restores exactly what it replaced.
 - **Modality:** no new dialog. The only dialog these flows visit is Reset's existing confirmation (AC-21). The two notices (AC-13, AC-16) are non-blocking and never take focus.
 - **Esc is layered:** one fixed precedence — dialog, then command palette, then text field with content, then diff line selection, then stacked blame / file history, then diff workspace (AC-10). Flow US-04 draws it; the mechanism that enforces the order is a `design` decision, not made here.
 - **Where the inspector flows apply:** US-01, US-02, US-07 and US-08 are drawn on the History view (SCR-01) and apply verbatim to every view that shows a selected commit (Reflog); a diff workspace opened from such a view returns to that view's list.
-- **Open questions resolved for this stage (spec §8, both due before `ux-flows`):** (1) no sticky «always open diffs in the diff workspace» preference — the gesture per file is the only way in, a single click keeps showing the diff in the inspector; (2) blame and file history launched from inside the diff workspace open stacked in the inspector as today and the diff workspace stays open.
+- **Open questions resolved for this stage (spec §8, both due before `ux-flows`):** (1) ~~no sticky «always open diffs in the diff workspace» preference — the gesture per file is the only way in, a single click keeps showing the diff in the inspector~~ — **reversed 2026-09-07 (owner):** the preference exists (AC-22) and the inspector hosts no diff viewer at all, so a single click either opens the diff workspace or only makes the row active, per that preference; (2) blame and file history launched from inside the diff workspace open stacked in the inspector as today and the diff workspace stays open.
 - **Design inputs flagged, not decided:** (a) an owner for keyboard-layer precedence; (b) a snapshot of selection + scroll + focus taken when the diff workspace opens, so Close can restore it (AC-08, NFR ≤ 100 ms); (c) one shared settings source for the diff viewer and the diff workspace (AC-06).
 - **Backend-only user stories:** none — all eight §4 stories touch the UI, so all eight have a flow.
 
