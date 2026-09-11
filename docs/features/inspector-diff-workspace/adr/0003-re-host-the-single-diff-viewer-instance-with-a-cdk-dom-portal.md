@@ -40,7 +40,7 @@ The diff is rendered by one component, `DiffViewer` (options bar + `DiffView`), 
 - No duplicated component state (line selection, hunk cursor, options).
 
 **Negative**
-- A less common pattern: after the move the viewer must re-measure (its `ResizeObserver` fires on the new size) and the behaviour must be checked in both inspector placements and both densities.
+- A less common pattern: after the move the viewer must re-measure (its `ResizeObserver` fires on the new size) and the behaviour must be checked in both inspector placements and the three shipped densities. <!-- scope widened 2026-09-10 (T67, review round 17 R17-F4): this said «both densities». The app has shipped three since 1.0.5 (`preferences-schema.ts` `UI_DENSITIES`), and relaxed is the density with the largest `--panel-head-h` (43 at the default 13 px) and therefore the largest re-measured box. The DECISION this ADR records is unchanged and unamended — only the verification scope, by the owner's 2026-09-09 three-densities decision. Recorded here because this ADR was inside the grep scope the round-15 and round-16 waves declared and was missed by both, and by both clean-context reviewers of round 17 -->
 - The workspace component owns only a header and a portal outlet, so its template is unusually thin; reviewers must know the diff lives elsewhere.
 
 **Neutral**

@@ -501,6 +501,606 @@
         "docs/features/inspector-diff-workspace/tasks/_epic.md",
         "docs/features/inspector-diff-workspace/tasks.json"
       ]
+    },
+    {
+      "id": "T34",
+      "title": "Rewrite the layout policy around the commit file list as the protected block",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-03", "AC-04", "AC-18", "AC-19"],
+      "dod": "inspector-layout.spec.ts passes the table of spec configurations with the commit file list as the protected subject: 30 files at 960x640 with a long body yield the clamp to 1 line then the header cap, never fewer than 2 rows; exact rows for 1-6 files; 0 rows for 0 files; no upper cap for 7+ files; list share >= 50 % expanded and >= 75 % collapsed; stacked shares fixed off the top; both density token sets (AC-03, AC-04, AC-18, AC-19). MAX_LIST_ROWS, the diff framing of the share floors and the diffHeight output are gone and no consumer of diffHeight is left in src/app. No @angular/core import. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean. ADR-0004 amendment 2026-09-07.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts"
+      ]
+    },
+    {
+      "id": "T35",
+      "title": "Feed the amended policy into the commit inspector and drop the diff-share patch",
+      "layer": "ui",
+      "deps": ["T34"],
+      "acs": ["AC-03", "AC-04", "AC-06"],
+      "dod": "commit-inspector.ts contains no occurrence of diffHeight and writes --inspector-list-rows from the policy's listRows alone; a component row asserts the History diff slot has zero height with the workspace closed and open while the Changes slot still grows (AC-06). The four stale rows of commit-inspector.spec.ts are rewritten against the amended criteria: the squeezed column yields the clamp before the rows (AC-03), thirty files get the rows the column fits plus the total count with no cap (AC-04), the list keeps the same rows whether the workspace is open or closed (AC-04 / AC-06), mod+d opens the workspace exactly once on the active row (AC-06). pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; no src-tauri change.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts"
+      ]
+    },
+    {
+      "id": "T36",
+      "title": "Cover the open-behaviour control and its durable preference",
+      "layer": "ui",
+      "deps": ["T35"],
+      "acs": ["AC-22"],
+      "dod": "Component rows assert that a single click opens the diff workspace with commitFileClickOpensWorkspace on and only makes the row active with it off; that the control names the live mode in its aria-pressed / label; and that the double-click, the open-large control and mod+d open the workspace in both modes (AC-22). preferences-schema.spec.ts round-trips commitFileClickOpensWorkspace, asserts the default true and asserts sanitizePreferences falls back to the default on a non-boolean. Toggling the control is asserted to write through the same durable path as commitHeaderCollapsed and a re-created component reads the persisted value. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; any production file touched to close a gap is recorded in the task file.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.html",
+        "src/app/core/services/preferences-schema.spec.ts"
+      ]
+    },
+    {
+      "id": "T37",
+      "title": "Rewrite the three centre-wiring rows against the collapsed History diff slot",
+      "layer": "ui",
+      "deps": ["T35"],
+      "acs": ["AC-03", "AC-06", "AC-18"],
+      "dod": "The three failing rows of main-content.spec.ts pass against the amended criteria: the viewer element is parked in a zero-height History slot before opening, renders its controls once inside the workspace and returns to the zero-height slot on close (AC-06); the thirty-ref header is still capped and growingChildren is the file-list container (AC-03); at the bottom placement both collapsible blocks render and the commit file list is the only growing child, keeping at least the height it has on the right (AC-18). At least one assertion covers the Changes slot still growing. No assertion mentions the History diff slot as a growing child. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; test-only change.",
+      "files_hint": ["src/app/shared/components/main-content/main-content.spec.ts"]
+    },
+    {
+      "id": "T38",
+      "title": "Rewrite the two AC-08 restore rows for the click-opens-workspace default",
+      "layer": "ui",
+      "deps": [],
+      "acs": ["AC-08"],
+      "dod": "Both Commit list restore on close rows pass with commitFileClickOpensWorkspace pinned explicitly rather than inherited from the default: mod+d from a scrolled commit row replays the offset and focuses that row on close, keeping the selected sha, the null pendingFocusKey() and the aria-activedescendant assertions (AC-08); the dropped-sha row establishes its row before dropping it and asserts the key expires with nothing focused. A mutation removing the focus restore in commit-list reddens the first row, with the output recorded in the task file and the tree restored with git checkout --. No assertion is dropped or weakened relative to the T27 / T29 versions. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; test-only change.",
+      "files_hint": ["src/app/features/commit-list/commit-list.spec.ts"]
+    },
+    {
+      "id": "T39",
+      "title": "Bring the repo docs and the test plan in line with the reversal",
+      "layer": "docs",
+      "deps": ["T36", "T37", "T38"],
+      "acs": ["AC-04", "AC-06", "AC-22"],
+      "dod": "DESIGN.md carries no stale mention of the History diff slot as a growing or floor-holding block: --inspector-list-rows is documented unbounded above with a 2-row floor, --inspector-header-max-h as what the file list's floor leaves, the policy rule as protecting the list, and the App shell section as header + file list with a zero-height parking slot in History and a real growing slot in Changes (AC-04, AC-06). The open-behaviour control and the commitFileClickOpensWorkspace preference are documented, including that both modes keep the double-click, the open-large control and the shortcut (AC-22). README.md is updated only where the above makes it stale. test-plan.md has a row mapping AC-22 to the T36 rows and no row describing an assertion this wave removed. Markdown lint (if configured) and pnpm lint green; docs only, no code.",
+      "files_hint": [
+        "DESIGN.md",
+        "README.md",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T40",
+      "title": "Round-9 code fixes: pin the two live layout guards, cover the workspace chevron gate, release the empty list's share",
+      "layer": "domain",
+      "deps": ["T41", "T43"],
+      "acs": ["AC-03", "AC-04", "AC-05", "AC-06"],
+      "dod": "One inspector-layout.spec.ts row at availableHeight 220 / stackedPanelsHeight 110 / 30 files pins headerMaxH === panelHeadH (34) and listRows === 2, and both mutations redden it and only it: dropping Math.max(headerAllowance, panelHeadH) at inspector-layout.ts:77, and dropping Math.max(LIST_ROWS_FLOOR, ...) at :98 — each currently leaves 63 files / 831 tests green. A diff-viewer component row asserts the per-file collapse chevron is present in the Changes inline viewer and absent inside the diff workspace, and reddens with diff-view.ts:239 forced to false and forced to true. inspector-layout.ts:68-72 releases the share for fileCount === 0 as it does for a collapsed list, pinned by 0 files at 640 px giving headerMaxH === 606. main-content.ts:264-266 no longer says the released pixels belong to the diff slot. No existing assertion relaxed, removed or emptied; expect( counts per touched spec file recorded before and after. pnpm test, pnpm lint, pnpm build green; tsc --noEmit clean; no src-tauri change. Every mutation run in a tree verified clean before and after.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/features/diff-workspace/diff-workspace.spec.ts",
+        "src/app/shared/components/main-content/main-content.ts",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T41",
+      "title": "Round-9 chain amendment: bring sad.md, ux-flows.md, screens.md and spec.md section 7 through the reversal",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-03", "AC-04", "AC-05", "AC-06", "AC-18", "AC-19", "AC-22"],
+      "dod": "No line of sad.md, ux-flows.md or screens.md describes the History inspector as hosting a diff viewer, the six-row cap, or the pre-reversal yield order, except where a dated historical note says so deliberately; every surviving diff-viewer mention is the Changes view's inline one or the parking slot. AC-22 has a sad.md section 6 runtime step, a row in the section 6 coverage table, a row in the ux-flows AC-to-flow map, a component entry plus a state in screens.md and a row in its AC-to-screen map. The three durable preferences are named as three in sad.md pillar 5, section 5 and the persist note. spec.md contains no measurement whose subject is the History inspector's diff viewer: the section 7 KPI and NFR rows 1-3 are re-pointed at the commit file list's protected share as inspector-layout.spec.ts:20-30 words it, and AC-18 says share rather than height, agreeing with sad.md:693. AC-05 reads left empty unconditionally; AC-06 states the workspace does not offer the per-file collapse chevron. sad.md section 1 Intent and the section 10 QG-1 heading agree with quality goal 1. Every edit carries a dated 2026-09-08 amendment marker. pnpm lint green; docs only, no code.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T42",
+      "title": "Round-9 test-plan re-point: bring the AC to test map through the reversal and correct T39's outcome",
+      "layer": "docs",
+      "deps": ["T40", "T41"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-06", "AC-18", "AC-19", "AC-22"],
+      "dod": "The fifteen stale test-plan.md rows (:35, :38, :42, :43, :44, :45, :51, :52, :87, :88, :90, :95, :106, :109, :112, :115) are re-pointed at what the committed tests assert: no row names diffHeight, T16, the six-row cap, the diff slot as a growing child, or a headerMaxH / --inspector-list-rows literal the suite does not produce. Every AC-01 to AC-22 row names a test that exists at HEAD, spot-checked against the named spec file. The rows T40 lands (the bottom-minimum guard row, the chevron-gate row) and AC-05's corrected row are added with the mutation each is verified against. docs-after-reversal.md carries an outcome note recording that its DoD bullet was not met and which rows were missed; T39's DoD text itself is unchanged and tracker.md keeps T39 done. pnpm lint green; docs only, no code.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/docs-after-reversal.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T43",
+      "title": "Make the unit gate deterministic: run spec files serially",
+      "layer": "infra",
+      "deps": [],
+      "acs": [],
+      "dod": "vitest.config.ts sets fileParallelism: false with a comment carrying the measurement that justifies it, and three consecutive pnpm test runs at HEAD report the same count with 63 files green. Under the default parallelism the same tree gave 1, 0 and 4 failures across three runs, all in the five component specs that wait on afterNextRender, the CDK portal or the virtual viewport; no node-environment spec ever failed. The round-9 review record carries the finding and what it means for the rounds 6-9 gate numbers; the rounds 6-8 records are not rewritten. pnpm lint green; no src change.",
+      "files_hint": [
+        "vitest.config.ts",
+        "docs/features/inspector-diff-workspace/_review/review-2026-09-08.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T44",
+      "title": "Round-10 code fixes: floor the header cap, restore a full assertion per configuration, pin the fixed flex bases",
+      "layer": "domain",
+      "deps": ["T45"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-19"],
+      "dod": "A row asserts blame and file history are not growing children when stacked, and both mutations redden it: blameFlex and fileHistoryFlex turned from a fixed basis into a growing one. The share sweep has no unconditional escape hatch left: the fileCount === 0 configurations assert the bare head (headerMaxH === availableHeight - panelHeadH) instead of being skipped, and reverting the fileCount === 0 arm reddens the loop as well as the 640 px row. inspector-layout.ts uses Math.floor for the header cap and the loop gains a height that is not a multiple of 4, so turning Math.floor back into Math.round reddens the loop. The comment that says when the deleted two-row-floor clause would be needed again states the measured thresholds, not the height at which its predicate flips. No existing assertion relaxed, removed or emptied; expect counts recorded before and after. pnpm test, pnpm lint and pnpm build green; tsc --noEmit -p tsconfig.spec.json clean; no src-tauri change.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.ts",
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T45",
+      "title": "Round-10 criteria and chain amendment: the empty-list rule, the flat KPI, and the layer T41 did not open",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-01", "AC-03", "AC-04", "AC-05", "AC-18", "AC-19"],
+      "dod": "AC-04 carries the clause that a list with no row to draw claims no share and keeps only its head, and a Given that covers a filter matching nothing as well as a commit with no changed files; the Measurement column of the two section 6 protected-share rows carries the same carve-out. The section 7 KPI no longer asks for 60 per cent. No line of sad.md or spec.md prescribes an element-height measurement in the built app or a side-by-side comparison against the 1.0.5 build, except where a dated historical note says so deliberately; sad.md section 10 QG-1 says share, not height. The section 3 external-systems row and the C4 container name three durable preferences, not two; the two remaining 'two collapsed states' mentions are section 6 sequence notes where the phrase is accurate. The feature CONTEXT.md no longer places the commit file list between the commit header and the diff viewer and no longer calls it bounded in height, and its updated_at moves off 2026-09-02. T40's deps read T41 and T43 in all five records, and tasks.json agrees with the four round-9 task files on files_hint. Every edit carries a dated 2026-09-08 round-10 amendment marker. pnpm lint green; docs only, no src change.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/CONTEXT.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T46",
+      "title": "Round-10 test-plan re-point: the thesis, the NFR validation section and the overstated sweep rows",
+      "layer": "docs",
+      "deps": ["T44", "T45"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-18"],
+      "dod": "test-plan.md contains no diff-viewer share, no element-height measurement, no 1.0.5 side-by-side and no expectation that the diff takes the remainder, except where a dated historical note says so deliberately. The thesis sentence names the commit file list as the protected block and the header as the block that yields first. Every AC-01 to AC-22 row names a test that exists at HEAD and asserts what the row says, checked by opening each named file and line. Every row whose subject T44 changed names T44 in its Task column, and the sweep rows state the configuration count T44 leaves and what the empty-list configurations assert. AC-19 points at the row T44 adds. pnpm lint green; docs only, no src change.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T47",
+      "title": "Round-11 code fixes: the collapsed residue height, the class-based grow, the displayed-row-count wiring, the caller's clamp guard and the collapsed twin",
+      "layer": "domain",
+      "deps": ["T48"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-18", "AC-19"],
+      "dod": "Five mutations each redden exactly the row they should, on a tree verified clean before and after, with the failing row, its file and line and the run output recorded in the task file: rounding only on the collapsed path; blame growing through a class instead of an inline flex; the policy fed the commit file count instead of the displayed row count; the caller clamp guard dropped; the panel head guard dropped, which must now redden the collapsed twin too. The shipped policy is green with 422 in the table and the loop asserts every one of its 192 configurations with no escape hatch. The restore threshold comment states 67 and 59 expanded and 135 and 119 collapsed and names both causes. No existing assertion relaxed, removed or emptied, with expect counts recorded per touched spec file. pnpm test green three consecutive runs, pnpm lint and pnpm build green, tsc --noEmit -p tsconfig.spec.json clean, no src-tauri change. No production file under src changed: this task is tests and comments only.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T48",
+      "title": "Round-11 criteria amendment: the cross-placement carve-out and the KPI bullet the reversal left behind",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-03", "AC-18"],
+      "dod": "AC-18, spec section 6 NFR row 3 and sad section 10 QG-1 carry the same hard-floor carve-out in the same words, each with a dated round-11 marker, and the wording is quoted in the task Outcome so T49 can re-point the test plan to it verbatim. AC-18 no longer claims the policy applies the same ratios to whatever remainder it is given. grep -n two-fifths spec.md returns nothing in section 7, and the screens.md not-decided-here sentence is resolved rather than reworded. The sad US-03 flow row and the section 6 participant vocabulary note both name F9. The repo-root CONTEXT.md inspector entry is either amended or explicitly declined with the reason in the Outcome. pnpm lint green; docs only, no src change.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "CONTEXT.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T49",
+      "title": "Round-11 records: the test-plan re-point and the files_hint drift T45 claimed it had closed",
+      "layer": "docs",
+      "deps": ["T47", "T48"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-18", "AC-19"],
+      "dod": "The third NFR validation bullet quotes T48 carve-out verbatim and lists the fourth run, the bottom minimum with both panels stacked and the header collapsed. The sweep rows state the configuration count T47 leaves and which height watches which residue class, and no row describes the residue class as a multiple of four. Every row whose subject T47 changed names T47 in its Task column, and the two new rows plus the AC-19 extension name a test that exists at HEAD and assert what the row says, spot-checked by opening each file and line. files_hint agrees between tasks.json and every task file for T40 to T49, and T45 DoD and Outcome no longer claim otherwise. updated_at moves to the day this lands in every artefact touched. pnpm lint green; docs only, no src change.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/round9-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/round10-criteria-and-chain.md",
+        "docs/features/inspector-diff-workspace/tasks/round10-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T50",
+      "title": "Round-12 criteria amendment: the carve-out's real cause, its per-collapse-state band, and the two artefacts it never reached",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-03", "AC-18"],
+      "dod": "AC-18, spec §6 NFR row 3 and sad §10 QG-1 carry the canonical carve-out sentence byte-identical to one another, verified by diffing the three extracted sentences rather than by reading them. No criteria site names the list's two-row floor as a cause of the ratio yielding, and no site waives the expanded guarantee above a remainder of 68 px comfortable or 60 px compact. ux-flows US-07 prose states the guarantee with the carve-out and carries a dated round-12 marker. screens.md cites F1 to F9, and its heights note no longer asserts the deleted §7 KPI in live prose. tasks.json has 52 tasks, the DAG is acyclic with no dangling dep, and deps agrees with the _epic graph and the tracker Deps column. Docs only, no src change; pnpm lint green. Every DoD bullet written as a grep that cannot be satisfied because the retired wording survives inside its own marker is named in the Outcome, with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T51",
+      "title": "Round-12 code fixes: the note's causal text, the collapsed share's own cover, and the constants the 110 px anchor rests on",
+      "layer": "domain",
+      "deps": ["T50"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-19"],
+      "dod": "Five mutations each redden exactly the row they should, on a tree verified clean before and after, with the failing row, its file and line and the run output recorded in the task: the stacked bases doubled; a min-height on a wrapper with the basis kept; MIN_BOTTOM_PX raised; COLLAPSED_LIST_SHARE_FLOOR removed, which must now redden the new bottom row; and the panel-head guard dropped, which must still redden the 220 over 110 pair. The new bottom row is green against the shipped policy in both densities and asserts its two halves separately. No sentence in inspector-layout.spec.ts names the list's two-row floor as a cause of the share yielding, and every figure in the note is re-derived from the policy and recorded. The collapsed twin's comment matches T50's carve-out wording and states that it pins the guard, not the collapsed floor. No existing assertion relaxed, removed or emptied; expect counts per touched spec file recorded before and after. pnpm test green three consecutive runs, pnpm lint and pnpm build green, tsc --noEmit -p tsconfig.spec.json clean, no src-tauri change. No production file changed by this task, evidenced by a command that is true of this task's delta rather than of the whole working tree.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T52",
+      "title": "Round-12 records: AC-18's coverage rows, the acs drift, and the third grep bullet T48 left unnamed",
+      "layer": "docs",
+      "deps": ["T50", "T51"],
+      "acs": ["AC-01", "AC-03", "AC-18", "AC-19"],
+      "dod": "The AC-18 manual row and the third NFR validation bullet give the same expected result for the same measurement and both quote T50's wording verbatim, verified by diffing the extracted sentences. Every AC in the acs list of T47, T49, T50, T51 and T52 resolves to a test-plan row that names that task, checked mechanically over all 52 tasks. files_hint agrees between tasks.json and every task file for T1 to T52, zero mismatches, parsed from both records. round11-criteria-amendment.md carries two dated round-12 corrections, the third grep-shaped bullet and the 27.5 allowance in its Why, and round11-records.md carries one for the AC-18 coverage claim, each leaving the original claim quoted inside it. No live claim survives that the collapsed share floor binds at a 110 px remainder. tracker and _epic totals read 52 tasks with the round-12 provenance line, and the two guard line numbers in the tracker are re-pointed. updated_at moves to the day this lands in every artefact touched. Docs only, no src change; pnpm lint green. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/round11-criteria-amendment.md",
+        "docs/features/inspector-diff-workspace/tasks/round11-records.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T53",
+      "title": "Round-13 criteria amendment: the artefacts the carve-out still has not reached",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-03", "AC-18"],
+      "dod": "Every artefact that states the cross-placement guarantee states its exception too. The two prose carriers, sad.md's F2 paragraph and screens.md's Rendering-variants row, carry AC-18's canonical sentence byte-identical, verified by extracting the sentences and comparing them as strings rather than by reading them. The two mermaid labels, sad.md's F2 message and ux-flows' US-07 node C, and ux-flows' AC to flow map row carry the explicit pointer instead, because a 313 character sentence inside a diagram label is unreadable. Each of the five sites carries a dated round-13 marker. A sweep for every phrasing of the claim returns no carrier without the carve-out or the pointer outside the review records. tasks.json has 55 tasks, parses, no duplicate id, no dangling dep, the DAG is acyclic, and files_hint agrees with every task file for T1 to T55 with zero mismatches checked mechanically. _epic.md edges and tracker.md deps agree, and both read 55 tasks with the round-13 provenance line. Docs only, no src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T54",
+      "title": "Round-13 code fixes: the false suite result at :385, the single-density figure, and the fourth stacked basis",
+      "layer": "domain",
+      "deps": ["T53"],
+      "acs": ["AC-03", "AC-18", "AC-19"],
+      "dod": "The comment at inspector-layout.spec.ts:385 no longer claims the mutation left the whole suite green: it names the twin and quotes both measured counts, three failed of 835 in round 12 with the twin absent and four of 835 once the 400 by 200 row exists. The 126 px figure carries both densities. The AC-19 row pins the fourth basis value, 0 0 28.6 percent for file history opened alone, and mutating that production value reddens the row, proved by running the mutation and quoting its failure with an md5 of the production file before and after. The three pins that already worked still redden: the blame-alone basis, the stacked pair, and the min-height and max-height guards on both wrappers. Whole gate green on three consecutive serial runs with identical counts, lint clean over 266 files, tsc exit 0, build clean with no budget warning. Zero removed expect lines, no it.skip or only or todo. git diff --name-only HEAD -- src names only the two spec files, no production file and no src-tauri. Every figure written or corrected is re-derived by running the policy, and any figure that survives single-density is named in the Outcome.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts"
+      ]
+    },
+    {
+      "id": "T55",
+      "title": "Round-13 records: T52's acs sweep, T51's undisclosed gap, and the test-plan rows for the fourth basis",
+      "layer": "docs",
+      "deps": ["T53", "T54"],
+      "acs": ["AC-18", "AC-19"],
+      "dod": "round12-records.md states the exact predicate and the real set of acs to Task-column mismatches, produced mechanically from tasks.json and test-plan.md rather than by inspection, with the predicate written into the record so the next round can reproduce it; the retired claim of two survives only inside a dated round-13 marker. round12-code-fixes.md carries a round-13 marker on the four-values bullet recording that the fourth was not pinned by T51 and is pinned by T54, plus an Outcome addendum naming the three further mutations that hold and the one that did not. test-plan.md's AC-19 row names the fourth value and T54, and every AC in T54's acs resolves to a row naming T54. test-plan.md is this task's file alone. Docs only, no src change; pnpm lint green. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/tasks/round12-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/round12-records.md"
+      ]
+    },
+    {
+      "id": "T56",
+      "title": "Round-14 criteria amendment: the two carriers that say less instead of share",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-03", "AC-18"],
+      "dod": "The two live carriers that phrase the cross-placement guarantee with the word less carry their exception: sad.md's section 1 QG-1 takes AC-18's canonical sentence byte-identical, verified by extracting every occurrence and comparing them as strings rather than by reading them, and _epic.md's List floor invariant takes the explicit pointer, because an invariant bullet is an index and not prose. _epic.md's one-line goal summary is scoped to the right placement without stacked panels. Each of the three sites carries a dated round-14 marker citing R14-S1-F1 or O1 with the measured shares. A sweep over the negations as well as every phrasing of the positive noun returns no carrier without the carve-out or the pointer, and every remaining hit is classified with its scope and the arithmetic that makes it true. tasks.json has 58 tasks, parses, no duplicate id, no dangling dep, the DAG is acyclic, and files_hint agrees with every task file for T1 to T58 with zero mismatches checked mechanically; the JSON is edited by textual insertion so its numstat is n by zero. _epic.md edges and tracker.md deps agree and both read 58 tasks with the round-14 provenance line. Docs only, no src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T57",
+      "title": "Round-14 code fixes: the stale round( in the AC-03 comment and the vacuous fileCount === 0 arm",
+      "layer": "domain",
+      "deps": ["T56"],
+      "acs": ["AC-03", "AC-04", "AC-05"],
+      "dod": "The comment at main-content.spec.ts:388 names floor rather than round, matching the operation the policy performs since T44, with a dated marker so the correction is traceable. The vacuous fileCount === 0 arm is gone from the listRows expression in inspector-layout.ts and still present in protectedList, so the rule is written once in the place that executes it. Equivalence is re-derived rather than trusted: the policy is swept before and after the deletion over at least both density token sets by availableHeight zero to 2000 by five file counts by three body-line counts by both collapse flags by three stacked heights, with zero differing outputs on all three returned fields and the configuration count stated. The operative sibling is still covered: mutation C5 is re-run after the edit and still reddens three rows of 836, each quoted with its message. The NaN caveat of the deleted arm is recorded with the reason it is unreachable. Whole gate green on three consecutive serial runs with identical counts on an idle machine, lint clean over 266 files, tsc exit 0, build clean with no budget warning, and the Rust half of the configured gate green. Zero removed expect lines, no it.skip or only or todo. The src diff against the base commit names the six files of the wave and no src-tauri.",
+      "files_hint": [
+        "src/app/shared/components/main-content/main-content.spec.ts",
+        "src/app/core/services/inspector-layout.ts"
+      ]
+    },
+    {
+      "id": "T58",
+      "title": "Round-14 records: T54's unnamed DoD bullet, T53's marker adjacency, and T57's coverage attribution",
+      "layer": "docs",
+      "deps": ["T56", "T57"],
+      "acs": ["AC-03", "AC-04", "AC-05"],
+      "dod": "round13-code-fixes.md's Outcome names DoD bullet 1 as unsatisfiable as written with its reason, the retired clause surviving inside the marker that retires it, and the bullet is re-worded to say it returns only that quoted clause; the original wording survives inside a dated round-14 marker. round13-criteria-amendment.md carries a round-14 marker on its five-sites bullet and on its claim that nothing needed naming, recording that two of the five are mermaid labels that cannot hold a marker and are covered by the adjacent prose marker instead. Every AC in T57's acs resolves to a test-plan.md coverage row naming T57, zero unattributed entries, checked by the same script rather than by inspection, and each row says what T57 changed there. The acs to Task-column count is re-run mechanically over all 58 tasks under both predicates and the result for T56, T57 and T58 recorded, with any movement in the pre-existing sets stated. No two tasks in this wave share a file. No src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/round13-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/round13-criteria-amendment.md",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T59",
+      "title": "Round-15 criteria amendment: the band as the guard closed form, the unreachable fixture figures, and the sweep file list",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-02", "AC-03", "AC-18", "AC-20"],
+      "dod": "The canonical carve-out sentence states the guard own closed form (a remainder under twice --panel-head-h expanded, under four times it collapsed) instead of two fixed pixel pairs derived from the spec fixtures, and is one distinct value at every artefact site, extracted by regex and compared as byte strings. The predicate is verified against the shipped policy over all 21 reachable density by uiFontSize pairs, both collapse states and a sub-pixel remainder grid, with the number of disagreeing points reported and equal to zero. The three shipped densities replace both densities wherever the criteria scope a measurement. No criterion carries a pixel figure the fixture produces and the app does not: the AC-20 row, the screens density note and rendering variant, the two markers citing 0.727273 and the spec fixture-derived bounds clause are corrected. DESIGN.md states the exception at both carriers, says the cap is floored rather than rounded, and its table row is scoped; ADR-0004 takes the pointer at both carriers. The sweep is re-scoped to every tracked file the branch touches, run by meaning rather than by a phrase list, and every hit is classified with the file count and class counts reported. tasks.json has 62 tasks, parses, no duplicate id, no dangling dep, no cycle, and files_hint agrees with every task file over all 62. No src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/adr/0004-size-the-inspector-blocks-with-a-pure-typescript-layout-policy.md",
+        "DESIGN.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T60",
+      "title": "Round-15 production fix: guard the measured line height so the policy can never be fed a zero",
+      "layer": "app",
+      "deps": ["T59"],
+      "acs": ["AC-03", "AC-04", "AC-05"],
+      "dod": "A component-tier row fails first against the current tree with a body-less commit, a file list that draws no row, the header expanded and the column at the height where the pre-T57 and post-T57 policies diverge, asserting that --inspector-list-rows is a finite number and not NaN; a sibling assertion covers --inspector-clamp-lines, which predates T57. commit-inspector.ts builds its tokens with the same lineH > 0 predicate it already applies to bodyLines, so computeInspectorLayout is never fed a zero line height; the policy itself is not sanitised and the T57 deletion stands. The divergence sweep is re-run with lineH varied in the grid, the configuration count stated, and zero divergences reported between the pre-T57 and post-T57 policy. Removing the guard reddens the new row, quoted with its row and message. Whole gate green on three consecutive serial runs with identical counts, lint clean over 266 files, tsc exit 0, build clean, Rust half per settings. No assertion removed. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "src/app/features/commit-inspector/commit-inspector.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts"
+      ]
+    },
+    {
+      "id": "T61",
+      "title": "Round-15 test coverage: fixtures derived from the generator, and the four constants nothing observes",
+      "layer": "domain",
+      "deps": ["T59"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-19", "AC-20"],
+      "dod": "Both density fixtures are derived through computeMetrics rather than hard-coded, so no fixture describes a configuration the app cannot produce, and the three default-font pairs the derivation yields are confirmed by running the generator rather than by reading it. The compact row that changes with the real tokens is re-derived, with the old and new figures stated and the reason given. New rows pin the right-placement splitter clamp in both directions, MIN_CENTRE_HEIGHT_PX from below, and h-full on each of the two stacked panel hosts separately; each is proven by a mutation that reddens it, quoted with its row and message, at both a lower and a higher value for the two clamp constants. The pre-existing guards still redden at their round-15 baselines, C5, C7, C9 and A1 re-run and reported. Whole gate green on three consecutive serial runs with identical counts, lint clean, tsc exit 0, build clean. No assertion removed, relaxed or emptied by the fixture re-base; a row that cannot survive the real tokens is reported and not weakened. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/shared/components/main-content/main-content.spec.ts"
+      ]
+    },
+    {
+      "id": "T62",
+      "title": "Round-15 records: the false grep bullet, the moved address, and the enumeration that says three",
+      "layer": "docs",
+      "deps": ["T60", "T61"],
+      "acs": ["AC-03", "AC-04", "AC-05"],
+      "dod": "The round14-code-fixes bullet 2 states what its own grep returns and why that is correct behaviour, the original wording survives inside a dated round-15 marker, and the Outcome claim that no bullet was unsatisfiable becomes the real count with the reason, with the command output pasted in. Every citation of _epic.md:206 is corrected or replaced by the invariant bold anchor, including the live marker at _epic.md:7, verified both by printing line 206 and by grepping for the pointer. The enumeration of the retired round class reads four rather than three in round14-records.md and in the test-plan.md marker, each with a dated round-15 marker naming DESIGN.md:345 and the scope that found it. The acs to Task-column check is re-run mechanically over all 62 tasks: T60 and T61 have zero unattributed entries, T59 and T62 are reported as excluded by the docs-task convention rather than clean, and any movement in the pre-existing sets is stated. No src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/round14-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/round14-criteria-amendment.md",
+        "docs/features/inspector-diff-workspace/tasks/round14-records.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T63",
+      "title": "Round-16 criteria amendment: the predicate the band actually measures, the figures a tester executes, and the closed forms that cannot go stale",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "dod": "The reworded carve-out clause is one distinct value at the ten artefact sites, verified by regex extraction and byte comparison with the length and md5 reported. The spec AC-18 marker states which predicate the 201 474-point sweep measured and gives the guard's own band separately, both re-measured. No live artefact cell instructs a tester to expect a figure the app cannot produce, every surviving share figure re-derived from computeMetrics and the shipped policy. No live artefact scopes a measurement to two densities. No live artefact quotes 192, 384 or 32 as a configuration count. No live artefact asserts FILE_ROW_HEIGHT exists. tasks.json parses with 66 tasks, no duplicate id, no dangling dep, no cycle and zero files_hint mismatches over all of them, and the epic and tracker agree for T63 to T66. No src change. No citation of the epic by line number anywhere this task writes. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/sad.md",
+        "docs/features/inspector-diff-workspace/ux-flows.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "DESIGN.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T64",
+      "title": "Round-16 test coverage: the clamp term's rounding, the retired band inside the spec, and the carve-out row across all three densities",
+      "layer": "domain",
+      "deps": ["T63"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18"],
+      "dod": "A unit row derived from the fixture asserts clampLines at a height whose quotient has a fractional part at or above one half inside the clamp window, and it reddens when the clamp term's Math.floor is mutated to Math.round, with both runs and the assertion message reported. Every retired figure of the dead compact fixture is gone from the spec's prose or survives only inside a dated round-16 marker, verified by grep per figure. The one REACHABLE configuration claim and the numerically identical claim are corrected. The 220 by 110 carve-out twin iterates all three densities and reddens when any one density's entry is removed. No test title says the cap rounds. The literal-anchored expectations stay literal, verified by re-running the three computeMetrics mutations and confirming each still reddens rows in this file. The pre-existing policy guards still redden, each reported with its counts. Whole gate green on three consecutive serial runs with the count stated.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts"
+      ]
+    },
+    {
+      "id": "T65",
+      "title": "Round-16 figure gate: recompute every figure the artefacts quote from the generator and the shipped policy, and fail on drift",
+      "layer": "infra",
+      "deps": ["T63", "T64"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "dod": "pnpm check:figures exits zero on the tree T63 and T64 leave and reports how many figures it found, checked and could not check for want of a marker. It fails on each of the six historical drift instances reconstructed one at a time, each reported with the claim as written and the script's message. It fails when a generator constant moves and when a policy constant moves, restored and re-confirmed both times. It imports the shipped modules rather than re-implementing the policy arithmetic. It runs in CI. Marker coverage is stated as a number with the files that still hold unmarked figures. No src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "scripts/check-figures.mjs",
+        "package.json",
+        ".github/workflows/ci.yml",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T66",
+      "title": "Round-16 records: the address cited by anchor everywhere, the un-nested marker, and an enumeration that names its own scope",
+      "layer": "docs",
+      "deps": ["T64", "T65"],
+      "acs": ["AC-03", "AC-04", "AC-05"],
+      "dod": "No citation of the epic by line number survives anywhere under the feature directory, verified by grep with the output reported. The round-15 records Outcome states what its two commands return on the delivered tree and its none becomes the real count, both commands' output pasted. A token scan for nested or unbalanced HTML comments over every markdown file the branch touches returns zero, with the file count scanned reported. The four carriers passage lists exactly the carriers it names, drops the declared non-carrier, cites the right address, includes the fifth and names the scope swept, and the live test-plan marker does the same. The acs to Task-column check is re-run mechanically over all 66 tasks with T64 and T65 at zero unattributed and T63 and T66 reported as excluded by the docs-task convention rather than clean. No src change. pnpm check:figures still exits zero. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/round14-criteria-amendment.md",
+        "docs/features/inspector-diff-workspace/tasks/round14-records.md",
+        "docs/features/inspector-diff-workspace/tasks/round15-records.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/test-plan.md"
+      ]
+    },
+    {
+      "id": "T67",
+      "title": "Round-17 criteria amendment: the last two-density instructions, the run-count back-reference, and the two rules that end the figure class by construction",
+      "layer": "docs",
+      "deps": [],
+      "acs": ["AC-01", "AC-02", "AC-18", "AC-19", "AC-20"],
+      "dod": "The three surviving two-density measurement instructions are corrected: the test plan's layout-regression scenario states its scope as the product rather than a literal, its collapsed-share bullet refers to the run set of the bullet above instead of restating a count, and ADR-0003's re-measure consequence names the three shipped densities with a dated marker recording that the decision itself is unchanged. The task record that still pinned the file-row token to a non-existent constant is corrected under D4. Owner decisions D3 (no live artefact writes a figure derived from computeMetrics or the policy; closed forms plus one generated reference table) and D4 (a sweep's scope is every tracked file the branch touches, exclusions named with their reason, a declared scope narrower than the executed one fails mechanically) are written where the next wave reads them, each with its rationale and the round that produced it. A grep for two-density wording over every tracked file the branch touches plus the working tree and untracked files returns only hits classified as a dated marker, a true set-member count, or a past task's accurate summary, with the command output reported and every hit classified. No src change. tasks.json has 71 tasks with no duplicate id, no dangling dep, no cycle and zero files_hint mismatches over all 71; registration is additive and idempotent. No citation of the epic by line number anywhere this task writes. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/adr/0003-re-host-the-single-diff-viewer-instance-with-a-cdk-dom-portal.md",
+        "docs/features/inspector-diff-workspace/tasks/compact-file-list-layout.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T68",
+      "title": "Round-17 code fixes: the guard's closed form, and the three counts certified against the wrong one",
+      "layer": "domain",
+      "deps": ["T67"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18"],
+      "dod": "The head-cap guard's closed form in the policy's spec file reads as a sum rather than a doubled sum, and measures zero mismatches against the guard's real condition over the same grid the comment cites, with the sweep output pasted. The three adjacent counts that were certified against the wrong form are re-measured from the corrected one and each states a number this task measured. The deleted-predicate bounds below it are confirmed still correct and left untouched, because they are a different predicate. The share-yield form is re-verified at zero mismatches and left unchanged. The spec's AC-18 marker and this file now state the same form, verified by extraction rather than by reading. No production change: both module md5s unchanged. Gate green with the test count unmoved, since this is a comment-only change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts"
+      ]
+    },
+    {
+      "id": "T69",
+      "title": "Round-17 test coverage: a witness for the collapsed header's own height, and one for the stacked-panels sum the consumer measures",
+      "layer": "domain",
+      "deps": ["T68"],
+      "acs": ["AC-02", "AC-19"],
+      "dod": "A row observes the collapsed header's own height: mutating that arm to zero reddens it, and the mutation is logged before application, its first failing assertion quoted, restored, and the module md5 re-verified. A component-tier row renders a stacked panel inside the inspector column with a stubbed rect and observes that what reaches the policy is the column height minus that panel, so neutering the accumulation reddens it, under the same discipline. For each row the detector assertion is named and the setup lines are named as premise. Any map carries a size assertion against the density count and throws on a missing key. Both mutations that were green before this task are re-run and confirmed to redden, with full-suite counts. No production change: all five production md5s unchanged and only the two spec files touched. Any figure written into a comment or title is re-derived by this task and pasted. Gate green with the new count stated. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "src/app/core/services/inspector-layout.spec.ts",
+        "src/app/features/commit-inspector/commit-inspector.spec.ts"
+      ]
+    },
+    {
+      "id": "T70",
+      "title": "Round-17 gate hardening: make a lost marker loud, stop the verifier modelling the loop, make the coverage number mean something, and widen the scope to the branch",
+      "layer": "infra",
+      "deps": ["T67"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "dod": "A marker the strict parser does not match no longer passes silently: marker-shaped text that failed to parse fails the gate with its site. Named arguments are either honoured or rejected, and an unknown key fails rather than being ignored. The sweep-counts kind stops re-deriving the loop's shape, or is retired with its counts moved to the generated reference table and the collapse-dimension drift shown to be caught elsewhere; the decision and its reason are recorded. The coverage number counts comparable quantities and is proven on the line measured as carrying eight derived figures under one marker. The artefact scope is derived from the branch rather than enumerated, and a declared scope narrower than the executed one fails, demonstrated. The generated reference table exists and a stale checked-in copy fails the gate. The twenty-four malformed-marker attacks are re-run and each either fails loudly or is justified as an intentional pass, all enumerated. The five module drifts each still exit non-zero and name at least as many figures as before, with counts pasted. The gate still exits zero on the real tree and every marked value still re-derives. The test plan's CI-placement claim, the docblock and the gate output state what it checks and what it does not, and the marker-to-prose binding is recorded in spec section 8 with owner and due. No src change. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason, and no coverage figure is written that this task did not measure.",
+      "files_hint": [
+        "scripts/check-figures.mjs",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/reference-figures.md",
+        "package.json"
+      ]
+    },
+    {
+      "id": "T71",
+      "title": "Round-17 records: the grep count that is not what the command returns, and the three Outcomes that certified a form and a coverage they had not measured",
+      "layer": "docs",
+      "deps": ["T69", "T70"],
+      "acs": ["AC-01", "AC-02", "AC-18"],
+      "dod": "The round-16 records Outcome states what its grep returns after this task's own edits, names both sites and says why both must stay, and records the narrower transferable rule that a record adding a quotation of a pattern it is also counting must count the tree it leaves rather than the tree it inherited. The round-16 test-coverage Outcome's closed form and its certification are corrected, the substance that was right is distinguished from the form that was wrong, and the doubled form below it is named as a different and correct predicate. The two false marker-coverage figures are replaced by what T70 measured, quoted with their definition. The round-17 observations are folded into the records that own them, including that the write-dedup mutation is green and is not a hole, and that the ADR's pre-reversal quotation is correctly historical. Commit hygiene is named for the owner rather than resolved. No registration and no src change. The whole-wave gate is measured once here across both stacks, with the Rust half's byte-identity to the base verified rather than asserted. tasks.json re-validated mechanically over all 71. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/round16-records.md",
+        "docs/features/inspector-diff-workspace/tasks/round16-test-coverage.md",
+        "docs/features/inspector-diff-workspace/tasks/round16-figure-gate.md",
+        "docs/features/inspector-diff-workspace/tasks/round16-criteria-amendment.md"
+      ]
+    },
+    {
+      "id": "T72",
+      "title": "Round-18 gate and CI fixes: make the figure gate runnable in the CI it is wired into, and make D4's scope check able to fail",
+      "layer": "infra",
+      "deps": [],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "dod": "The figure gate exits 0 in every checkout shape it can meet: the main tree, an actions/checkout-default shallow single-branch clone, a full single-branch clone with only origin/main, and a clean checkout whose base resolves to HEAD. Each shape's exit code is measured before and after and pasted, and the run names the base rung it used. ci.yml pins fetch-depth: 0 with the figure step named as the reason. D4's scope check compares the declared scope against the set the sweep iterates, so an enumerated list written at the point of use fails; a declared exclusion with its reason still passes and is printed, and the record says so rather than leaving it to be re-found. The loop-shape parser blanks comments and string literals, proved with a control mutation that a real extra dimension is still loud. pnpm lint reaches scripts/ and the file count is stated. Every marker attack, module drift, staleness check and CRLF probe round 18 ran is re-run and no attack becomes a silent pass. figures:write round-trips byte-identically. No src change and the five production md5s are listed. T72-T74 registered and validated mechanically over all 74, with the count of ids missing from the mermaid graph stated as what the check returns rather than as zero. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "scripts/check-figures.mjs",
+        ".github/workflows/ci.yml",
+        "biome.json",
+        "package.json",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md",
+        "docs/features/inspector-diff-workspace/tasks.json"
+      ]
+    },
+    {
+      "id": "T73",
+      "title": "Round-18 D3 migration: perform the construction the decision asked for, so the figure class ends by there being no figure to go stale",
+      "layer": "docs",
+      "deps": ["T72"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-19", "AC-20"],
+      "dod": "The live derived-figure set over the eight files owner decision D3 names is enumerated mechanically with comments, fenced blocks and code spans blanked first, and every hit carries a verdict: migrated to the closed form or to a pointer at the generated table, dated as a historical quotation, or excluded with its reason written down. The sweep also catches the shapes the gate's heuristic cannot see. DESIGN.md's density table, false in eight of nine compact cells and missing relaxed entirely, becomes a pointer to the generated table rather than fresh literals, with a dated marker recording the false cells and the contradiction that dated them. Every migrated row still says what to measure and what passes, re-read end to end after the edit. The gate's coverage line is quoted verbatim before and after and the remainder explained. Stage 1's prose-edit reconstruction is re-run. spec.md's deferral of the marker-to-prose binding is either now true as stated or qualified at that line. figures:write round-trips byte-identically, check:figures exits 0, test and lint unchanged. No src change and the five production md5s are listed. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/spec.md",
+        "docs/features/inspector-diff-workspace/reference-figures.md",
+        "DESIGN.md"
+      ]
+    },
+    {
+      "id": "T74",
+      "title": "Round-18 records and graph: run the completeness check T67 declared, take the leftover T70 named, and restate the two gate bullets that quote a retired number",
+      "layer": "docs",
+      "deps": ["T73"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-20"],
+      "dod": "T27-T33 are drawn in the epic's mermaid graph with the edges tasks.json gives them, verified mechanically rather than read, and the completeness check T67 declared is RUN with its output pasted and returning zero. That check moves inside the registration validator so it cannot be written and not run again, shown failing on a deliberately removed node and then passing. T67's stale-from-T62 diagnosis is corrected to T26 inside a dated marker. The leftover T70 named by file and line is dated with a marker pointing at what test-plan.md says now. The two round-17 Outcomes quoting the retired unmarked count are restated as what the delivered gate prints. Every count this task states is what its command returns after this task's own edits. reference-figures.md is claimed by T70's files_hint and the record that already claimed it is corrected. No row inserted, no dep changed, no total moved. No src change and the five production md5s are listed. Every DoD bullet that cannot be satisfied as written is named in the Outcome with the reason.",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/round16-figure-gate.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-test-coverage.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-records.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-criteria-amendment.md",
+        "docs/features/inspector-diff-workspace/tasks.json",
+        "scripts/check-tasks.mjs",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ]
     }
   ]
 }

@@ -263,7 +263,9 @@ export class MainContent {
    * fixed basis instead of a growth proportion. The percentages are the ones
    * the 1.0.5 build gave them — 3/8 and 2/7 alone, 3/10 and 2/10 together —
    * so a panel that grew would take a cut of every pixel the commit inspector
-   * releases, which belongs to the diff slot alone (AC-19).
+   * releases, which belongs to the commit file list alone (AC-19). It is also
+   * why a collapsed list leaves its height empty rather than handing it down
+   * (AC-05).
    */
   protected readonly blameFlex = computed(() =>
     this.fileHistoryFile() ? '0 0 30%' : '0 0 37.5%',

@@ -40,5 +40,17 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     reporters: 'dot',
+    /**
+     * Spec files run one at a time. Under the default file-level parallelism
+     * the component tier is not deterministic: the specs that wait on
+     * `afterNextRender`, the CDK portal or the virtual viewport lose their
+     * render window when a sibling fork competes for the CPU, and between one
+     * and four of them fail at random. Measured on `228ab35` — the tree the
+     * round-8 review passed as «831 green» — three parallel runs gave 1 fail,
+     * 0 fails, 4 fails; three serial runs gave 831 green each. The cost is
+     * about twelve seconds a run, against a gate whose result could not be
+     * trusted before (review round 9).
+     */
+    fileParallelism: false,
   },
 });

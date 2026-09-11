@@ -306,17 +306,47 @@ Every fixed dimension in the shell. These are not suggestions: `--row-h` must
 match the CDK virtual-scroll `itemSize` **and** the branch-graph row height, or
 the graph lanes drift away from their commits.
 
-| Surface | Comfortable | Compact | Token |
-| --- | --- | --- | --- |
-| Titlebar (custom) | 38 px | 32 px | `--titlebar-h` |
-| Toolbar | 48 px, controls 32 px | 40 px | `--toolbar-h` |
-| Icon rail | 48 px wide, items 40 px | 44 px | `--rail-w` |
-| Refs panel rows | 30 px, tree indent 18 px | 26 px | `--ref-row-h` |
-| Commit rows | 34 px | 34 px | `--row-h` |
-| File rows | 30 px | 30 px | `--file-row-h` |
-| Panel header | 34 px | 30 px | `--panel-head-h` |
-| Panel padding | 16 px | 10 px | `--panel-pad` |
-| Status bar | 26 px | 24 px | `--statusbar-h` |
+Every fixed dimension in the shell is **computed**, not chosen: `computeMetrics`
+(`core/services/appearance-metrics.ts`) turns the type size and the density into
+each token, and `AppearanceService` writes them as inline custom properties on
+`<html>`. The tokens below are therefore the *names* of the dimensions; for the
+concrete pixel values at every density, read the generated table —
+[`docs/features/inspector-diff-workspace/reference-figures.md`](docs/features/inspector-diff-workspace/reference-figures.md),
+regenerated from the shipped modules by `pnpm figures:write` and byte-compared by
+`pnpm check:figures`, so it cannot go stale.
+
+| Surface | Token | Padding budget it scales |
+| --- | --- | --- |
+| Titlebar (custom) | `--titlebar-h` | `PAD.titlebar` |
+| Toolbar | `--toolbar-h` | `PAD.toolbar` |
+| Icon rail | `--rail-w` | `PAD.rail` |
+| Refs panel rows | `--ref-row-h` | `PAD.refRow` |
+| Commit rows | `--row-h` | `PAD.row` |
+| File rows | `--file-row-h` | `PAD.fileRow` |
+| Panel header | `--panel-head-h` | `PAD.panelHead` |
+| Panel padding | `--panel-pad` | `PAD.panel` (pure spacing, no text line) |
+| Status bar | `--statusbar-h` | `PAD.statusbar` |
+
+Each is `round(textRatio × typeSize + PAD.<surface> × densityScale)`, with
+`DENSITY_PAD_SCALE` at `0.6 / 1 / 1.5` for compact / comfortable / relaxed —
+density means «how much air around the text», never «how big is the text».
+
+<!-- table replaced by its tokens and a pointer 2026-09-10 (T73, review round 18, R18-F3, per owner
+decision D2): this was a `Surface | Comfortable | Compact | Token` table of literal pixel values, and
+**eight of its nine compact cells were false** against `computeMetrics` at the default 13 px —
+titlebar 32 where the code gives 29, toolbar 40 where it gives 35, icon rail 44 where it gives 35,
+refs rows 26 → 24, commit rows 34 → 26, file rows 30 → 24, panel header 30 → 26, status bar 24 → 22;
+only panel padding (10) was right, and the whole `Comfortable` column was right. It had **no
+`relaxed` column at all**, though the app has shipped three densities since 1.0.5. Worse, «Commit
+rows 34 px | 34 px» and «File rows 30 px | 30 px» asserted that row height does NOT move with
+density — the `FILE_ROW_HEIGHT` belief R16-L-F1 killed in `sad.md` and T67 corrected in
+`tasks/compact-file-list-layout.md` — eleven lines above a §Density paragraph that T63 had already
+corrected to «26 / 24 compact, 34 / 30 comfortable, 43 / 37 relaxed», so one section answered the
+same question two ways. The replacement is a pointer rather than a corrected table with a third
+column, because owner decision D3 forbids a live artefact from writing a figure derived from
+`computeMetrics`: a table of literals is what went stale, and adding a column would only have made
+three columns to keep in step. -->
+
 
 Type scale: body 13 px, mono 12 px, headings 15 px, labels 10.5 px uppercase
 with `tracking-[0.12em]`.
@@ -327,11 +357,27 @@ density in `core/services/appearance-metrics.ts` and writes the tokens itself.
 There is no `:root[data-density="compact"]` rule, and `styles.css` says so at
 the declaration — the `data-density` attribute is only a read-back marker.
 Change density metrics in the arithmetic of that module, never with a CSS
-override. **`--row-h` and `--file-row-h` deliberately do
-not change**: both are pinned to a CDK virtual-scroll `itemSize` declared in
-TypeScript (`COMMIT_ROW_HEIGHT`, `FILE_ROW_HEIGHT`), and a token that disagrees
-with `itemSize` misplaces every row and drifts the graph lanes off their
-commits. Changing them means changing both sides together.
+override. **`--row-h` and `--file-row-h` move with density like every other
+token — the three values each takes are in
+[`reference-figures.md`](docs/features/inspector-diff-workspace/reference-figures.md)
+§Density tokens — and what is deliberate is that they move *together with the CDK
+virtual-scroll `itemSize`**: every virtual list binds
+`[itemSize]="rowHeight()"` from the same `computeMetrics` output that writes
+the token, so the two cannot disagree. Override either one in CSS and the rows
+move while the viewport still scrolls by the old pitch, which misplaces every
+row and drifts the graph lanes off their commits. Changing them means changing
+the arithmetic, which moves both sides at once.
+<!-- corrected 2026-09-10 (T63, review round 16 R16-L-F1, second carrier): this
+paragraph said the two tokens «deliberately do not change» and credited the
+pinning to two TypeScript constants, one of which (`FILE_ROW_HEIGHT`) does not
+exist and the other of which (`COMMIT_ROW_HEIGHT` = 34, `commit-list-layout.ts`)
+is the DEFAULT metric a test pins to `computeMetrics`' comfortable / 13 px
+output, not the value the viewport uses at another density. Both halves were
+false and together they are the belief that made the unreachable `{30, 30}`
+compact fixture plausible for fifteen rounds (R15-S1-F2). Found by the
+mechanical `FILE_ROW_HEIGHT` check this task ran, not by a prose sweep --
+three reviewers and four waves had missed it. `ARCHITECTURE.md`'s row-height
+note carries the same belief and is round-16 O11 -->
 
 **Inspector layout variables.** Three more custom properties exist, and none
 is a density token: `core/services/inspector-layout.ts` computes them from the
@@ -342,16 +388,28 @@ per layout pass. Never author them in CSS, never persist them.
 | --- | --- | --- |
 | `--inspector-list-rows` | how tall the commit file list is, in rows (`rows × --file-row-h`) | no upper bound — as many rows as the column fits, capped only by the file count; floor of 2 while the list is expanded; 0 when the list is collapsed or the commit touched no file |
 | `--inspector-clamp-lines` | `-webkit-line-clamp` on the commit message body | 1 to 4; a collapsed header hides the body rather than clamping it to zero |
-| `--inspector-header-max-h` | how tall the expanded commit header may grow before it scrolls inside the cap | whatever the commit file list's floor leaves of the column, rounded to whole pixels and never under one panel head |
+| `--inspector-header-max-h` | how tall the expanded commit header may grow before it scrolls inside the cap | whatever the commit file list's floor leaves of the column, **floored** to whole pixels and never under one panel head (flooring, not rounding: rounding a half-pixel cap up takes that pixel from the list — review round 10 R10-S2-F2) |
 
 The policy's rule is that the **commit file list** keeps at least half of the
 column left by the stacked panels, and at least 75 % of it once the header is
 collapsed — collapsing the header is the developer asking for more list, so the
-stricter floor applies there. The list is the block the policy protects, and
+stricter floor applies there. One exception, and it is the whole of it: where
+the header-cap guard costs the list its ratio — a remainder under twice
+`--panel-head-h` expanded, or under four times it collapsed — the cap is lifted
+to a full panel head and
+the ratio yields, because a header shorter than its own head would disappear
+behind its own scrollbar. Reachable at the bottom placement with both panels
+stacked: at a 220 px column the guard has lifted the cap to a full
+`--panel-head-h`, so the list keeps `1 − panelHeadH / remainder` instead of the
+ratio — under the collapsed floor, per density, as
+[`reference-figures.md`](docs/features/inspector-diff-workspace/reference-figures.md)
+§«Header cap and list share» gives it at the 110 px remainder (spec AC-18,
+AC-03). The list is the block the policy protects, and
 the header is what yields, in this order: the body clamp shrinks first, down to
 its floor of 1 line plus «Show more»; then the expanded header scrolls inside
 its cap, which is whatever the list's floor leaves over, so a commit with many
-refs cannot push the list under its share. The list gives up nothing to the
+refs cannot push the list under its share. The one thing that can is the cap
+guard above, on a column too short for the ratio to survive it. The list gives up nothing to the
 header, and never falls below 2 rows — that floor wins over the ratio on a
 column too short for both. Opening the diff workspace does not change any of
 this: the History inspector never had the diff to hand over. The policy writes
@@ -398,7 +456,7 @@ grows — which one depends on the view:
 | Block | Height |
 | --- | --- |
 | Commit header | content-sized; collapses to a one-line summary (avatar, subject, author, sha chip) whose inline actions overflow into the More menu as the line runs out of room |
-| Commit file list | `flex-1` — the only growing child in History, kept at half the column or more (75 % with the header collapsed); collapses to its own header |
+| Commit file list | `flex-1` — the only growing child in History, kept at half the column left by the stacked panels or more (75 % with the header collapsed), except where the header-cap guard costs the list its ratio (§Density); collapses to its own header |
 | Diff slot | the portalled viewer's parking home: `flex-1` in Changes, where the working tree reads its diff inline; zero height in History, where the commit diff is read only in the diff workspace |
 | Blame · file history | fixed shares of the column: 37.5 % / 28.6 % on their own, 30 % / 20 % when both are stacked |
 

@@ -135,8 +135,19 @@ after an await.
   explicit language list. **No Monaco** — a full editor is tens of megabytes for
   a read-only view, and it fights the theme.
 - Long lists (commits, files, blame) use the CDK virtual scroller. Row heights
-  are fixed by the density tokens in `styles.css`; `--row-h` must match the
-  virtual scroller's `itemSize` and the graph's row height.
+  are computed per density and `uiFontSize` by `computeMetrics`
+  (`core/services/appearance-metrics.ts`), which writes the tokens and feeds the
+  same numbers to `[itemSize]`; `--row-h` must match the virtual scroller's
+  `itemSize` and the graph's row height, and it does because one function
+  produces all three. Never override a row token in CSS.
+  <!-- corrected 2026-09-10 (T63, review round 16 O11): this said row heights
+  «are fixed by the density tokens in `styles.css`», which is false twice over --
+  `styles.css:289-295` carries fallbacks and says in its own words that the
+  service computes the real values, and the heights are not fixed at all (26 / 34 /
+  43 for `--row-h` across the three densities at 13 px). Round 15 filed it as O5
+  and round 16 as O11, both times as an observation rather than a finding; it is
+  the same belief `DESIGN.md`'s density paragraph carried (R16-L-F1, second
+  carrier), so it is fixed with it rather than left for a seventeenth round -->
 
 ## Repository layout
 

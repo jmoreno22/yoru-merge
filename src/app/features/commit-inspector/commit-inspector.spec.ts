@@ -19,6 +19,7 @@ import { sizeVirtualViewport } from '../../../testing/virtual-scroll';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
+import { computeInspectorLayout } from '../../core/services/inspector-layout';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { TauriGitService } from '../../core/services/tauri-git.service';
 import type { MenuAnchor, MenuItem } from '../../shared/ui';
@@ -31,6 +32,8 @@ const SHORT_SHA = COMMIT_SHA.slice(0, 7);
 const LIST_ROWS = 6;
 /** Thirty files: more than the column fits, so the list has to scroll (AC-04). */
 const THIRTY = Array.from({ length: 30 }, (_, i) => `file${i}.ts`);
+/** The column height `mount()` defaults to; the layout pass reads it off it. */
+const COLUMN_H = 800;
 /**
  * Column height at which the policy has to spend both of its floors, and the
  * body line height jsdom reports as `normal` unless a spec sets it (AC-03).
@@ -40,6 +43,15 @@ const SQUEEZED_COLUMN_H = 300;
 // so the cap binds and the clamp has to yield (AC-03).
 const TALL_HEADER_H = 200;
 const BODY_LINE_H = 16;
+/**
+ * The bottom placement's own minimum (`main-content.ts` MIN_BOTTOM_PX) and the
+ * share the two stacked panels take of it when both are open (`blameFlex`
+ * `0 0 30%`, `fileHistoryFlex` `0 0 20%`). What they leave is the remainder
+ * AC-18's carve-out band is measured at, so the fixture is the real split.
+ */
+const BOTTOM_MIN_H = 220;
+const BLAME_H = 0.3 * BOTTOM_MIN_H;
+const FILE_HISTORY_H = 0.2 * BOTTOM_MIN_H;
 const DIFF = '@@ -1 +1 @@\n-old\n+new\n';
 
 /**
@@ -129,7 +141,7 @@ interface Mounted {
  * Renders the inspector inside a column `columnHeight` pixels tall, with the
  * file list given a fixed viewport box the CDK can scroll inside.
  */
-function mount(columnHeight = 800): Mounted {
+function mount(columnHeight = COLUMN_H): Mounted {
   const fixture = TestBed.createComponent(InspectorColumn);
   const host: HTMLElement = fixture.nativeElement;
   const column = host.querySelector('[data-testid="inspector-column"]');
@@ -194,6 +206,19 @@ function measureBodyAs(
   Object.defineProperty(body, 'scrollHeight', { configurable: true, get: () => total });
   observer.resize(body, { width: 320, height: shown });
   return body;
+}
+
+/**
+ * Stacks a blame or file-history panel inside the inspector column, with the
+ * box a browser would have measured for it. `applyLayout` finds them with a
+ * plain `querySelectorAll` over the column, so the element only has to carry
+ * the tag the production selector names and a rect; jsdom reports zero for
+ * every box, which is what left this loop unobserved.
+ */
+function stackPanelIn(column: Element, tag: string, height: number): void {
+  const panel = document.createElement(tag);
+  panel.getBoundingClientRect = () => new DOMRect(0, 0, 320, height);
+  column.append(panel);
 }
 
 /**
@@ -439,6 +464,50 @@ describe('CommitInspector squeezed column (AC-03)', () => {
   });
 });
 
+describe('CommitInspector collapsed clamp (AC-03)', () => {
+  it('AC-03: a collapsed header still gets one clamp line, where the policy returns none', async () => {
+    // The policy returns `clampLines: 0` for a collapsed header, and the
+    // consumer raises it to 1 on purpose — «the header collapses a frame
+    // before this pass agrees, and a zero clamp would blank the body for that
+    // frame». Dropping that `Math.max` left all 835 tests green, and it is
+    // also why no collapsed `clampLines` the policy returns ever reaches the
+    // DOM: the two unit rows that assert 0 describe nothing observable
+    // (review round 11, R11-S2-F6).
+    repo.commitDetails.set(commitDetails(['a.ts'], { body: lines(12) }));
+    const { host } = mount();
+    await settle();
+
+    click(control(host, 'inspector-collapse-header'));
+    await settle();
+
+    const appearance = TestBed.inject(AppearanceService);
+    const policy = computeInspectorLayout({
+      availableHeight: COLUMN_H,
+      fileCount: 1,
+      bodyLines: 12,
+      headerCollapsed: true,
+      fileListCollapsed: false,
+      stackedPanelsHeight: 0,
+      tokens: {
+        fileRowH: appearance.fileRowHeight(),
+        panelHeadH: appearance.panelHeadHeight(),
+        lineH: 0,
+        headerFixedH: 0,
+      },
+    });
+
+    expect(host.querySelector('.inspector-summary')).not.toBeNull();
+    // Premise, not coverage: `headerCollapsed: true` makes the policy's clamp 0
+    // through its own branch, so this holds whatever `bodyLines`, `lineH` and
+    // `headerFixedH` above are -- those three arguments are decorative here
+    // (review round 16, O7). The assertion that carries the row is the next
+    // one: the CONSUMER floors the clamp at 1 so a collapsing header cannot
+    // blank the body for a frame.
+    expect(policy.clampLines).toBe(0);
+    expect(layoutVariable(host, '--inspector-clamp-lines')).toBe('1');
+  });
+});
+
 describe('CommitInspector file list (AC-04)', () => {
   it('AC-04: thirty files get every row the column fits, with no six-row cap', async () => {
     const paths = Array.from({ length: 30 }, (_, i) => `file${i}.ts`);
@@ -499,6 +568,49 @@ describe('CommitInspector file list (AC-04)', () => {
     expect(rows()).toBe(closed);
   });
 
+  it('AC-04: a filter that matches nothing releases the whole share, not just the rows', async () => {
+    // AC-04's no-share clause names this as its reachable case, and its own
+    // marker says why it works: the policy is fed the DISPLAYED row count, so
+    // a filter matching none of thirty files is the same layout case as a
+    // commit with no files at all. That wiring is one expression
+    // (`commit-inspector.ts` `fileRows().length`) and nothing could see it —
+    // handing the policy the commit's file count instead left all 835 tests
+    // green, with the header capped at half the column and the other half
+    // blank (review round 11, R11-S1-F2 / R11-S2-F3). The unit rows cannot
+    // cover this: they pass `fileCount: 0` as a literal.
+    repo.commitDetails.set(commitDetails(THIRTY));
+    const { host } = mount(COLUMN_H);
+    await settle();
+
+    typeFilter(host, 'nothing-matches-this');
+    await settle();
+
+    const appearance = TestBed.inject(AppearanceService);
+    const bareHead = computeInspectorLayout({
+      availableHeight: COLUMN_H,
+      fileCount: 0,
+      bodyLines: 0,
+      headerCollapsed: false,
+      fileListCollapsed: false,
+      stackedPanelsHeight: 0,
+      tokens: {
+        fileRowH: appearance.fileRowHeight(),
+        panelHeadH: appearance.panelHeadHeight(),
+        lineH: 0,
+        headerFixedH: 0,
+      },
+    });
+
+    expect(host.textContent).toContain('matches');
+    expect(layoutVariable(host, '--inspector-list-rows')).toBe('0');
+    expect(layoutVariable(host, '--inspector-header-max-h')).toBe(
+      `${bareHead.headerMaxH}px`,
+    );
+    // Not merely «some cap»: the cap a THIRTY-file commit would have got is
+    // the number this row must not see.
+    expect(bareHead.headerMaxH).toBe(COLUMN_H - appearance.panelHeadHeight());
+  });
+
   it('AC-04: zero files leave the header with the count and one «No files changed» line', async () => {
     repo.commitDetails.set(commitDetails([]));
     const { host } = mount();
@@ -510,10 +622,51 @@ describe('CommitInspector file list (AC-04)', () => {
     expect(host.querySelector('cdk-virtual-scroll-viewport')).toBeNull();
     expect(host.textContent).toContain('No files changed');
   });
+
+  it('AC-04 / AC-05: a body-less commit writes row and clamp counts, never NaN', async () => {
+    // A commit with no message body renders no `#bodyText`, so the pass has
+    // nothing to measure and hands the policy a line height of 0. Where the
+    // header's allowance is exactly the part the clamp cannot shrink, the
+    // clamp term is `0 / 0`, and the NaN it returns runs through `clampLines`
+    // into `listHeight` and — since the `fileCount === 0` arm left `listRows`
+    // — into the row count itself. `--inspector-list-rows: NaN` makes
+    // `commit-inspector.css`'s `calc()` invalid at computed-value time, and
+    // the `var()` fallback cannot rescue a property that IS set, so the file
+    // list falls to `height: auto` (review round 15, R15-S2-F1).
+    const appearance = TestBed.inject(AppearanceService);
+    // Derived, not pinned: the divergence is at the height where the
+    // allowance equals the fixed header, which moves with the commit's refs.
+    const headerFixedH = 3 * appearance.panelHeadHeight();
+    const columnH = headerFixedH + appearance.panelHeadHeight();
+
+    repo.commitDetails.set(commitDetails([]));
+    const { host } = mount(columnH);
+    await settle();
+
+    // No body, so the whole scroll height is the part the clamp cannot shrink.
+    measureHeaderAs(host, headerFixedH);
+    const column = host.querySelector('[data-testid="inspector-column"]');
+    if (!column) throw new Error('The inspector column is not rendered.');
+    observer.resize(column, { width: 320, height: columnH });
+    TestBed.tick();
+
+    const rows = layoutVariable(host, '--inspector-list-rows');
+    const clamp = layoutVariable(host, '--inspector-clamp-lines');
+    // Both must be written: an unwritten variable reads as '' and would let
+    // this row pass without observing anything.
+    expect(rows).not.toBe('');
+    expect(clamp).not.toBe('');
+    expect(Number.isFinite(Number(rows))).toBe(true);
+    // The half that predates the `fileCount === 0` deletion: with no body
+    // element to clamp it was inert, and it is still wrong.
+    expect(Number.isFinite(Number(clamp))).toBe(true);
+    // A list with no row to draw claims no share, exactly as a collapsed one.
+    expect(rows).toBe('0');
+  });
 });
 
 describe('CommitInspector file list collapse (AC-05)', () => {
-  it('AC-05: collapsing keeps the header count and the file in the viewer, expanding brings the row back', async () => {
+  it('AC-05: collapsing keeps the header count and the active file, expanding brings the row back', async () => {
     repo.commitDetails.set(commitDetails(['a.ts', 'b.ts']));
     const { host } = mount();
     await settle();
@@ -537,6 +690,83 @@ describe('CommitInspector file list collapse (AC-05)', () => {
     await settle();
 
     expect(activeRowPath(host)).toBe('b.ts');
+  });
+});
+
+describe('CommitInspector stacked panels (AC-19)', () => {
+  it('AC-19: the stacked panels come off the column before the policy is given a height', async () => {
+    // The consumer half of AC-19 had no witness: neutering the
+    // `stackedPanelsHeight` accumulation in `applyLayout` left all 842 tests
+    // green, because no component row rendered a stacked panel inside the
+    // column and both of this file's own policy calls pass 0 (review round 17,
+    // R17-F11). `main-content.spec.ts` pins the two panels' flex BASES and the
+    // unit sweep pins the policy's `availableHeight - stackedPanelsHeight`;
+    // nothing joined them, so an inspector that stopped subtracting them would
+    // size against the whole column and overflow its box at every window size.
+    //
+    // This is also where the branch's canonical 110 px remainder comes from —
+    // the one AC-18's carve-out band, the collapsed twin and the fourth manual
+    // run are all measured at — so the fixture is the real split rather than a
+    // round number: the bottom placement's own minimum, with both panels open.
+    repo.commitDetails.set(commitDetails(THIRTY));
+    const { host } = mount(BOTTOM_MIN_H);
+    await settle();
+
+    const column = host.querySelector('[data-testid="inspector-column"]');
+    if (!column) throw new Error('The inspector column is not rendered.');
+    stackPanelIn(column, 'app-blame-viewer', BLAME_H);
+    stackPanelIn(column, 'app-file-history-panel', FILE_HISTORY_H);
+    observer.resize(column, { width: 320, height: BOTTOM_MIN_H });
+    TestBed.tick();
+
+    // Derived from the policy, never pinned: what this row proves is WHICH
+    // height reached it. A commit with no body renders no `#bodyText`, so the
+    // pass hands the policy 0 lines and the `lineH` fallback, and jsdom leaves
+    // the header's `scrollHeight` at 0 — the three arguments below are the
+    // consumer's real inputs at this fixture, not decoration.
+    const appearance = TestBed.inject(AppearanceService);
+    const asked = {
+      fileCount: THIRTY.length,
+      bodyLines: 0,
+      headerCollapsed: false,
+      fileListCollapsed: false,
+      tokens: {
+        fileRowH: appearance.fileRowHeight(),
+        panelHeadH: appearance.panelHeadHeight(),
+        lineH: 1,
+        headerFixedH: 0,
+      },
+    };
+    const minusPanels = computeInspectorLayout({
+      ...asked,
+      availableHeight: BOTTOM_MIN_H,
+      stackedPanelsHeight: BLAME_H + FILE_HISTORY_H,
+    });
+    const wholeColumn = computeInspectorLayout({
+      ...asked,
+      availableHeight: BOTTOM_MIN_H,
+      stackedPanelsHeight: 0,
+    });
+
+    // Premise, not coverage: without this the row could pass on a policy that
+    // ignores its `stackedPanelsHeight` argument entirely, and the two
+    // expectations below would be the same number.
+    expect(minusPanels).not.toEqual(wholeColumn);
+
+    // The detectors. Both variables carry the remainder the panels left, and
+    // neither carries the height of the column they sit in.
+    expect(layoutVariable(host, '--inspector-list-rows')).toBe(
+      String(minusPanels.listRows),
+    );
+    expect(layoutVariable(host, '--inspector-header-max-h')).toBe(
+      `${minusPanels.headerMaxH}px`,
+    );
+    expect(layoutVariable(host, '--inspector-list-rows')).not.toBe(
+      String(wholeColumn.listRows),
+    );
+    expect(layoutVariable(host, '--inspector-header-max-h')).not.toBe(
+      `${wholeColumn.headerMaxH}px`,
+    );
   });
 });
 

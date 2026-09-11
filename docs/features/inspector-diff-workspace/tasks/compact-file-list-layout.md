@@ -40,4 +40,4 @@ In `features/commit-inspector/`:
 
 ## Notes
 
-Third in the `commit-inspector` lane. Row height stays 30 px in both densities (pinned to `FILE_ROW_HEIGHT`); only `--panel-head-h` / `--panel-pad` change with density (AC-20).
+Third in the `commit-inspector` lane. `--file-row-h`, `--panel-head-h` and `--panel-pad` all change with density, and all three come from `computeMetrics` (AC-20). <!-- corrected 2026-09-10 (T67, review round 17 O2, under owner decision D4 which puts task records in the sweep's scope): this read «Row height stays 30 px in both densities (pinned to `FILE_ROW_HEIGHT`)» and both halves were false. The file-row token goes 24 / 30 / 37 across compact / comfortable / relaxed at the default 13 px, and `FILE_ROW_HEIGHT` does not exist in the repo — the CDK `itemSize` is `rowHeight()`, fed by the same `computeMetrics` output as the token, which is why the token must not be overridden in CSS. This is the belief that made the unreachable `{30, 30}` compact fixture plausible for fifteen rounds (R15-S1-F2, R16-L-F1) -->

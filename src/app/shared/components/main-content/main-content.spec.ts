@@ -195,15 +195,39 @@ function inspectorBlock(host: HTMLElement): HTMLElement {
   return element;
 }
 
-/** Direct children of the inspector column that flex-grow. */
+/**
+ * Direct children of the inspector column that flex-grow — by the `flex-1`
+ * class OR by an inline `flex` whose grow term is not 0. The stacked panels
+ * take their basis inline (`[style.flex]`), so a class-only filter could not
+ * see them growing (review round 10, R10-S1-F8).
+ */
 function growingChildren(host: HTMLElement): HTMLElement[] {
   const column = host.querySelector<HTMLElement>('[data-testid="inspector-column"]');
   if (!column) throw new Error('The inspector column is not on screen.');
-  return [...column.children].filter(
-    (child): child is HTMLElement =>
-      child instanceof HTMLElement && child.classList.contains('flex-1'),
-  );
+  return [...column.children].filter((child): child is HTMLElement => {
+    if (!(child instanceof HTMLElement)) return false;
+    if (child.classList.contains('flex-1')) return true;
+    const grow = child.style.flex.trim().split(/\s+/)[0];
+    return grow !== undefined && grow !== '' && grow !== '0';
+  });
 }
+
+/**
+ * The wrapper each stacked panel sits in, in template order. `growingChildren()`
+ * answers «which children grow»; this answers «what did the template declare»,
+ * which is the only question a jsdom tier can answer about a CLASS-based grow:
+ * with no stylesheet loaded, `getComputedStyle(el).flexGrow` reports the
+ * initial `0` for `flex-[3]` just as it does for a non-growing panel (review
+ * round 11, R11-S2-F2).
+ */
+function stackedPanelWrappers(host: HTMLElement): HTMLElement[] {
+  return ['app-blame-viewer', 'app-file-history-panel']
+    .map((tag) => host.querySelector(tag)?.closest<HTMLElement>('[style*="flex"], div'))
+    .filter((element): element is HTMLElement => Boolean(element));
+}
+
+/** Tailwind utilities that would make a child grow. */
+const GROWTH_UTILITIES = /^(flex-1|flex-auto|grow|grow-\[|flex-\[)/;
 
 describe('Workbench centre wiring', () => {
   let observer: ReturnType<typeof installResizeObserver>;
@@ -361,9 +385,14 @@ describe('Workbench centre wiring', () => {
       },
     });
     expect(written).toBe(`${expected.headerMaxH}px`);
-    // round(560 − max(50 % floor 280, 2-row floor 34 + 2 × 30)) — the cap is
+    // floor(560 − max(50 % floor 280, 2-row floor 34 + 2 × 30)) — the cap is
     // what the list's share leaves the header, not what the diff's did
-    // (T31 — V3, re-pinned for the 2026-09-07 reversal).
+    // (T31 — V3, re-pinned for the 2026-09-07 reversal). The operation read
+    // `round(` until review round 14 (R14-S2-F2): it was true when written, and
+    // T44 changed the policy to `Math.floor` for R10-S2-F2 without sweeping this
+    // comment. 280 is an integer, so the value is the same either way — what was
+    // false was the name of the operation, in the one file that contradicted
+    // `inspector-layout.spec.ts`'s «FLOOR, not round».
     expect(expected.headerMaxH).toBe(280);
   });
 
@@ -377,6 +406,98 @@ describe('Workbench centre wiring', () => {
     await bench.settle();
 
     expect(headerMaxH(bench.host)).toMatch(/^\d+px$/);
+  });
+
+  it('AC-19: blame and file history hold a fixed basis, so the commit file list stays the only growing child (R10)', async () => {
+    // These two bases are the whole of AC-19 and the reason AC-05 says the
+    // released height is «left empty»: a stacked panel that grew would take a
+    // cut of every pixel the commit inspector releases. Turning either into a
+    // growing child left the whole suite green until this row existed (review
+    // round 10, R10-S1-F8) — the four rows above filter on the `flex-1` CLASS
+    // while the panels set their basis inline, and none of them opens a panel.
+    const bench = await renderWorkbench();
+    bench.repo.blameFile.set(COMMIT_TEXT_FILE);
+    await bench.settle();
+
+    expect(bench.host.querySelector('app-blame-viewer')).not.toBeNull();
+    expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
+    // Blame alone: 3/8 of the column, the share the 1.0.5 build gave it.
+    expect(stackedPanelWrappers(bench.host)[0]?.style.flex).toBe('0 0 37.5%');
+
+    bench.repo.fileHistoryFile.set(COMMIT_TEXT_FILE);
+    await bench.settle();
+
+    // Both stacked: the bases change (3/8 → 3/10, 2/7 → 2/10) and stay fixed.
+    expect(bench.host.querySelector('app-file-history-panel')).not.toBeNull();
+    expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
+
+    // And the mechanism itself, not only its current effect. `growingChildren()`
+    // is a whitelist of two ways to grow — the `flex-1` class and an inline
+    // `flex` — so it cannot see a third: giving blame the `flex-[3]` the
+    // pre-feature stack used (`sad.md` §2) and dropping its `[style.flex]` left
+    // the whole suite green (review round 11, R11-S2-F2). What every panel must
+    // declare is a fixed basis and no growth utility at all.
+    const wrappers = stackedPanelWrappers(bench.host);
+    expect(wrappers).toHaveLength(2);
+    for (const wrapper of wrappers) {
+      expect(wrapper.style.flex).toMatch(/^0 0 /);
+      expect(
+        [...wrapper.classList].filter((name) => GROWTH_UTILITIES.test(name)),
+      ).toEqual([]);
+      // A fixed basis is not enough on its own: a min-height overrides it and
+      // the panel takes the height whatever it declares. Doubling the bases,
+      // or adding `[style.minHeight]="'400px'"`, left all 838 tests green
+      // (review round 12, R12-S2-F1) — and these are the values the 110 px
+      // remainder AC-18's carve-out band is derived from.
+      expect(wrapper.style.minHeight).toBe('');
+      expect(wrapper.style.maxHeight).toBe('');
+      // `min-h-0` is the opposite hazard and is required here: it is what lets
+      // a flex child shrink below its content. What must never appear is a
+      // FLOOR (`min-h-40`, `min-h-[400px]`) or a ceiling other than `none`.
+      expect(
+        [...wrapper.classList].filter(
+          (name) =>
+            /^(min-h-|max-h-)/.test(name) &&
+            name !== 'min-h-0' &&
+            name !== 'max-h-none',
+        ),
+      ).toEqual([]);
+    }
+    // Each panel must also FILL the wrapper its basis won. The wrapper is pinned
+    // three ways above and the child was pinned in none of them: replacing
+    // `h-full` with `h-1/2` on either host left all 839 tests green, which
+    // paints half of a 30 % / 20 % band empty at every window size (review
+    // round 15, R15-L-F2). Asserted on the component host, where the utility is.
+    for (const tag of ['app-blame-viewer', 'app-file-history-panel']) {
+      const panel = bench.host.querySelector<HTMLElement>(tag);
+      expect(panel, tag).not.toBeNull();
+      expect([...(panel?.classList ?? [])], tag).toContain('h-full');
+      expect(
+        [...(panel?.classList ?? [])].filter((name) => /^h-(?!full$)/.test(name)),
+        tag,
+      ).toEqual([]);
+    }
+    // The values themselves, in template order, so the remainder every artefact
+    // quotes as «a fixed 110 px» cannot move without reddening a row.
+    expect(wrappers.map((wrapper) => wrapper.style.flex)).toEqual([
+      '0 0 30%',
+      '0 0 20%',
+    ]);
+
+    // The fourth declared basis: file history opened ALONE. It is the one value
+    // of the four the owner decision named that nothing pinned — changing it
+    // left all 839 tests green (review round 13, R13-S1-F2 ≡ R13-S2-F2), so a
+    // single stacked panel could take 58.6 % of the column instead of 28.6 %,
+    // which is AC-19's subject in the words `main-content.ts` uses. The
+    // `toEqual` on the mapped list pins the COUNT too: with blame closed there
+    // must be exactly one stacked wrapper left.
+    bench.repo.blameFile.set(null);
+    await bench.settle();
+
+    expect(bench.host.querySelector('app-blame-viewer')).toBeNull();
+    expect(
+      stackedPanelWrappers(bench.host).map((wrapper) => wrapper.style.flex),
+    ).toEqual(['0 0 28.6%']);
   });
 
   it('AC-18: the inspector at the bottom renders both collapsible blocks and only the commit file list grows', async () => {
@@ -419,5 +540,71 @@ describe('Workbench centre wiring', () => {
       bench.host.querySelector('[data-testid="inspector-expand-files"]'),
     ).not.toBeNull();
     expect(growingChildren(bench.host)).toEqual([inspectorBlock(bench.host)]);
+
+    // MIN_BOTTOM_PX, pinned through the only thing that observes it: the centre
+    // column's clamped height. Dragging the splitter to the far end must still
+    // leave the inspector its 220 px minimum, which — with both panels stacked
+    // at 30 % + 20 % — is the 110 px remainder AC-18's carve-out band, T51's
+    // collapsed twin and the fourth manual run are all derived from. Raising
+    // the constant to 400 left all 838 tests green (review round 12,
+    // R12-S2-F1).
+    const splitHost = bench.host.querySelector<HTMLElement>(
+      '[data-testid="centre-column"]',
+    )?.parentElement;
+    expect(splitHost).toBeTruthy();
+    if (!splitHost) throw new Error('The workbench split host is not on screen.');
+
+    bench.prefs.setWorkbenchSplit(100);
+    observer.resize(splitHost, { width: 1280, height: 800 });
+    await bench.settle();
+
+    const centre = bench.host.querySelector<HTMLElement>(
+      '[data-testid="centre-column"]',
+    );
+    expect(centre?.style.height).toBe('580px');
+    expect(800 - Number.parseFloat(centre?.style.height ?? '0')).toBe(220);
+  });
+
+  it('AC-18: the split clamp keeps both minimums on each axis, from either end of the drag', async () => {
+    // The bottom axis had one witness (the row above, MIN_BOTTOM_PX through the
+    // clamped centre height) and the RIGHT axis had none: MIN_CENTRE_PX took any
+    // value from 60 to 2000 and MIN_RIGHT_PX from 20 to 2000 with all 839 tests
+    // green, while MIN_CENTRE_HEIGHT_PX was only ever witnessed from above
+    // (review round 15, R15-L-F1 and R15-L-F3). It is not only a splitter: the
+    // criteria scope the expanded carve-out band as unreachable ON THE ARGUMENT
+    // that MIN_RIGHT_PX is a width, so a criterion leans on this constant.
+    const bench = await renderWorkbench();
+
+    const splitHost = bench.host.querySelector<HTMLElement>(
+      '[data-testid="centre-column"]',
+    )?.parentElement;
+    expect(splitHost).toBeTruthy();
+    if (!splitHost) throw new Error('The workbench split host is not on screen.');
+
+    const centre = () =>
+      bench.host.querySelector<HTMLElement>('[data-testid="centre-column"]');
+
+    // Inspector right (the default): the axis is width.
+    expect(bench.prefs.inspectorPlacement()).toBe('right');
+
+    // Drag to the far right. The centre may not swallow the inspector: it stops
+    // at container - MIN_RIGHT_PX = 1280 - 320.
+    bench.prefs.setWorkbenchSplit(100);
+    observer.resize(splitHost, { width: 1280, height: 800 });
+    await bench.settle();
+    expect(centre()?.style.width).toBe('960px');
+    expect(1280 - Number.parseFloat(centre()?.style.width ?? '0')).toBe(320);
+
+    // Drag to the far left. The centre keeps MIN_CENTRE_PX.
+    bench.prefs.setWorkbenchSplit(0);
+    await bench.settle();
+    expect(centre()?.style.width).toBe('360px');
+
+    // Inspector bottom: the axis is height, and the floor is the one the row
+    // above never reaches because it only ever drags to the far end.
+    bench.prefs.setInspectorPlacement('bottom');
+    await bench.settle();
+    expect(centre()?.style.height).toBe('200px');
+    expect(centre()?.style.width).toBe('');
   });
 });

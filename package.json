@@ -12,7 +12,10 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri",
-    "lint": "biome check src",
+    "lint": "biome check src scripts",
+    "check:tasks": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-tasks.mjs",
+    "check:figures": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figures.mjs",
+    "figures:write": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figures.mjs --write",
     "format": "biome format --write src",
     "test": "ng test --no-watch"
   },

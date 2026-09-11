@@ -56,7 +56,8 @@ all — the commit diff is read only in the diff workspace (spec AC-06, AC-22, a
 recorded in spec §8). Consequences for this ADR:
 
 - **The protected block is now the commit file list, not the diff.** The 50 % / 75 % floors keep
-  their numbers and their measurement, but they are floors on the list's share.
+  their numbers and their measurement, but they are floors on the list's share — except where
+  the header-cap guard costs the list its ratio (AC-18).
 - **The yield order inverts.** AC-03 used to shrink the file list first to protect the diff; now the
   body clamp shrinks first, down to one line plus «show more», and the expanded header then scrolls
   inside `headerMaxH`, so the list is the last block to give anything up.
@@ -68,7 +69,8 @@ recorded in spec §8). Consequences for this ADR:
   simply a zero-height parking home for the element.
 - **Consequence added:** the policy's surface shrinks to the header clamp, the header cap and the
   list floor. The 16 rows of `inspector-layout.spec.ts` that assert `diffHeight` and the diff floors
-  are rewritten against the list's share; the numbers do not change, the subject does.
+  are rewritten against the list's share, except where the header-cap guard costs the list its ratio (AC-18); the
+numbers do not change, the subject does.
 
 Not superseded: no alternative was reconsidered, and the CSS-only option is rejected for the same
 reasons as in 2026-09-02.

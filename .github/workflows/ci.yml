@@ -30,6 +30,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The "Figure drift check" step below scopes itself to the files the branch touches,
+          # which needs a base commit. The default `fetch-depth: 1` creates no local `main` ref
+          # and no history to merge-base against, so the step used to exit 1 outright and now
+          # degrades to sweeping docs/ wholesale (review round 18, R18-F1). Full history keeps the
+          # scope equal to the actual branch diff, which is what owner decision D4 asks for.
+          fetch-depth: 0
 
       - name: Install Linux system dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -82,6 +89,19 @@ jobs:
 
       - name: Lint (Biome)
         run: pnpm lint
+
+      # Every id in tasks.json must be a node in the epic's mermaid graph, with its edges. Round 16
+      # registered a wave in the table and not in the graph; round 17 wrote the check into a comment
+      # beside the graph and left it failing at 7 ids of 71 (review round 18, R18-F5). A check that
+      # lives in prose is a check nobody runs.
+      - name: Task registry check
+        run: pnpm check:tasks
+
+      # Recomputes every figure the feature artefacts quote from the shipped modules.
+      # Six review rounds found an artefact quoting a number the code had moved past,
+      # the last one falsified inside the same wave that wrote it.
+      - name: Figure drift check
+        run: pnpm check:figures
 
       - name: Unit tests (Vitest)
         run: pnpm test

@@ -65,16 +65,29 @@ export function computeInspectorLayout(input: InspectorLayoutInput): InspectorLa
   const remainder = availableHeight - stackedPanelsHeight;
   const shareFloor =
     (headerCollapsed ? COLLAPSED_LIST_SHARE_FLOOR : LIST_SHARE_FLOOR) * remainder;
-  // A collapsed list is a bare head and claims no share: the height it
-  // releases goes to a stacked panel or stays empty (AC-05).
-  const protectedList = fileListCollapsed
-    ? panelHeadH
-    : Math.max(panelHeadH + LIST_ROWS_FLOOR * fileRowH, shareFloor);
+  // A list with nothing to draw is a bare head and claims no share — collapsed,
+  // or with no row to show at all: the height it releases stays empty (AC-05).
+  // `fileCount` is the DISPLAYED row count, so a filter that matches nothing is
+  // this case too, not only a commit that changes no file (AC-04). This is the
+  // ONLY place the empty case is decided: `listRows` below gets 0 for free from
+  // `Math.min(fileCount, …)`, so it tests `fileListCollapsed` alone. It used to
+  // repeat `fileCount === 0` vacuously, which made the two arms look
+  // interchangeable when only this one carries behaviour — removing this one
+  // reddens three rows across two tiers, removing the other reddened nothing
+  // (review round 14, R14-S2-F3).
+  const protectedList =
+    fileListCollapsed || fileCount === 0
+      ? panelHeadH
+      : Math.max(panelHeadH + LIST_ROWS_FLOOR * fileRowH, shareFloor);
 
   const headerAllowance = remainder - protectedList;
   // Fractions come in with the measured stacked panels, and the cap is keyed
-  // for a dedup before it is written as a custom property.
-  const headerMaxH = Math.round(Math.max(headerAllowance, panelHeadH));
+  // for a dedup before it is written as a custom property. FLOOR, not round:
+  // rounding a half-pixel cap up takes that pixel from the list and drops its
+  // share just under the floor — 434 of the heights between 40 and 1000 px
+  // expanded, and half of them collapsed (review round 10, R10-S2-F2).
+  // Flooring can only ever give the list more.
+  const headerMaxH = Math.floor(Math.max(headerAllowance, panelHeadH));
 
   const clampLines = headerCollapsed
     ? 0
@@ -90,13 +103,9 @@ export function computeInspectorLayout(input: InspectorLayoutInput): InspectorLa
   const headerHeight = headerCollapsed ? panelHeadH : headerFixedH + clampLines * lineH;
   const listHeight = remainder - Math.min(headerHeight, headerMaxH) - panelHeadH;
 
-  const listRows =
-    fileListCollapsed || fileCount === 0
-      ? 0
-      : Math.min(
-          fileCount,
-          Math.max(LIST_ROWS_FLOOR, Math.floor(listHeight / fileRowH)),
-        );
+  const listRows = fileListCollapsed
+    ? 0
+    : Math.min(fileCount, Math.max(LIST_ROWS_FLOOR, Math.floor(listHeight / fileRowH)));
 
   return { listRows, clampLines, headerMaxH };
 }

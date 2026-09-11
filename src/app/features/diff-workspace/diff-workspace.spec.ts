@@ -151,6 +151,31 @@ describe('Diff workspace on a commit file', () => {
     observer.restore();
   });
 
+  it('AC-06: the workspace withholds the per-file collapse chevron, and parking the viewer gives it back', async () => {
+    // The workspace shows the one file the developer asked to read at full
+    // width, so collapsing it would leave the centre empty — `diff-view.ts`
+    // gates the chevron on `workspace.isOpen()`. The gate shipped in `2049df4`
+    // with no criterion and no row: forcing it to either constant left the
+    // whole suite green (review round 9, R9-S1-F10 / R9-S2-F3). Both halves
+    // below are needed — the first alone passes with the chevron removed
+    // outright, the second alone passes with the gate always off.
+    const bench = await renderCommitWorkbench();
+    const chevron = (): Element | null =>
+      bench.host.querySelector('.dv-file-head button[aria-expanded]');
+
+    await openOn(bench, 0);
+    expect(strip(bench.host).querySelector('.dv-file-head')).not.toBeNull();
+    expect(chevron()).toBeNull();
+
+    press('Escape');
+    await bench.settle();
+
+    // Back in its parking slot the element is the Changes view's inline viewer
+    // again, and the control has to come back with it.
+    expect(bench.host.querySelector('.dv-file-head')).not.toBeNull();
+    expect(chevron()).not.toBeNull();
+  });
+
   it('AC-06: the strip shows the path, the source commit, previous / next and Close', async () => {
     const bench = await renderCommitWorkbench();
     await openOn(bench, 0);
