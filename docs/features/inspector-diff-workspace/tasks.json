@@ -640,7 +640,7 @@
       "title": "Round-10 code fixes: floor the header cap, restore a full assertion per configuration, pin the fixed flex bases",
       "layer": "domain",
       "deps": ["T45"],
-      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-19"],
+      "acs": ["AC-01", "AC-03", "AC-04", "AC-05", "AC-19"],
       "dod": "A row asserts blame and file history are not growing children when stacked, and both mutations redden it: blameFlex and fileHistoryFlex turned from a fixed basis into a growing one. The share sweep has no unconditional escape hatch left: the fileCount === 0 configurations assert the bare head (headerMaxH === availableHeight - panelHeadH) instead of being skipped, and reverting the fileCount === 0 arm reddens the loop as well as the 640 px row. inspector-layout.ts uses Math.floor for the header cap and the loop gains a height that is not a multiple of 4, so turning Math.floor back into Math.round reddens the loop. The comment that says when the deleted two-row-floor clause would be needed again states the measured thresholds, not the height at which its predicate flips. No existing assertion relaxed, removed or emptied; expect counts recorded before and after. pnpm test, pnpm lint and pnpm build green; tsc --noEmit -p tsconfig.spec.json clean; no src-tauri change.",
       "files_hint": [
         "src/app/core/services/inspector-layout.ts",
@@ -1100,6 +1100,36 @@
         "scripts/check-tasks.mjs",
         "package.json",
         ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "id": "T75",
+      "title": "Round-19 gate fixes: stop the figure gate narrowing its own scope, and stop the registry gate reading prose as graph",
+      "layer": "infra",
+      "deps": [],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "estimate": "M",
+      "files_hint": [
+        "scripts/check-figures.mjs",
+        "scripts/check-tasks.mjs",
+        "scripts/registry-parse.mjs",
+        "docs/features/inspector-diff-workspace/tasks.json",
+        "docs/features/inspector-diff-workspace/tasks/round11-records.md",
+        "docs/features/inspector-diff-workspace/tasks/_epic.md",
+        "docs/features/inspector-diff-workspace/tasks/tracker.md"
+      ]
+    },
+    {
+      "id": "T76",
+      "title": "Round-19 script test tier: the gates' parsers get a suite, because three reconstructions a wave is not enough",
+      "layer": "infra",
+      "deps": ["T75"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "estimate": "M",
+      "files_hint": [
+        "scripts/registry-parse.spec.ts",
+        "angular.json",
+        "tsconfig.spec.json"
       ]
     }
   ]

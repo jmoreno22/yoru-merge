@@ -77,7 +77,10 @@
           "options": {
             "tsConfig": "tsconfig.spec.json",
             "runnerConfig": "vitest.config.ts",
-            "include": ["**/*.spec.ts"]
+            "include": [
+              "**/*.spec.ts",
+              "../scripts/**/*.spec.ts"
+            ]
           }
         },
         "serve": {

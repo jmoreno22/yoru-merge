@@ -3,7 +3,7 @@ id: T49
 title: "Round-11 records: the test-plan re-point and the files_hint drift T45 claimed it had closed"
 layer: "docs"
 deps: ["T47", "T48"]
-acs: ["AC-02", "AC-03", "AC-04", "AC-18", "AC-19"]
+acs: ["AC-01", "AC-02", "AC-03", "AC-04", "AC-18", "AC-19"]
 files_hint: [
   "docs/features/inspector-diff-workspace/test-plan.md",
   "docs/features/inspector-diff-workspace/tasks/round9-code-fixes.md",

@@ -5,8 +5,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": []
+    "types": [],
+    "allowJs": true
   },
-  "include": ["src/**/*.spec.ts", "src/testing/**/*.ts"],
+  "include": ["src/**/*.spec.ts", "src/testing/**/*.ts", "scripts/**/*.spec.ts"],
   "exclude": ["out-tsc", "dist", "node_modules"]
 }

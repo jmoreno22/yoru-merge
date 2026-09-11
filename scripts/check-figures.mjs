@@ -158,17 +158,30 @@ const gitOrNull = (args) => {
  * does not fall back to `refs/remotes/origin/main` on its own.
  *
  * Each rung is NAMED in the output, because a sweep whose scope silently changed shape is the
- * failure D4 exists to prevent. The last rung has no base at all and sweeps every markdown file
- * under `docs/` and the repo root that the checkout contains — so it is scoped by the CHECKOUT
- * rather than by the diff. In a full checkout that is a superset of the branch diff; in a shallow
- * one it is whatever was fetched, which is why `ci.yml` pins `fetch-depth: 0` and rung 1 is what CI
- * actually uses. The fallbacks exist so the step has an exit code anywhere, not so the scope can be
- * taken for granted: read the `scope base:` line before quoting the file count.
+ * failure D4 exists to prevent. **Every rung is equal to or wider than the one before it**, so
+ * degrading can only ever sweep more. That is why there is no `HEAD~` rung: `merge-base HEAD HEAD~`
+ * is `HEAD~`, so it scopes the sweep to the LAST COMMIT — on this branch three markdown files
+ * against the fifty-nine the branch touches, with all four ADRs, the spec and the SAD dropping out,
+ * and the run still printing «derived from the branch» and `OK` (review round 19, R19-F1, owner
+ * decision D1). It was tried before the widest rung, so it won.
+ *
+ * The last rung has no base at all and sweeps every markdown file under `docs/` and the repo root
+ * that the checkout contains — so it is scoped by the CHECKOUT rather than by the diff. In a full
+ * checkout that is a superset of the branch diff; in a shallow one it is whatever was fetched, which
+ * is why `ci.yml` pins `fetch-depth: 0`.
+ *
+ * Which rung CI uses depends on the trigger, and it is not always the first: on a `pull_request`
+ * `actions/checkout` checks the merge commit out DETACHED and creates no local `main`, so rung 2 is
+ * what fires; rung 1 fires on a `push` to `main`, where the diff is empty and the run widens anyway
+ * (review round 19, R19-F8). The fallbacks exist so the step has an exit code anywhere, not so the
+ * scope can be taken for granted: read the `scope base:` line before quoting the file count.
+ *
+ * A git failure that is not «the ref is absent» degrades by the same path. With the narrowing rung
+ * gone that can only widen the sweep, never shrink it, which is why it is left to fail safe.
  */
 const SCOPE_BASES = [
   { ref: 'main', label: 'merge-base with main' },
   { ref: 'origin/main', label: 'merge-base with origin/main (no local main ref)' },
-  { ref: 'HEAD~', label: 'HEAD~ (no main ref reachable — shallow checkout)' },
 ];
 
 const scopeBase = () => {
@@ -253,24 +266,17 @@ if (all.length < 2) {
   process.exit(1);
 }
 
-// `declared` is the scope the RULE yields. `ARTEFACTS` is the set the sweep below actually
-// iterates. They are separate bindings on purpose: the previous version compared two calls of the
-// same function to each other and could not differ, so replacing the sweep's set with an enumerated
-// list — the exact structure round 16 had and R17-F4 punished — exited 0 (review round 18, R18-F4).
+// `declared` is the scope the RULE yields; `ARTEFACTS` is what the sweep below iterates. Two
+// SEPARATE derivations, not two names for one array: round 18's repair wrote `const ARTEFACTS =
+// declared`, which compares an array with itself, so narrowing the loop where it is written still
+// exited 0 (review round 19, R19-F2, owner decision D3).
 const declaredScope = scopeFrom(all);
 const declared = declaredScope.swept;
-const ARTEFACTS = declared;
+const ARTEFACTS = scopeFrom(all).swept;
 
-// The D4 mechanical check, at the POINT OF USE: whatever the sweep iterates must be what the rule
-// declares. This is the direction that matters — the sweep reading LESS than the rule.
-const missing = declared.filter((file) => !ARTEFACTS.includes(file));
+// Cheap pre-flight so a narrowed ARTEFACTS is named before 600 lines of sweeping. The check that
+// actually binds D4 runs AFTER the loop, over what the loop visited — see `visited` below.
 const extra = ARTEFACTS.filter((file) => !declared.includes(file));
-if (missing.length > 0) {
-  const sample = missing.slice(0, 3).join(', ');
-  fail(
-    `scope: the sweep iterates ${ARTEFACTS.length} file(s) where the declared scope has ${declared.length} — a hand-narrowed sweep at the point of use is exactly the narrowing R17-F4 exposed; the ${missing.length} missing include ${sample}`,
-  );
-}
 for (const file of extra) {
   fail(`scope: the sweep read ${file}, which the declared scope does not cover`);
 }
@@ -606,7 +612,11 @@ let figuresSeen = 0;
 let unbound = 0;
 const unboundWhere = [];
 
+/** What the sweep REALLY read, recorded inside the loop so the D4 check cannot be fooled by it. */
+const visited = [];
+
 for (const file of ARTEFACTS) {
+  visited.push(file);
   let text;
   try {
     text = readFileSync(file, 'utf8');
@@ -766,6 +776,24 @@ for (const file of ARTEFACTS) {
 }
 
 const markers = inventory.reduce((n, entry) => n + entry.markers, 0);
+
+/*
+ * The D4 check, over what the sweep VISITED rather than over the set it was handed.
+ *
+ * D4's rule is «a sweep that declares a narrower scope than the one it executed fails
+ * mechanically». Two earlier versions could not enforce it: round 17's compared one pure function
+ * with itself, and round 18's compared two names bound to the same array, so narrowing the loop
+ * where it is written — one `.filter()` at the `for` — exited 0 with all four ADRs unread
+ * (review round 19, R19-F2). This runs after the loop, on the list the loop appended to, so any
+ * narrowing between the declaration and the last iteration is visible here.
+ */
+const unvisited = declared.filter((file) => !visited.includes(file));
+if (unvisited.length > 0) {
+  const sample = unvisited.slice(0, 3).join(', ');
+  fail(
+    `scope: the sweep visited ${visited.length} file(s) where the declared scope has ${declared.length} — a sweep narrowed between its declaration and its loop is the narrowing R17-F4 exposed and D4 forbids; the ${unvisited.length} never read include ${sample}`,
+  );
+}
 
 /* ------------------------------------------------------------------ the reference table (D3) */
 

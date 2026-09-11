@@ -175,6 +175,9 @@ flowchart LR
     T74[T74 round-18 records + graph]
     T72 --> T73
     T73 --> T74
+    T75[T75 round-19 gate fixes]
+    T76[T76 round-19 script tests]
+    T75 --> T76
 ```
 
 <!-- T63–T66 added to this graph 2026-09-10 (T67, review round 17): the round-16 wave registered

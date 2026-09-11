@@ -18,19 +18,34 @@
  *   - `tasks.json` parses, ids are unique and contiguous `T1…TN`;
  *   - no dangling dependency and no cycle (DFS);
  *   - every id has exactly one task file and every task file's id is in `tasks.json`;
- *   - `deps` and `files_hint` agree between `tasks.json` and each task file's frontmatter;
- *   - `tracker.md` has a row per id, and its stated total matches the count;
+ *   - `deps`, `files_hint` and `acs` agree between `tasks.json` and each task file's frontmatter,
+ *     in either list layout, and a field the registry populates may not simply be absent;
+ *   - `tracker.md` has a row per id and no id twice, and its stated total matches the count;
  *   - **every id is a node in the epic's mermaid graph, and every `deps` edge is drawn there.**
  *
+ * The graph is read through `registry-parse.mjs`, which drops mermaid `%%` comments and, when the
+ * epic has a `## Task map` heading, reads only the block under it: a commented-out edge is not drawn,
+ * and a second fenced block elsewhere in the file is not part of the answer (review round 19, R19-F3).
+ *
  * What it does NOT assert: that a task file's prose is true, that a `files_hint` lists what the task
- * really touched, or that `tracker.md`'s status reflects reality. Those need a reader.
+ * really touched, that `tracker.md`'s status or its own `deps` column reflect reality, or that a node
+ * carries the right label. Those need a reader.
  *
  * Exit 0 when everything agrees; exit 1 listing every disagreement.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  graphBlock,
+  graphEdges,
+  graphNodes,
+  listField,
+  trackerRows,
+  trackerTotal,
+} from './registry-parse.mjs';
 
-const BASE = 'docs/features/inspector-diff-workspace';
+// Overridable so the spec can point the validator at a fixture registry; CI never sets it.
+const BASE = process.env.SDD_TASKS_BASE ?? 'docs/features/inspector-diff-workspace';
 const TASKS_JSON = join(BASE, 'tasks.json');
 const TASKS_DIR = join(BASE, 'tasks');
 const EPIC = join(TASKS_DIR, '_epic.md');
@@ -111,54 +126,52 @@ for (const id of byId.keys()) {
   if (!ids.includes(id)) fail(`a task file claims ${id}, which is not in tasks.json`);
 }
 
-/** Frontmatter list values, tolerant of the two layouts the repo uses (inline and one-per-line). */
-const listField = (text, field) => {
-  const fm = text.split('---')[1] ?? '';
-  const m = fm.match(new RegExp(`${field}:\\s*\\[([\\s\\S]*?)\\]`));
-  if (!m) return null;
-  return m[1]
-    .split(',')
-    .map((x) => x.trim().replace(/^["']|["']$/g, ''))
-    .filter((x) => x.length > 0);
-};
 for (const t of tasks) {
   const file = (byId.get(t.id) ?? [])[0];
   if (!file) continue;
-  for (const field of ['deps', 'files_hint']) {
+  for (const field of ['deps', 'files_hint', 'acs']) {
     const got = listField(file.text, field);
-    if (got === null) continue;
     const want = t[field] ?? [];
-    if (got.join('|') !== want.join('|')) {
+    // Absent and agreed used to look the same, so deleting a field was the
+    // silent way to resolve a mismatch (review round 19, R19-F4).
+    if (!got.present) {
+      if (want.length > 0)
+        fail(
+          `${t.id} ${field} is absent from ${file.name}, where tasks.json has [${want.join(', ')}]`,
+        );
+      continue;
+    }
+    if (got.values.join('|') !== want.join('|')) {
       fail(
-        `${t.id} ${field} disagrees — tasks.json has [${want.join(', ')}], ${file.name} has [${got.join(', ')}]`,
+        `${t.id} ${field} disagrees \u2014 tasks.json has [${want.join(', ')}], ${file.name} has [${got.values.join(', ')}]`,
       );
     }
   }
 }
 
 const tracker = existsSync(TRACKER) ? readFileSync(TRACKER, 'utf8') : '';
-const trackerIds = [...tracker.matchAll(/^\| (T\d+) \|/gm)].map((m) => m[1]);
+const trackerIds = trackerRows(tracker);
+for (const id of new Set(trackerIds)) {
+  const n = trackerIds.filter((x) => x === id).length;
+  if (n > 1) fail(`tracker.md has ${n} rows for ${id}`);
+}
 for (const id of ids)
   if (!trackerIds.includes(id)) fail(`${id} has no row in tracker.md`);
 for (const id of trackerIds)
   if (!ids.includes(id)) fail(`tracker.md has a row for ${id}, which is not a task`);
-const total = tracker.match(/\*\*Total:\*\*\s*(\d+)\s*tasks/);
-if (!total) fail('tracker.md states no «Total: N tasks»');
-else if (Number(total[1]) !== tasks.length) {
+const total = trackerTotal(tracker);
+if (total === null) fail('tracker.md states no \u00abTotal: N tasks\u00bb');
+else if (total !== tasks.length) {
   fail(
-    `tracker.md says «Total: ${total[1]} tasks» where tasks.json has ${tasks.length}`,
+    `tracker.md says \u00abTotal: ${total} tasks\u00bb where tasks.json has ${tasks.length}`,
   );
 }
 
 // The check round 17 wrote into a comment and did not run (R18-F5).
 const epic = existsSync(EPIC) ? readFileSync(EPIC, 'utf8') : '';
-const mermaid = [...epic.matchAll(/```mermaid([\s\S]*?)```/g)]
-  .map((m) => m[1])
-  .join('\n');
-const nodes = new Set([...mermaid.matchAll(/^\s*(T\d+)\[/gm)].map((m) => m[1]));
-const edges = new Set(
-  [...mermaid.matchAll(/(T\d+)\s*-->\s*(T\d+)/g)].map((m) => `${m[1]}->${m[2]}`),
-);
+const block = graphBlock(epic);
+const nodes = graphNodes(block);
+const edges = graphEdges(block);
 const missingNodes = ids.filter((id) => !nodes.has(id));
 if (missingNodes.length > 0) {
   fail(
