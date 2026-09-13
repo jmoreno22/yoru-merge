@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Updating and installing no longer go through the GitHub API.** The release
+  bundles were reachable only through `api.github.com`, which allows 60
+  unauthenticated requests an hour per IP and answers 403 once that runs out —
+  so an update or an install could fail for everyone behind a shared NAT
+  without anyone having done anything unusual. The updater and `install.sh` now
+  read from `github.com`, the host the files already came from. The `latest.json`
+  published for 1.0.5 was corrected in place, so updating from an earlier
+  version no longer depends on the API either.
+
 ## [1.0.5] - 2026-09-02
 
 ### Changed

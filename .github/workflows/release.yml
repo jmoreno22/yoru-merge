@@ -115,3 +115,42 @@ jobs:
           prerelease: false
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true
+
+  # tauri-action 1.0 writes the API asset URLs into latest.json, which puts
+  # every updater download through api.github.com's cap of 60 unauthenticated
+  # requests an hour per IP — a shared NAT reaches it and the update fails with
+  # 403. The assets already live on github.com; only these URLs did not.
+  updater-json:
+    name: Point latest.json at github.com
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Rewrite the asset URLs in latest.json
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release download "$TAG" --pattern latest.json --dir .
+          # Every asset carries both forms, so the rewrite is a lookup.
+          gh release view "$TAG" --json assets \
+            --jq '[.assets[] | {key: .apiUrl, value: .url}] | from_entries' >urls.json
+          jq --slurpfile urls urls.json \
+            '.platforms |= map_values(.url |= ($urls[0][.] // .))' \
+            latest.json >rewritten.json
+
+          if cmp -s latest.json rewritten.json; then
+            echo "::notice::latest.json already points at github.com; nothing to rewrite."
+            exit 0
+          fi
+          if grep -q 'api\.github\.com' rewritten.json; then
+            echo "::error::latest.json still points at api.github.com after the rewrite."
+            exit 1
+          fi
+
+          mv rewritten.json latest.json
+          gh release upload "$TAG" latest.json --clobber

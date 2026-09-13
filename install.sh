@@ -19,11 +19,12 @@ die() { echo "error: $*" >&2; exit 1; }
 
 # curl on desktops, wget on minimal server images.
 if command -v curl >/dev/null 2>&1; then
-	fetch() { curl -fsSL "$1"; }
 	download() { curl -fsSL -o "$2" "$1"; }
+	latest_url() { curl -fsSLI -o /dev/null -w '%{url_effective}' "$1"; }
 elif command -v wget >/dev/null 2>&1; then
-	fetch() { wget -qO- "$1"; }
 	download() { wget -qO "$2" "$1"; }
+	# -q would suppress the -S headers the location is read out of.
+	latest_url() { wget -S --spider --max-redirect=0 "$1" 2>&1 | sed -n 's/^ *Location: *//p'; }
 else
 	die "neither curl nor wget is available"
 fi
@@ -42,9 +43,12 @@ else
 	die "run this as root, or install sudo"
 fi
 
-tag="$(fetch "https://api.github.com/repos/$GH_REPO/releases/latest" |
-	sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)"
-[ -n "$tag" ] || die "could not read the latest release tag from the GitHub API"
+# The tag comes out of the redirect /releases/latest answers with, not the
+# GitHub API: unauthenticated API calls are capped at 60 an hour per IP and
+# answer 403 past that, which a shared NAT reaches on its own.
+tag="$(latest_url "https://github.com/$GH_REPO/releases/latest" |
+	sed -n 's|.*/releases/tag/\([^[:space:]]*\).*|\1|p' | head -n 1)"
+[ -n "$tag" ] || die "could not read the latest release tag from https://github.com/$GH_REPO/releases/latest"
 version="${tag#v}"
 
 tmp="$(mktemp -d)"
