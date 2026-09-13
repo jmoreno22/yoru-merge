@@ -136,18 +136,32 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release download "$TAG" --pattern latest.json --dir .
-          # Every asset carries both forms, so the rewrite is a lookup.
+
+          # The download URL is BUILT from the tag, not read from the asset list.
+          # `releaseDraft: true` means this job runs while the release is still a
+          # draft, and a draft's asset `url` carries an `untagged-<hash>` path
+          # that stops resolving the moment the release is published — reading it
+          # here would have traded the API cap for a 404 (v1.0.6, first run).
+          # Only the asset NAME is looked up, keyed by the apiUrl latest.json
+          # carries, because the platform entries name an asset id and not a file.
           gh release view "$TAG" --json assets \
-            --jq '[.assets[] | {key: .apiUrl, value: .url}] | from_entries' >urls.json
-          jq --slurpfile urls urls.json \
-            '.platforms |= map_values(.url |= ($urls[0][.] // .))' \
-            latest.json >rewritten.json
+            --jq '[.assets[] | {key: .apiUrl, value: .name}] | from_entries' >names.json
+          jq --slurpfile names names.json \
+            --arg base "https://github.com/$GH_REPO/releases/download/$TAG" \
+            '.platforms |= map_values(
+               .url |= (($names[0][.] // null) as $n | if $n then "\($base)/\($n)" else . end)
+             )' latest.json >rewritten.json
 
           if cmp -s latest.json rewritten.json; then
             echo "::notice::latest.json already points at github.com; nothing to rewrite."
             exit 0
           fi
-          if grep -q 'api\.github\.com' rewritten.json; then
+          # Scoped to the platform URLs on purpose. latest.json embeds the release
+          # notes, so a changelog entry that merely NAMES api.github.com tripped a
+          # whole-file grep and failed the job after a correct rewrite — the check
+          # matching its own documentation (v1.0.6, first run).
+          if jq -e '[.platforms[].url] | map(select(test("api[.]github[.]com"))) | length > 0' \
+               rewritten.json >/dev/null; then
             echo "::error::latest.json still points at api.github.com after the rewrite."
             exit 1
           fi
