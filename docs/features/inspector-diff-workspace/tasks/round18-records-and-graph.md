@@ -168,6 +168,13 @@ is precisely what happened to this one.
   per file, and both are inside those markers, quoting the defect — which is the correction's
   substance.
 
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7, found by this task rather
+than routed to it): this is a PRESENT-TENSE claim about a tree that no longer exists. No commit in
+this repository prints these figures — measured at `2db0519`, the one commit carrying T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`.
+T70 deleted the `unmarked` output outright (R17-F8) and T73's D3 migration retired 21 of the 23
+markers. Kept as the dated record it is; see `round19-records.md` -->
+
 ### Every count, re-measured on the tree this task LEAVES
 
 Per T71's transferable rule, each was re-run **after** this task's own edits, not before. Where the
@@ -186,6 +193,13 @@ and in the task file's frontmatter (`pnpm check:tasks` verifies the two agree), 
 `round17-records.md` that already claimed it was is corrected with a marker saying it was not.
 `scripts/check-tasks.mjs`, `package.json` and `.github/workflows/ci.yml` are claimed by **this**
 task, so the check added here does not itself join the unclaimed set.
+
+<!-- commands added 2026-09-13 (T78, review round 19 O12): the O3 and O4 rows above state counts
+without the command that produced them, and both are scope-sensitive — round 19's stage 1 re-ran
+them over its own scope and got different numbers, which is the reproduction problem rather than a
+discrepancy. O3 is `grep -rn "2 \* (panelHeadH + 2 \* fileRowH)" --include='*.ts' --include='*.md' .`
+and O4 is `grep -rniE "both densit|two densit|2 densit"` over the files the branch touches. A count
+quoted without its command cannot be checked, only believed -->
 
 **O7 recorded, not resolved.** The five unclaimed files stay a commit decision for the owner, as
 round-16 O14 and round-17 O11 left them; the enumeration in `round17-records.md` is extended to five

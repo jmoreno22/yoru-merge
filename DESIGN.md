@@ -330,6 +330,12 @@ regenerated from the shipped modules by `pnpm figures:write` and byte-compared b
 Each is `round(textRatio × typeSize + PAD.<surface> × densityScale)`, with
 `DENSITY_PAD_SCALE` at `0.6 / 1 / 1.5` for compact / comfortable / relaxed —
 density means «how much air around the text», never «how big is the text».
+`--panel-pad` is the exception its own row names: pure spacing, so it is
+`round(PAD.panel × densityScale)`, with no text term at all.
+<!-- exception named 2026-09-13 (T78, review round 19 O10): «Each» was one word too strong —
+`appearance-metrics.ts` computes `--panel-pad` as `Math.round(PAD.panel * padScale)`, with no
+`textRatio × typeSize` term. The table cell above already said «pure spacing, no text line», so a
+careful reader was covered and a hurried one was not -->
 
 <!-- table replaced by its tokens and a pointer 2026-09-10 (T73, review round 18, R18-F3, per owner
 decision D2): this was a `Surface | Comfortable | Compact | Token` table of literal pixel values, and

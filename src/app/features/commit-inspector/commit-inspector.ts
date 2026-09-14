@@ -579,13 +579,16 @@ export class CommitInspector {
       headerCollapsed,
       fileListCollapsed,
       stackedPanelsHeight,
-      // Guarded with the same predicate `bodyLines` above uses: a commit with
-      // no body renders no `#bodyText`, so `lineH` is 0 (or NaN, when jsdom
-      // resolves `line-height: normal`), and the clamp term would divide by
-      // it — `(headerAllowance - headerFixedH) / 0` is NaN wherever the two
-      // are equal, and that NaN reaches `--inspector-list-rows`, whose
-      // `calc()` is then invalid at computed-value time (review round 15,
-      // R15-S2-F1). The fallback is only ever read when `bodyLines` is 0,
+      // Guarded with the same predicate `bodyLines` above uses, against two
+      // different failures the measurement can produce. A commit with no body
+      // renders no `#bodyText`, so `lineH` measures 0 and the clamp term
+      // `(headerAllowance - headerFixedH) / lineH` is Infinity — or NaN in the
+      // one case where the two are equal and it is 0 / 0. Separately, jsdom
+      // resolves `line-height: normal` to a non-number, so `lineH` is NaN
+      // outright and the division propagates it whatever the numerator. Either
+      // way a non-finite value reaches `--inspector-list-rows`, whose `calc()`
+      // is then invalid at computed-value time (review round 15, R15-S2-F1;
+      // the two cases separated in this comment 2026-09-13, T78, round-16 O2). The fallback is only ever read when `bodyLines` is 0,
       // where the clamp resolves to 0 for any positive value, so which
       // positive value it is cannot be observed.
       tokens: { fileRowH, panelHeadH, lineH: lineH > 0 ? lineH : 1, headerFixedH },

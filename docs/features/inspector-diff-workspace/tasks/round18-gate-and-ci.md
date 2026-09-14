@@ -170,6 +170,14 @@ comment included) naming the figure step as the reason, so **rung 1 is what CI w
 the wider rungs exist for clones nobody configured. The other two jobs' checkouts are untouched —
 neither runs the figure step.
 
+<!-- corrected 2026-09-13 (T78, review round 19 R19-F8): «rung 1 is what CI will actually use» is
+false on the trigger this finding was written about. `actions/checkout` creates a local branch only
+on the `refs/heads/` path; on a `pull_request` it checks the merge commit out DETACHED, so
+`fetch-depth: 0` gives `origin/main` and no local `main`, and **rung 2** is what fires. Rung 1 fires
+on a `push` to `main`, where the diff is empty and the run widens anyway. Reconstructed
+command-for-command by round 19's stage 1. The same claim in `check-figures.mjs`'s docblock was
+corrected by T75, which also removed the `HEAD~` rung this sentence's «wider rungs» referred to -->
+
 **Two things measured here that the plan got wrong. They are corrections to the plan, not to the
 finding.**
 
@@ -251,6 +259,13 @@ figures: 23 markers in 3 file(s), 10 distinct claims, 45 values recomputed
 coverage: 36 figure(s) the heuristic can see in live prose, 15 of them on a line carrying fewer markers than figures
 OK — every marked figure matches the shipped modules, and no check went missing.
 ```
+
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7): no commit in this
+repository prints these figures. Measured at `2db0519`, the single commit that carries T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`,
+because T73's D3 migration retired 21 of the 23 markers inside the same uncommitted tree. Kept as
+the dated record it is; `round19-records.md` says why a one-commit wave cannot speak of «the tree
+this wave delivered» -->
 
 The scope is **112**, not the 108 round 18 measured, because this wave added two markdown files — the
 round-18 review record and this task file — and T73/T74's task files add more; the number moves with

@@ -129,7 +129,11 @@ five production md5s are the values round 18 recorded (`inspector-layout.ts`
 
 **68 → 17 derived-figure occurrences in live prose**, and every one of the 17 that remains is out of
 D3's reach by category, not by oversight. The sweep is mechanical: fenced blocks, HTML comments and
-inline code spans blanked first, over the eight artefacts D3 names plus both ADRs — 11 files.
+inline code spans blanked first, over the seven files D3 names by hand plus the four ADRs its
+eighth entry (`adr/`) covers — 11 files. <!-- corrected 2026-09-13 (T78, review round 19 O9): this
+read «the eight artefacts D3 names plus both ADRs — 11 files», and 8 + 2 is not 11. The total was
+right and the sentence was not: D3's eighth entry is the `adr/` directory, which holds four files,
+not two. The sweep itself covered all four -->
 
 The gate's own coverage line, before and after, quoted as it prints:
 

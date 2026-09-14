@@ -264,6 +264,12 @@ comfortable / 13 px — is closed.
   `figures: 23 markers in 3 file(s), 10 distinct claims, 45 values recomputed` and
   `coverage: 36 figure(s) the heuristic can see in live prose, 15 of them on a line carrying fewer
   markers than figures` — there is no `unmarked` line.
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7): no commit in this
+repository prints these figures. Measured at `2db0519`, the single commit that carries T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`,
+because T73's D3 migration retired 21 of the 23 markers inside the same uncommitted tree. Kept as
+the dated record it is; `round19-records.md` says why a one-commit wave cannot speak of «the tree
+this wave delivered» -->
 <!-- gate bullet restated 2026-09-10 (T74, review round 18 R18-F7): this read «`23 markers, 45 values
 checked, 1 unmarked` — `DESIGN.md:73`, the known heuristic false positive». Exit 0 was and is true; the
 parenthetical was not. `1 unmarked` is the exact figure **R17-F8** named as false — it counted 45 VALUES

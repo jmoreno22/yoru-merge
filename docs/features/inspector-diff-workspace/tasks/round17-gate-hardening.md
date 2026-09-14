@@ -187,6 +187,13 @@ coverage: 36 figure(s) the heuristic can see in live prose, 15 of them on a line
 OK — every marked figure matches the shipped modules, and no check went missing.
 ```
 
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7): no commit in this
+repository prints these figures. Measured at `2db0519`, the single commit that carries T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`,
+because T73's D3 migration retired 21 of the 23 markers inside the same uncommitted tree. Kept as
+the dated record it is; `round19-records.md` says why a one-commit wave cannot speak of «the tree
+this wave delivered» -->
+
 **The new coverage number, with its definition.** For each line of a live artefact:
 `unbound(line) = max(0, figure-shaped values the heuristic sees in that line's prose − strict markers
 on that line)`; the reported pair is `Σ figures = 36` and `Σ unbound = 15`. **Both sides are
@@ -213,6 +220,13 @@ skips four classes, each named with its reason in the code and printed on every 
 records, 73 task records, `CHANGELOG.md`, and the generated table itself. Markers in those files are
 still parsed and still checked, so an orphan marker anywhere on the branch fails. Widening cost
 nothing in strictness: 23 markers, 45 values, exit 0.
+
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7): no commit in this
+repository prints these figures. Measured at `2db0519`, the single commit that carries T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`,
+because T73's D3 migration retired 21 of the 23 markers inside the same uncommitted tree. Kept as
+the dated record it is; `round19-records.md` says why a one-commit wave cannot speak of «the tree
+this wave delivered» -->
 
 ### Reconstructions — each injected, measured, restored, md5 re-verified
 

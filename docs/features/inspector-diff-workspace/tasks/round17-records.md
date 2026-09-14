@@ -174,6 +174,13 @@ proof point — that is 6 figures against 3 markers, so **3 unbound**, where the
 Also recorded: `45` was itself inflated, the 23 markers carrying **10 distinct claims** and 22
 distinct computed values, one claim placed five times.
 
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7, found by this task rather
+than routed to it): this is a PRESENT-TENSE claim about a tree that no longer exists. No commit in
+this repository prints these figures — measured at `2db0519`, the one commit carrying T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`.
+T70 deleted the `unmarked` output outright (R17-F8) and T73's D3 migration retired 21 of the 23
+markers. Kept as the dated record it is; see `round19-records.md` -->
+
 `15` means «fifteen visible figures sit on a line with fewer markers than figures». It does **not**
 say which — nothing binds a marker to the figure beside it. That is R17-F5's structural half,
 deferred by owner decision **D1** to its own spec and recorded in `spec.md` §8 with owner and due.
@@ -216,7 +223,7 @@ a commit decision, so it is stated and left: round-16 **O14**, round-17 **O11**,
 |---|---|
 | `pnpm test` | **844 passed (844), 63 files** — 842 at the wave's start, +1 for T69's collapsed-header row, +1 for its stacked-panels row |
 | `pnpm lint` (biome) | clean over **266 files** |
-| `pnpm check:figures` | exit **0** — 23 markers in 3 files, 10 distinct claims, 45 values recomputed, scope derived from the branch (108 markdown files) with every exclusion named |
+| `pnpm check:figures` | exit **0** — 23 markers in 3 files, 10 distinct claims, 45 values recomputed, scope derived from the branch (108 markdown files) with every exclusion named | <!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7): no commit prints these figures — `2db0519` prints `2 markers in 1 file(s), 2 distinct claims, 6 values recomputed`; see `round19-records.md` -->
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets -- -D warnings` | clean, exit 0 |
 | `cargo test --all-features` | **388 passed, 0 failed, 1 ignored** |

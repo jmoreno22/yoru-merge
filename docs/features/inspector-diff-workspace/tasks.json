@@ -1131,6 +1131,39 @@
         "angular.json",
         "tsconfig.spec.json"
       ]
+    },
+    {
+      "id": "T77",
+      "title": "Round-19 D3 completion: the four rows the migration did not reach, and the share floors nobody had looked for",
+      "layer": "docs",
+      "deps": ["T75"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-18", "AC-20"],
+      "estimate": "M",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/screens.md",
+        "docs/features/inspector-diff-workspace/test-plan.md",
+        "docs/features/inspector-diff-workspace/spec.md"
+      ]
+    },
+    {
+      "id": "T78",
+      "title": "Round-19 records: the gate output no commit can print, the rung CI does not use, and five observations",
+      "layer": "docs",
+      "deps": ["T77"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-18", "AC-20"],
+      "estimate": "S",
+      "files_hint": [
+        "docs/features/inspector-diff-workspace/tasks/round16-records.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-code-fixes.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-test-coverage.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-gate-hardening.md",
+        "docs/features/inspector-diff-workspace/tasks/round17-records.md",
+        "docs/features/inspector-diff-workspace/tasks/round18-gate-and-ci.md",
+        "docs/features/inspector-diff-workspace/tasks/round18-d3-migration.md",
+        "docs/features/inspector-diff-workspace/tasks/round18-records-and-graph.md",
+        "DESIGN.md",
+        "src/app/features/commit-inspector/commit-inspector.ts"
+      ]
     }
   ]
 }

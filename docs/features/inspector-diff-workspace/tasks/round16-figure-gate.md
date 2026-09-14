@@ -115,6 +115,13 @@ policy arithmetic, which is what keeps it from certifying itself.
 
 **Current state: 23 markers, 45 values checked, 1 figure unmarked.**
 
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7, found by this task rather
+than routed to it): this is a PRESENT-TENSE claim about a tree that no longer exists. No commit in
+this repository prints these figures — measured at `2db0519`, the one commit carrying T40–T74:
+`figures: 2 markers in 1 file(s), 2 distinct claims, 6 values recomputed` and `coverage: 1 … 1`.
+T70 deleted the `unmarked` output outright (R17-F8) and T73's D3 migration retired 21 of the 23
+markers. Kept as the dated record it is; see `round19-records.md` -->
+
 ```
 $ pnpm check:figures
 figures: 23 markers, 45 values checked, 1 unmarked
@@ -139,6 +146,11 @@ line)`. Both sides are **occurrences**. As the tree stands: **36 figures the heu
 live prose, 15 of them on a line carrying fewer markers than figures**, and the gate prints the
 sites. On `test-plan.md:43` — stage 2's proof point — that is 6 figures against 3 markers, so 3
 unbound, where this claim reported 0.
+
+<!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7, found by this task): the
+same present-tense class as `:116` above, eleven lines on. The coverage pair T70 defined here is
+`1 / 1` on every commit that carries this wave, because T73's D3 migration moved the prose the
+heuristic was counting. Kept as the record of what T70 measured on its own date -->
 
 `15` means «fifteen visible figures sit on a line with fewer markers than figures». It does **not**
 say which, because nothing binds a marker to the figure beside it — that is R17-F5's structural half,

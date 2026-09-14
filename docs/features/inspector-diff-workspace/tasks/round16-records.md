@@ -221,7 +221,7 @@ own note says it should: `tasks.json` still claims `AC-02` for T44 and `AC-01` f
 files do not. Re-measured mechanically over all 66: still exactly those two.
 
 **Gate, the whole wave.** `pnpm check:figures` **exit 0** (23 markers, 45 values, 1 unmarked and it is
-a type-scale false positive) · `pnpm test` **842 passed (842), 63 files** · `pnpm lint` biome clean
+a type-scale false positive) <!-- superseded output, dated 2026-09-13 (T78, review round 19 R19-F7): no commit prints these figures — `2db0519` prints `2 markers in 1 file(s), 2 distinct claims, 6 values recomputed`; see `round19-records.md` --> · `pnpm test` **842 passed (842), 63 files** · `pnpm lint` biome clean
 over **266 files** · `tasks.json` 66 tasks, 0 duplicate ids, 0 dangling deps, no cycle, **0
 `files_hint` mismatches** · comment scan **0 / 0 over 101 files** · `grep -rn "_epic\.md:[0-9]"` over
 `tasks/` returning **two historical quotations** (see below) <!-- corrected 2026-09-10 (T71, review
