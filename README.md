@@ -22,6 +22,8 @@
 
 ![Working tree and commit composer, Moonlit Workbench theme](docs/screenshots/changes-light.png)
 
+![A file open in the diff workspace, launched from the History inspector](docs/screenshots/diff-workspace-dark.png)
+
 ![A merge in progress, with the repository-state banner](docs/screenshots/conflict-banner.png)
 
 </details>
