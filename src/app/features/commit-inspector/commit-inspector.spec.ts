@@ -849,6 +849,116 @@ describe('CommitInspector open-large gesture (AC-06)', () => {
   });
 });
 
+describe('CommitInspector and the diff source a row click loads under', () => {
+  const PATHS = ['src/a.ts', 'src/b.ts'];
+  const WORKING_SOURCE = {
+    kind: 'workingFile',
+    file: 'foo.ts',
+    staged: false,
+  } as const;
+  const WORKING_DIFF = '@@ -1 +1 @@\n-mine\n+theirs\n';
+
+  interface Deferred<T> {
+    readonly promise: Promise<T>;
+    resolve(value: T): void;
+  }
+
+  /** A canned answer released by hand: parked in `responses`, it holds a load. */
+  function deferred<T>(): Deferred<T> {
+    let release!: (value: T) => void;
+    const promise = new Promise<T>((resolve) => {
+      release = resolve;
+    });
+    return { promise, resolve: release };
+  }
+
+  /** The preference off: the row click itself loads the file (AC-22). */
+  async function mounted(): Promise<HTMLElement> {
+    prefs.set('commitFileClickOpensWorkspace', false);
+    repo.commitDetails.set(commitDetails(PATHS));
+    const { host } = mount();
+    await settle();
+    return host;
+  }
+
+  it('AC-14: a row click that loads a commit file makes the commit the diff source', async () => {
+    // What a visit to Changes leaves behind: no rail switch resets the source.
+    repo.diffSource.set(WORKING_SOURCE);
+    repo.diffText.set(WORKING_DIFF);
+    const host = await mounted();
+
+    click(fileRow(host, 'src/b.ts'));
+    await settle();
+
+    expect(repo.diffText()).toBe(DIFF);
+    expect(repo.diffSource()).toEqual({ kind: 'commit', sha: COMMIT_SHA });
+  });
+
+  it('AC-14: a commit file diff answering after a working file was picked stays off screen', async () => {
+    const late = deferred<string>();
+    stub.responses['get_commit_file_diff'] = late.promise;
+    stub.responses['get_diff'] = WORKING_DIFF;
+    const host = await mounted();
+
+    click(fileRow(host, 'src/b.ts'));
+    // The developer is in Changes and picks a file before git answers.
+    await repo.selectWorkingFile('foo.ts', false);
+    late.resolve(DIFF);
+    await settle();
+
+    expect(repo.diffSource()).toEqual(WORKING_SOURCE);
+    expect(repo.diffText()).toBe(WORKING_DIFF);
+  });
+
+  it('AC-06: the whole-commit diff answering late does not replace the file a row click loaded', async () => {
+    const whole = deferred<string>();
+    stub.responses['get_commit_diff'] = whole.promise;
+    stub.responses['get_commit_details'] = commitDetails(PATHS);
+    prefs.set('commitFileClickOpensWorkspace', false);
+
+    const selecting = repo.selectCommit(COMMIT_SHA);
+    // The details answer first, so the rows are there to click.
+    await settle();
+    const { host } = mount();
+    await settle();
+    click(fileRow(host, 'src/b.ts'));
+    await settle();
+    expect(repo.diffText()).toBe(DIFF);
+
+    whole.resolve(`${DIFF}${DIFF}`);
+    await selecting;
+    await settle();
+
+    expect(repo.diffText()).toBe(DIFF);
+  });
+
+  it('AC-06: after the selected commit is re-selected, a click opens the file, not the whole commit', async () => {
+    const whole = `${DIFF}${DIFF}`;
+    stub.responses['get_commit_diff'] = whole;
+    stub.responses['get_commit_details'] = commitDetails(PATHS);
+    prefs.set('commitFileClickOpensWorkspace', true);
+    await repo.selectCommit(COMMIT_SHA);
+    const { host } = mount();
+    await settle();
+    click(fileRow(host, 'src/b.ts'));
+    await settle();
+    workspace.close();
+    await settle();
+
+    // The developer clicks the row of the commit that is already selected: the
+    // details keep their sha, so nothing in the panel resets.
+    await repo.selectCommit(COMMIT_SHA);
+    await settle();
+    expect(repo.diffText()).toBe(whole);
+
+    click(fileRow(host, 'src/b.ts'));
+    await settle();
+
+    expect(workspace.current()?.file).toBe('src/b.ts');
+    expect(repo.diffText()).toBe(DIFF);
+  });
+});
+
 describe('CommitInspector workspace navigation (AC-11)', () => {
   it('AC-11: next moves the active row to the third of five files', async () => {
     const paths = ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts'];
@@ -1084,6 +1194,9 @@ describe('CommitInspector collapsed summary actions (AC-21)', () => {
    * Makes the summary line report a real width. The count is a width budget:
    * the row's own box minus the reserve the subject keeps and the width of one
    * icon slot, so both numbers have to come from somewhere in jsdom.
+   *
+   * The resize is reported on the row, as a browser does when the panel is
+   * narrowed: the actions group is content-sized and keeps its box.
    */
   function measureSummaryAs(host: HTMLElement, rowWidth: number, slot: number): void {
     const actions = host.querySelector<HTMLElement>(
@@ -1098,7 +1211,7 @@ describe('CommitInspector collapsed summary actions (AC-21)', () => {
       get: () => rowWidth,
     });
     more.getBoundingClientRect = () => new DOMRect(0, 0, slot, 28);
-    observer.resize(actions, { width: rowWidth, height: 28 });
+    observer.resize(row, { width: rowWidth, height: 28 });
   }
 
   async function collapsed(): Promise<Mounted> {
@@ -1148,6 +1261,28 @@ describe('CommitInspector collapsed summary actions (AC-21)', () => {
       ?.items.slice(0, 3)
       .map((item) => item.id);
     expect(promoted).toEqual(['cherry-pick', 'revert', 'reset']);
+  });
+
+  it('AC-21: widening the summary line brings the actions back inline', async () => {
+    const { host } = await collapsed();
+    const inline = () =>
+      [...host.querySelectorAll('[data-testid^="inspector-action-"]')].map((element) =>
+        element.getAttribute('data-testid'),
+      );
+
+    measureSummaryAs(host, 250, 28);
+    TestBed.tick();
+    expect(inline()).toEqual(['inspector-action-branch', 'inspector-action-tag']);
+
+    measureSummaryAs(host, 400, 28);
+    TestBed.tick();
+    expect(inline()).toEqual([
+      'inspector-action-branch',
+      'inspector-action-tag',
+      'inspector-action-cherry-pick',
+      'inspector-action-revert',
+      'inspector-action-reset',
+    ]);
   });
 
   it('AC-21: Reset → Hard raises the danger confirmation and resets nothing', async () => {

@@ -178,6 +178,15 @@ describe('setFiles', () => {
     expect(result.state).toEqual(CLOSED);
   });
 
+  it('closes a working-tree workspace when an app operation other than staging removed the shown file, even though others remain (AC-13, AC-16)', () => {
+    const opened = open(CLOSED, openWorkingTreeInput({ index: 1 }));
+
+    const result = setFiles(opened, ['src/a.ts', 'src/c.ts'], 'app');
+
+    expect(result.effect).toBe('close');
+    expect(result.state).toEqual(CLOSED);
+  });
+
   it('advances a commit workspace when the shown file left regardless of origin, and marks the move as navigated', () => {
     const opened = open(CLOSED, openCommitInput({ index: 1 }));
 

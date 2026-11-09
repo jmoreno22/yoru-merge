@@ -118,6 +118,25 @@ function slot(host: HTMLElement): HTMLElement {
   return element;
 }
 
+/** Sends `key` with nothing focused; true when a shortcut took it. */
+function pressKey(key: string): boolean {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  document.body.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+/**
+ * Whether `element` sits in an inert subtree. jsdom implements no `inert` —
+ * neither the attribute reflection nor the focus and Tab-order exclusion — so
+ * this reads the property the binding writes, not a behaviour.
+ */
+function isInert(element: HTMLElement): boolean {
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    if (node.inert) return true;
+  }
+  return false;
+}
+
 /** A release commit tagged and branched more times than one header row holds. */
 const MANY_REFS: readonly RefInfo[] = Array.from({ length: 30 }, (_, i) => ({
   name: `release/2026.09.${String(i).padStart(2, '0')}`,
@@ -291,6 +310,52 @@ describe('Workbench centre wiring', () => {
     expect(slot(bench.host).querySelector('app-diff-viewer')).not.toBeNull();
     expect(slot(bench.host).classList.contains('flex-1')).toBe(true);
     expect(slot(bench.host).classList.contains('h-0')).toBe(false);
+  });
+
+  it('AC-06: a parked viewer is inert and its hunk keys stay off until it is shown again', async () => {
+    // Parked at zero height, the element still holds the commit's patch: `n`
+    // moved focus onto a hunk nobody could see, and Tab walked into its header.
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: () => undefined,
+    });
+    const bench = await renderWorkbench();
+    const viewer = slot(bench.host).querySelector<HTMLElement>('app-diff-viewer');
+    if (!viewer) throw new Error('The diff viewer is not parked in its slot.');
+    const counter = (): string =>
+      viewer
+        .querySelector('[data-testid="diff-hunk-counter"]')
+        ?.textContent?.replace(/\s+/g, '') ?? '';
+
+    // The patch is really there, so the key has a hunk to go to.
+    expect(counter()).toBe('0/1');
+
+    expect(pressKey('n')).toBe(false);
+    await bench.settle();
+    expect(counter()).toBe('0/1');
+    expect(viewer.contains(document.activeElement)).toBe(false);
+    expect(isInert(viewer)).toBe(true);
+
+    // Re-hosted in the workspace it is the live viewer: History is not the gate.
+    await openWorkspace(bench);
+    expect(isInert(viewer)).toBe(false);
+    expect(pressKey('n')).toBe(true);
+    await bench.settle();
+    expect(counter()).toBe('1/1');
+
+    bench.workspace.close();
+    await bench.settle();
+    expect(slot(bench.host).contains(viewer)).toBe(true);
+    expect(isInert(viewer)).toBe(true);
+    expect(pressKey('p')).toBe(false);
+
+    // Changes shows the same element inline.
+    bench.prefs.setRailView('changes');
+    await bench.settle();
+    expect(slot(bench.host).contains(viewer)).toBe(true);
+    expect(isInert(viewer)).toBe(false);
+    expect(pressKey('p')).toBe(true);
   });
 
   it('AC-17: changing the rail view closes the workspace and the Changes view shows its list', async () => {

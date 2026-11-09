@@ -352,6 +352,58 @@ describe('Diff workspace on a working-tree file', () => {
     ]);
   });
 
+  it('AC-16: a stash the app runs closes the workspace without blaming a change outside the app', async () => {
+    const bench = await renderChangesWorkbench();
+    await openLarge(bench, SHOWN);
+
+    // The toolbar's Stash: the refresh it triggers runs under `stashBusy`.
+    bench.stub.responses['stash_save'] = undefined;
+    bench.stub.responses['get_working_changes'] = workingChanges([], []);
+    await bench.repo.stashSaveAction('', { includeUntracked: true });
+    await bench.settle();
+
+    expect(bench.workspace.isOpen()).toBe(false);
+    expect(bench.toasts.toasts().map((toast) => toast.message)).toEqual([
+      'Changes stashed.',
+      `${SHOWN} no longer has unstaged changes`,
+    ]);
+  });
+
+  it('AC-16: a hard reset the app runs, refreshing after its busy flag drops, is not blamed on outside the app', async () => {
+    const bench = await renderChangesWorkbench();
+    await openLarge(bench, SHOWN);
+
+    bench.stub.responses['reset_to_commit'] = { kind: 'reset', mode: 'hard' };
+    bench.stub.responses['get_working_changes'] = workingChanges([], []);
+    await bench.repo.resetToCommitAction('ab12cd34ef', 'hard');
+    await bench.settle();
+
+    expect(bench.workspace.isOpen()).toBe(false);
+    expect(bench.toasts.toasts().map((toast) => toast.message)).toEqual([
+      'Reset to ab12cd3 (hard).',
+      `${SHOWN} no longer has unstaged changes`,
+    ]);
+  });
+
+  it('AC-16: a watcher change that removed the shown file still closes with the outside notice', async () => {
+    const bench = await renderChangesWorkbench({ throughOpenRepo: true });
+    await openLarge(bench, SHOWN);
+
+    const state = TestBed.inject(WorkspaceStore).activeRepoState();
+    if (!state) throw new Error('The repository is not on a workspace tab.');
+    bench.stub.responses['get_working_changes'] = workingChanges(
+      UNSTAGED_PATHS.slice(1),
+    );
+    state.lastRefreshAt = 0;
+    await emitRepoChanged(TEST_REPO.path, 'worktree');
+    await afterDebounce(bench);
+
+    expect(bench.workspace.isOpen()).toBe(false);
+    expect(bench.toasts.toasts().map((toast) => toast.message)).toEqual([
+      `${SHOWN} no longer has unstaged changes (changed outside the app)`,
+    ]);
+  });
+
   it('AC-16: a refresh answer landing after the shown file moved does not overwrite the diff', async () => {
     const bench = await renderChangesWorkbench();
     await openLarge(bench, SHOWN);

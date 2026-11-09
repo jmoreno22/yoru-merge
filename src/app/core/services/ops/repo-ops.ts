@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import type { FetchProgress, RepoChangeKind, RepoEntry, RepoInfo } from '../../models';
+import type { SetFilesOrigin } from '../diff-workspace-state';
 import { isRepoMissingMessage, messageFromUnknown } from '../git-auth-error';
 import type { CloneOptions } from '../tauri-git.service';
-import type { RepoState } from '../workspace.store';
+import type { DiffSource, RepoState } from '../workspace.store';
 import { HistoryOps } from './history-ops';
 import { OpsRunner } from './ops-runner';
 import { RefreshCoalescer } from './refresh-coalescer';
@@ -20,6 +21,9 @@ const ALL_KINDS: ReadonlySet<RepoChangeKind> = new Set<RepoChangeKind>([
   'index',
 ]);
 
+/** Who asked for a refresh; a staging action is told apart by `stagingBusy`. */
+type RefreshOrigin = Exclude<SetFilesOrigin, 'own'>;
+
 /** True while the diff on screen is still the one this file asked for. */
 function isSelectedFile(state: RepoState, file: string, staged: boolean): boolean {
   const source = state.diffSource();
@@ -36,6 +40,13 @@ export class RepoOps {
 
   /** One refresh in flight per tab, with a single merged one queued behind. */
   private readonly refreshes = new WeakMap<RepoState, RefreshCoalescer>();
+
+  /**
+   * Tabs whose next refresh round carries a request from an app operation.
+   * Merged with a watcher request, the round counts as the app's: calling it
+   * external would blame the app's own change on another program.
+   */
+  private readonly appRefreshes = new WeakSet<RepoState>();
 
   /**
    * Opens `state.path` and loads everything the workbench needs.
@@ -75,12 +86,12 @@ export class RepoOps {
   }
 
   /** Reloads every panel. Individual failures do not abort the others. */
-  async refreshAll(state: RepoState): Promise<void> {
+  async refreshAll(state: RepoState, origin: RefreshOrigin = 'app'): Promise<void> {
     state.clearRefreshTimer();
     if (!state.repo()) return;
     state.loading.set(true);
     try {
-      await this.refreshFor(state, ALL_KINDS);
+      await this.refreshFor(state, ALL_KINDS, origin);
     } finally {
       state.loading.set(false);
     }
@@ -99,8 +110,13 @@ export class RepoOps {
    * Rounds never overlap: events arriving during a slow refresh merge into one
    * follow-up instead of each starting a round of their own.
    */
-  refreshFor(state: RepoState, kinds: ReadonlySet<RepoChangeKind>): Promise<void> {
+  refreshFor(
+    state: RepoState,
+    kinds: ReadonlySet<RepoChangeKind>,
+    origin: RefreshOrigin = 'app',
+  ): Promise<void> {
     if (!state.repo()) return Promise.resolve();
+    if (origin === 'app') this.appRefreshes.add(state);
     let coalescer = this.refreshes.get(state);
     if (!coalescer) {
       coalescer = new RefreshCoalescer((merged) => this.runRefresh(state, merged));
@@ -113,6 +129,7 @@ export class RepoOps {
     state: RepoState,
     kinds: ReadonlySet<RepoChangeKind>,
   ): Promise<void> {
+    const origin: RefreshOrigin = this.appRefreshes.delete(state) ? 'app' : 'external';
     const tasks: Promise<unknown>[] = [this.loadRepoState(state)];
     if (kinds.has('refs')) {
       tasks.push(
@@ -128,7 +145,7 @@ export class RepoOps {
       // working-tree diff is reloaded — `refreshActiveDiff` leaves a commit
       // diff, which no worktree event can invalidate, where it is.
       tasks.push(
-        this.loadChanges(state),
+        this.loadChanges(state, origin),
         this.loadConflicts(state),
         this.refreshActiveDiff(state),
       );
@@ -171,14 +188,17 @@ export class RepoOps {
     const repo = state.repo();
     if (!repo) return;
     state.selectedCommitSha.set(sha);
-    state.diffSource.set({ kind: 'commit', sha });
+    const source: DiffSource = { kind: 'commit', sha };
+    state.diffSource.set(source);
     const [diff] = await Promise.allSettled([
       this.ops.git.getCommitDiff(repo.path, sha),
       this.history.loadCommitDetails(state, sha),
     ]);
     // Arrowing down the list leaves several of these in flight; a slow answer
-    // for an earlier row must not land on the row now selected.
-    if (state.selectedCommitSha() !== sha) return;
+    // for an earlier row must not land on the row now selected. Identity, not
+    // shape: a single file of this commit shown meanwhile sets a source of its
+    // own that looks the same, and the whole commit must not replace it.
+    if (state.selectedCommitSha() !== sha || state.diffSource() !== source) return;
     if (diff.status === 'fulfilled') {
       state.diffText.set(diff.value);
     } else {
@@ -285,15 +305,18 @@ export class RepoOps {
 
   // ── Private loaders (throw; callers aggregate) ──────────────────────────
 
-  private async loadChanges(state: RepoState): Promise<void> {
+  private async loadChanges(
+    state: RepoState,
+    requested: RefreshOrigin = 'app',
+  ): Promise<void> {
     const repo = state.repo();
     if (!repo) return;
     // Every staging action holds this flag across the refresh it triggers, and
-    // the watcher drops its events while it is up, so a load that runs without
-    // it is publishing a change the app did not make (AC-13, AC-16). Read
-    // before the await and written beside `changes`: two loads in flight
-    // together would otherwise publish under each other's origin.
-    const origin = state.stagingBusy() ? 'own' : 'external';
+    // the watcher drops its events while it is up, so it alone tells the
+    // developer's own staging apart (AC-13, AC-16). Read before the await and
+    // written beside `changes`: two loads in flight together would otherwise
+    // publish under each other's origin.
+    const origin = state.stagingBusy() ? 'own' : requested;
     const changes = await this.ops.git.getWorkingChanges(repo.path);
     state.changesOrigin.set(origin);
     state.changes.set(changes);
