@@ -1,0 +1,11 @@
+[advisories]
+# zip 4.6.1, only through tauri-plugin-updater 2.11: the updater extracts a zip
+# on Windows, after verifying its minisign signature, and only when the artefact
+# is one; createUpdaterArtifacts ships .exe/.msi, so none is ever extracted.
+# Drop these with the Tauri 2.12 bump, whose updater 2.14 pulls zip 9.
+ignore = [
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
+  "RUSTSEC-2026-0429",
+]

@@ -17,6 +17,7 @@ allowBuilds:
   msgpackr-extract: true
 minimumReleaseAgeExclude:
   - '@tauri-apps/plugin-updater@2.11.0'
-# ajv pulls fast-uri 3.1.2, which has host-confusion advisories fixed in 3.1.5.
+# ajv pulls fast-uri 3.1.2; its authority-injection and host-confusion advisories
+# are fixed in 3.1.7.
 overrides:
-  fast-uri: '^3.1.6'
+  fast-uri: '^3.1.7'
