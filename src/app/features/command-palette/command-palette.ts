@@ -14,6 +14,8 @@ import { NgIcon } from '@ng-icons/core';
 import type { BranchInfo } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { EscapeRank } from '../../core/services/escape-layers';
+import { EscapeLayersService } from '../../core/services/escape-layers.service';
 import { SystemOps } from '../../core/services/ops';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -96,6 +98,7 @@ export class CommandPalette {
   private readonly appearance = inject(AppearanceService);
   private readonly updater = inject(UpdaterService);
   private readonly composerFocus = inject(CommitComposerFocus);
+  private readonly escapeLayers = inject(EscapeLayersService);
 
   protected readonly open = this.palette.isOpen;
   protected readonly query = signal('');
@@ -270,6 +273,8 @@ export class CommandPalette {
       });
     });
 
+    this.escapeLayers.bind(EscapeRank.commandPalette, this.open, () => this.close());
+
     const off = this.shortcutsService.register({
       id: 'palette.open',
       combo: 'mod+k',
@@ -319,9 +324,6 @@ export class CommandPalette {
         break;
       case 'Enter':
         this.runActive();
-        break;
-      case 'Escape':
-        this.close();
         break;
       default:
         return;

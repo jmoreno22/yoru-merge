@@ -82,6 +82,16 @@ export interface DurablePreferences {
   animations: boolean;
 
   inspectorPlacement: InspectorPlacement;
+  /** Collapsed state of the commit header in the inspector, like the splitters. */
+  commitHeaderCollapsed: boolean;
+  /** Collapsed state of the commit file list in the inspector, like the splitters. */
+  commitFileListCollapsed: boolean;
+  /**
+   * What a single click on a commit file row does: open the diff workspace, or
+   * only make the row active and leave the workspace to the explicit gestures
+   * (double-click, the open-large control, the shortcut). AC-22.
+   */
+  commitFileClickOpensWorkspace: boolean;
   sidebarSide: SidebarSide;
   showToolbar: boolean;
   showStatusBar: boolean;
@@ -169,6 +179,9 @@ export const DEFAULT_PREFERENCES: DurablePreferences = {
   colorPalette: DEFAULT_PALETTE_ID,
   animations: true,
   inspectorPlacement: 'right',
+  commitHeaderCollapsed: false,
+  commitFileListCollapsed: false,
+  commitFileClickOpensWorkspace: true,
   sidebarSide: 'left',
   showToolbar: true,
   showStatusBar: true,
@@ -320,6 +333,21 @@ export function sanitizePreferences(
   const inspectorPlacement = raw['inspectorPlacement'];
   if (isOneOf(inspectorPlacement, INSPECTOR_PLACEMENTS)) {
     out.inspectorPlacement = inspectorPlacement;
+  }
+
+  const commitHeaderCollapsed = raw['commitHeaderCollapsed'];
+  if (typeof commitHeaderCollapsed === 'boolean') {
+    out.commitHeaderCollapsed = commitHeaderCollapsed;
+  }
+
+  const commitFileListCollapsed = raw['commitFileListCollapsed'];
+  if (typeof commitFileListCollapsed === 'boolean') {
+    out.commitFileListCollapsed = commitFileListCollapsed;
+  }
+
+  const commitFileClickOpensWorkspace = raw['commitFileClickOpensWorkspace'];
+  if (typeof commitFileClickOpensWorkspace === 'boolean') {
+    out.commitFileClickOpensWorkspace = commitFileClickOpensWorkspace;
   }
 
   const sidebarSide = raw['sidebarSide'];

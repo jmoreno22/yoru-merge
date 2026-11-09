@@ -60,10 +60,12 @@
           [active]="row.path === tabbablePath()"
           [openInDiff]="row.path === diffPath()"
           (click)="onRowClick(row.path, $event)"
+          (dblclick)="rowOpenLarge.emit(row.path)"
           (contextmenu)="onRowMenu(row.path, $event)"
           (primary)="rowPrimary.emit(row.path)"
           (discard)="rowDiscard.emit(row.path)"
           (resolve)="rowResolve.emit(row.path)"
+          (openLarge)="rowOpenLarge.emit(row.path)"
         />
       }
     </ng-container>

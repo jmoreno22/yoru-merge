@@ -1,0 +1,53 @@
+<div
+  class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
+>
+  @if (head(); as source) {
+    <yoru-diff-source
+      [chip]="source.chip"
+      [side]="source.side"
+      [detail]="source.detail"
+      [path]="source.path"
+      chipTestId="diff-workspace-source"
+      pathTestId="diff-workspace-path"
+    />
+  }
+
+  <span class="flex-1"></span>
+
+  <yoru-button
+    class="shrink-0"
+    size="sm"
+    variant="ghost"
+    icon="lucideChevronLeft"
+    aria-label="Previous file"
+    data-testid="diff-workspace-prev"
+    [disabled]="!canPrev()"
+    [yoruTooltip]="shortcuts.hint('Previous file', 'diff-workspace.prev')"
+    (click)="workspace.prev()"
+  />
+  <yoru-button
+    class="shrink-0"
+    size="sm"
+    variant="ghost"
+    icon="lucideChevronRight"
+    aria-label="Next file"
+    data-testid="diff-workspace-next"
+    [disabled]="!canNext()"
+    [yoruTooltip]="shortcuts.hint('Next file', 'diff-workspace.next')"
+    (click)="workspace.next()"
+  />
+  <yoru-button
+    class="shrink-0"
+    size="sm"
+    variant="ghost"
+    icon="lucideX"
+    aria-label="Close diff workspace"
+    data-testid="diff-workspace-close"
+    [yoruTooltip]="shortcuts.hint('Close', 'diff-workspace.close')"
+    (click)="workspace.close()"
+  />
+</div>
+
+<div class="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="diff-workspace-outlet">
+  <ng-template [cdkPortalOutlet]="portal()" />
+</div>

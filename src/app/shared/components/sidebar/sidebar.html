@@ -30,6 +30,7 @@
     <input
       type="text"
       inputmode="search"
+      data-escape-clears
       autocomplete="off"
       spellcheck="false"
       placeholder="Filter refs"
@@ -37,7 +38,6 @@
       data-testid="refs-filter"
       [value]="filter()"
       (input)="onFilter($event)"
-      (keydown.escape)="clearFilter()"
       (keydown.arrowdown)="focusFirstRow()"
       class="h-7 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] pl-6 pr-2 font-mono text-y-sm text-[var(--app-text)] transition-colors placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
     />
