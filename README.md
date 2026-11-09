@@ -22,6 +22,8 @@
 
 ![Working tree and commit composer, Moonlit Workbench theme](docs/screenshots/changes-light.png)
 
+![A file open in the diff workspace, launched from the History inspector](docs/screenshots/diff-workspace-dark.png)
+
 ![A merge in progress, with the repository-state banner](docs/screenshots/conflict-banner.png)
 
 </details>
@@ -127,7 +129,9 @@ repository that arrived as a folder or a zip the way you would before running
 
 - **History** — commit list with a canvas branch graph, ref pills, author
   avatars, infinite scroll over large repositories, and a commit inspector with
-  the full message, file list and per-file diff.
+  the full message and file list — a file's diff opens at full centre width in
+  the diff workspace, on a single click or, with that turned off, on
+  double-click, the open-large control or `Ctrl+D`.
 - **Working tree** — stage and unstage by file, hunk or line selection, discard,
   ignore, assume-unchanged, and a commit composer with conventional-commit
   chips, amend, sign-off and GPG signing.
@@ -230,6 +234,10 @@ the command palette shows the real combo, so this table cannot drift silently.
 | `Ctrl+,` | settings |
 | `Ctrl+Shift+T` | switch theme |
 | `n` / `p` | next / previous hunk in the diff viewer |
+| `Ctrl+D` | open the selected file in the diff workspace |
+| `Shift+N` / `Shift+P` | next / previous file in the diff workspace |
+| `Esc` | close the diff workspace — or whatever is topmost above it |
+| `Ctrl+Shift+H` / `Ctrl+Shift+L` | collapse or expand the commit header / file list |
 
 Lists (refs, commits, changed files) are fully keyboard-navigable with the
 arrow keys, `Home`/`End`, `Enter` and `Space`.

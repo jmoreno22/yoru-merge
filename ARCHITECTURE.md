@@ -107,6 +107,11 @@ src/app/
 State is Angular Signals. RxJS is present but is not the state model.
 Components are standalone with `ChangeDetectionStrategy.OnPush`.
 
+Dependencies run downwards, with one recorded exception: `core` may import a
+template-less service from `shared/ui` — `KeyboardShortcutsService` — and only
+by its module path, never through the barrel, which re-exports `yoru-dialog`
+and so imports back into `core`.
+
 ### Multi-repository state
 
 `WorkspaceStore` holds one `RepoState` per open repository — the tabs in the
@@ -130,8 +135,11 @@ after an await.
   explicit language list. **No Monaco** — a full editor is tens of megabytes for
   a read-only view, and it fights the theme.
 - Long lists (commits, files, blame) use the CDK virtual scroller. Row heights
-  are fixed by the density tokens in `styles.css`; `--row-h` must match the
-  virtual scroller's `itemSize` and the graph's row height.
+  are computed per density and `uiFontSize` by `computeMetrics`
+  (`core/services/appearance-metrics.ts`), which writes the tokens and feeds the
+  same numbers to `[itemSize]`; `--row-h` must match the virtual scroller's
+  `itemSize` and the graph's row height, and it does because one function
+  produces all three. Never override a row token in CSS.
 
 ## Repository layout
 

@@ -61,7 +61,7 @@ shared/
 - The app is **zoneless**: anything asynchronous (Tauri `listen`, timers, `ResizeObserver`, canvas events) must end in a signal write, or the view will not update.
 - Icons are `<ng-icon>` from `shared/icons` — no emoji, no inline SVG.
 - DOM/test hooks use `data-testid="..."`.
-- Unit tests are pure TypeScript under vitest (`*.spec.ts`, node environment); component contracts are covered by `ng build` with `strictTemplates`, so specs must not import `@angular/core`.
+- Specs (`*.spec.ts`, vitest via `ng test`) come in two tiers: pure TypeScript by default (node environment, no framework import), or one component through `TestBed` with a first-line `// @vitest-environment jsdom` docblock and the stand-ins in `src/testing/`. `ng build` with `strictTemplates` also checks component contracts. Details → repo-root `AGENTS.md` §TESTING.
 
 ## ANTI-PATTERNS (this layer)
 - **Never** let a feature component reach into a sibling — go through `CurrentRepoService` or a service in `features/dialogs`.
