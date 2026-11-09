@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-09
+
 ### Added
 
 - **A file's diff now opens at full width.** The diff workspace turns the
@@ -34,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Esc` closes one thing at a time**, in a fixed order: a dialog, the command
   palette, a text field you are typing in, a line selection, a blame or file
   history panel, and only then the diff workspace.
+
+### Security
+
+- The TLS stack behind update checks and downloads (`rustls`, `rustls-webpki`,
+  `webpki-root-certs`) and `libz-sys` are updated past advisories published
+  since 1.0.6.
 
 ## [1.0.6] - 2026-09-13
 
