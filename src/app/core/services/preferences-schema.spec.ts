@@ -61,6 +61,9 @@ const USER_PREFERENCES: DurablePreferences = {
   railView: 'reflog',
   refsPanelOpen: false,
   commitsColumns: ['message', 'date'],
+  commitHeaderCollapsed: true,
+  commitFileListCollapsed: true,
+  commitFileClickOpensWorkspace: false,
 };
 
 /** What `initStore` does with whatever the migration hands back. */
@@ -364,6 +367,65 @@ describe('AI preferences', () => {
 
     const essay = sanitizePreferences({ aiInstructions: 'x'.repeat(5000) });
     expect(essay.aiInstructions).toHaveLength(MAX_AI_INSTRUCTIONS);
+  });
+});
+
+describe('collapsed-state preferences', () => {
+  it('are expanded by default', () => {
+    expect(DEFAULT_PREFERENCES.commitHeaderCollapsed).toBe(false);
+    expect(DEFAULT_PREFERENCES.commitFileListCollapsed).toBe(false);
+  });
+
+  it('round-trip true and false through the normaliser', () => {
+    expect(
+      sanitizePreferences({
+        commitHeaderCollapsed: true,
+        commitFileListCollapsed: true,
+      }),
+    ).toEqual({ commitHeaderCollapsed: true, commitFileListCollapsed: true });
+
+    expect(
+      sanitizePreferences({
+        commitHeaderCollapsed: false,
+        commitFileListCollapsed: false,
+      }),
+    ).toEqual({ commitHeaderCollapsed: false, commitFileListCollapsed: false });
+  });
+
+  it('falls back to the default when the raw value is not a boolean', () => {
+    const out = sanitizePreferences({
+      commitHeaderCollapsed: 'yes',
+      commitFileListCollapsed: 1,
+    });
+    expect(out.commitHeaderCollapsed).toBeUndefined();
+    expect(out.commitFileListCollapsed).toBeUndefined();
+    expect({
+      ...DEFAULT_PREFERENCES,
+      ...out,
+    }).toMatchObject({ commitHeaderCollapsed: false, commitFileListCollapsed: false });
+  });
+});
+
+describe('open-behaviour preference (AC-22)', () => {
+  it('opens the workspace on a single click by default', () => {
+    expect(DEFAULT_PREFERENCES.commitFileClickOpensWorkspace).toBe(true);
+  });
+
+  it('round-trips both modes through the normaliser', () => {
+    expect(sanitizePreferences({ commitFileClickOpensWorkspace: false })).toEqual({
+      commitFileClickOpensWorkspace: false,
+    });
+    expect(sanitizePreferences({ commitFileClickOpensWorkspace: true })).toEqual({
+      commitFileClickOpensWorkspace: true,
+    });
+  });
+
+  it('falls back to the default when the stored value is not a boolean', () => {
+    const out = sanitizePreferences({ commitFileClickOpensWorkspace: 'yes' });
+    expect(out.commitFileClickOpensWorkspace).toBeUndefined();
+    expect({ ...DEFAULT_PREFERENCES, ...out }).toMatchObject({
+      commitFileClickOpensWorkspace: true,
+    });
   });
 });
 

@@ -2,11 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   output,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { focusKeyFor } from '../../core/services/diff-workspace-state';
 import type { YoruIconName } from '../../shared/icons';
+import { KeyboardShortcutsService, YoruTooltip } from '../../shared/ui';
 import { type ChipKind, chipLabel, type FileRow } from './changes-tree';
 
 /** Status icon and colour, straight from the design system's status table. */
@@ -32,25 +35,37 @@ const STATUS_COLORS: Readonly<Record<ChipKind, string>> = {
   conflicted: 'text-[var(--app-conflict-text)]',
 };
 
+/** The two working-tree sides the diff workspace can be opened on. */
+export type WorkingSide = 'staged' | 'unstaged';
+
+/** `data-focus-key` of a file row, as the diff workspace restores it (AC-08). */
+export function rowFocusKey(side: WorkingSide, path: string): string {
+  return focusKeyFor({ kind: 'working-tree', side }, path);
+}
+
 /**
  * One 30 px file row. Purely presentational: every interaction leaves through
  * an output or bubbles to the list, which owns selection and the menu.
  */
 @Component({
   selector: 'app-file-row',
-  imports: [NgIcon],
+  imports: [NgIcon, YoruTooltip],
   templateUrl: './file-row.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     role: 'option',
     '[class]': 'hostClass()',
     '[attr.data-path]': 'row().path',
+    '[attr.data-focus-key]': 'focusKey()',
     '[attr.tabindex]': 'active() ? 0 : -1',
     '[attr.aria-selected]': 'selected()',
     '[attr.title]': 'row().path',
   },
 })
 export class FileRowItem {
+  /** The open-large hint comes from the registry, never from prose. */
+  protected readonly shortcuts = inject(KeyboardShortcutsService);
+
   readonly row = input.required<FileRow>();
   readonly selected = input<boolean>(false);
   /** Holds the roving tabindex; only one row per list has it. */
@@ -62,6 +77,7 @@ export class FileRowItem {
   readonly primary = output<void>();
   readonly discard = output<void>();
   readonly resolve = output<void>();
+  readonly openLarge = output<void>();
 
   protected readonly hostClass = computed(() => {
     const base =
@@ -84,6 +100,22 @@ export class FileRowItem {
   protected readonly submodule = computed(() => this.entry().isSubmodule);
   protected readonly conflicted = computed(() => this.entry().section === 'conflicts');
   protected readonly staged = computed(() => this.entry().section === 'staged');
+  protected readonly side = computed<WorkingSide>(() =>
+    this.staged() ? 'staged' : 'unstaged',
+  );
+
+  /** Conflicts keep Resolve and are never opened large (owner decision). */
+  protected readonly focusKey = computed(() =>
+    this.conflicted() ? null : rowFocusKey(this.side(), this.row().path),
+  );
+
+  protected readonly openLargeLabel = computed(
+    () => `Open ${this.row().name} in the diff workspace`,
+  );
+
+  protected readonly openLargeTestId = computed(
+    () => `changes-open-large-${this.side()}-${this.row().path}`,
+  );
 
   /**
    * Discarding a staged row would restore the work tree from the index, which
@@ -127,5 +159,10 @@ export class FileRowItem {
   protected onResolve(event: Event): void {
     event.stopPropagation();
     this.resolve.emit();
+  }
+
+  protected onOpenLarge(event: Event): void {
+    event.stopPropagation();
+    this.openLarge.emit();
   }
 }

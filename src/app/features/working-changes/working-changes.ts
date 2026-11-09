@@ -1,13 +1,17 @@
 import {
+  afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
   inject,
   signal,
+  viewChildren,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
+import type { SetFilesOrigin } from '../../core/services/diff-workspace-state';
 import { SystemOps } from '../../core/services/ops';
 import { PreferencesService } from '../../core/services/preferences.service';
 import {
@@ -36,6 +40,7 @@ import {
   IGNORE_PREFIX,
   parentDirectory,
 } from './file-menu';
+import { rowFocusKey, type WorkingSide } from './file-row';
 import {
   actionTargets,
   EMPTY_SELECTION,
@@ -55,6 +60,16 @@ const VIEW_OPTIONS: readonly SegmentedOption[] = [
   { value: 'list', label: 'List', icon: 'lucideList' },
   { value: 'tree', label: 'Tree', icon: 'lucideFolderTree' },
 ];
+
+/** The workspace side a section maps to; the conflicts section has none. */
+function sideOf(section: SectionId | null): WorkingSide | null {
+  if (section === 'staged') return 'staged';
+  return section === 'changes' ? 'unstaged' : null;
+}
+
+function sameOrder(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((path, index) => path === b[index]);
+}
 
 /** One section's rows and its file count, counted while the rows are built. */
 interface SectionRows {
@@ -91,6 +106,9 @@ export class WorkingChangesPanel {
   private readonly clipboard = inject(ClipboardService);
   private readonly system = inject(SystemOps);
   private readonly dialogs = inject(DialogsService);
+  protected readonly workspace = inject(DiffWorkspaceService);
+
+  private readonly lists = viewChildren(ChangesList);
 
   protected readonly viewOptions = VIEW_OPTIONS;
   protected readonly maxConflictRows = MAX_CONFLICT_ROWS;
@@ -192,6 +210,62 @@ export class WorkingChangesPanel {
       const pruned = pruneSelection(state, this.visibleIn(state.section));
       if (pruned !== state) this.selection.set(pruned);
     });
+
+    // The open shortcut belongs to whichever list has an active row; the
+    // conflicts section has no open-large gesture, so it never takes it.
+    effect((onCleanup) => {
+      const { section, active } = this.selection();
+      const side = sideOf(section);
+      if (side === null || active === null) return;
+      onCleanup(this.workspace.registerOpener(() => this.openLarge(side, active)));
+    });
+
+    // Only this panel knows what is left on the shown side and in which order,
+    // so it re-publishes after every refresh and the workspace advances or
+    // closes from there (AC-13, AC-16).
+    effect(() => {
+      const current = this.workspace.current();
+      if (current === null || current.source.kind !== 'working-tree') return;
+      const { side } = current.source;
+      const files = this.visibleIn(side === 'staged' ? 'staged' : 'changes');
+      // Republishing an unchanged list would write the state the effect reads.
+      if (sameOrder(files, current.files)) return;
+      const origin = this.service.changesOrigin();
+      this.workspace.setFiles(
+        files,
+        origin,
+        this.closeNotice(side, current.file, origin),
+      );
+    });
+
+    // The panel is hidden, not unmounted, while the workspace holds the
+    // centre: a window resize in that time leaves every viewport with a
+    // cached height of zero, and only a re-measure brings the rows back.
+    afterRenderEffect(() => {
+      if (this.workspace.isOpen()) return;
+      for (const list of this.lists()) list.remeasure();
+    });
+  }
+
+  /** Shows `path` at full centre width with its side's displayed order (AC-06). */
+  protected openLarge(side: WorkingSide, path: string): void {
+    const files = this.visibleIn(side === 'staged' ? 'staged' : 'changes');
+    const index = files.indexOf(path);
+    if (index < 0) return;
+    this.workspace.open({
+      source: { kind: 'working-tree', side },
+      files,
+      index,
+      focusKey: rowFocusKey(side, path),
+    });
+  }
+
+  /** The notice the workspace shows if the republished list closes it. */
+  private closeNotice(side: WorkingSide, file: string, origin: SetFilesOrigin): string {
+    if (origin === 'own') {
+      return `No changes left in ${side === 'staged' ? 'Staged' : 'Unstaged'}`;
+    }
+    return `${file} no longer has ${side} changes (changed outside the app)`;
   }
 
   protected selectedIn(section: SectionId): ReadonlySet<string> {
@@ -217,8 +291,12 @@ export class WorkingChangesPanel {
       selectRow(state, section, event.path, this.visibleIn(section), event.modifiers),
     );
     // Plain click doubles as "show me this file"; a modifier is only building
-    // a selection and must not swap the diff under the user.
-    if (!event.modifiers.ctrl && !event.modifiers.shift) {
+    // a selection and must not swap the diff under the user. The file already
+    // in the viewer is left alone: both clicks of a double-click land here
+    // before the open-large gesture runs, and it must not be fetched again.
+    const shown =
+      section === 'staged' ? this.stagedDiffPath() : this.worktreeDiffPath();
+    if (!event.modifiers.ctrl && !event.modifiers.shift && shown !== event.path) {
       this.openDiff(section, event.path);
     }
   }
@@ -414,7 +492,17 @@ export class WorkingChangesPanel {
   // ── helpers ─────────────────────────────────────────────────────────────
 
   private openDiff(section: SectionId, path: string): void {
-    void this.service.selectWorkingFile(path, section === 'staged');
+    const side = sideOf(section);
+    const current = this.workspace.current();
+    if (side === null || current === null || current.source.kind !== 'working-tree') {
+      void this.service.selectWorkingFile(path, section === 'staged');
+      return;
+    }
+    // The open workspace walks its own side; a row from the other side is a
+    // fresh open, which replaces it (AC-09).
+    const index = current.source.side === side ? current.files.indexOf(path) : -1;
+    if (index < 0) this.openLarge(side, path);
+    else this.workspace.navigate(index);
   }
 
   private rowsFor(section: SectionId): SectionRows {

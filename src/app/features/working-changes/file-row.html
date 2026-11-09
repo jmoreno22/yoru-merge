@@ -44,6 +44,26 @@
   >
 }
 
+@if (!conflicted()) {
+  <!-- Its own layer: opacity is inherited, so it cannot outlive the hover-only
+       group below while the row is merely active. -->
+  <span
+    class="flex shrink-0 items-center transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+    [class.opacity-0]="!active()"
+  >
+    <button
+      type="button"
+      (click)="onOpenLarge($event)"
+      [attr.aria-label]="openLargeLabel()"
+      [attr.data-testid]="openLargeTestId()"
+      [yoruTooltip]="shortcuts.hint('Open in diff workspace', 'diff-workspace.open')"
+      class="inline-flex h-6 w-6 items-center justify-center rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    >
+      <ng-icon name="lucideMaximize2" size="14px" aria-hidden="true" />
+    </button>
+  </span>
+}
+
 <span
   class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
 >

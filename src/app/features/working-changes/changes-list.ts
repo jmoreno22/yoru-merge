@@ -5,6 +5,8 @@ import {
   Component,
   computed,
   ElementRef,
+  effect,
+  Injector,
   inject,
   input,
   output,
@@ -12,9 +14,10 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { AppearanceService } from '../../core/services/appearance.service';
-import { type MenuAnchor, YoruSectionHeader } from '../../shared/ui';
+import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
+import { focusVirtualRow, type MenuAnchor, YoruSectionHeader } from '../../shared/ui';
 import type { ChangeRow, SectionId } from './changes-tree';
-import { FileRowItem } from './file-row';
+import { FileRowItem, rowFocusKey, type WorkingSide } from './file-row';
 import { type ClickModifiers, nextIndex } from './selection';
 
 export interface RowSelectEvent {
@@ -44,6 +47,8 @@ export interface RowMenuEvent {
 export class ChangesList {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly appearance = inject(AppearanceService);
+  private readonly workspace = inject(DiffWorkspaceService);
+  private readonly injector = inject(Injector);
 
   readonly section = input.required<SectionId>();
   readonly label = input.required<string>();
@@ -67,6 +72,7 @@ export class ChangesList {
   readonly rowPrimary = output<string>();
   readonly rowDiscard = output<string>();
   readonly rowResolve = output<string>();
+  readonly rowOpenLarge = output<string>();
   readonly rowMenu = output<RowMenuEvent>();
   readonly folderToggle = output<string>();
   readonly activeChange = output<string>();
@@ -98,6 +104,38 @@ export class ChangesList {
 
   constructor() {
     afterNextRender(() => this.markWrapperPresentational());
+
+    // Close of the diff workspace hands the restore to the list owning the
+    // row: it can sit outside the rendered range, and only this viewport can
+    // bring it in (AC-08). Conflicts are never opened large, so they own none.
+    effect(() => {
+      const key = this.workspace.pendingFocusKey();
+      const section = this.section();
+      if (key === null || section === 'conflicts') return;
+      const side: WorkingSide = section === 'staged' ? 'staged' : 'unstaged';
+      const index = this.rows().findIndex(
+        (row) => row.kind === 'file' && rowFocusKey(side, row.path) === key,
+      );
+      if (index < 0) {
+        // The row is gone — an external change removed it while the workspace
+        // was open. Expiring the key here keeps the same path, coming back on
+        // a later republish, from taking the focus then (AC-08).
+        if (key.startsWith(`${side}:`)) this.workspace.focusRestored(key);
+        return;
+      }
+      const viewport = this.viewport();
+      if (!viewport) return;
+      this.workspace.focusRestored(key);
+      focusVirtualRow(viewport, index, key, this.injector);
+    });
+  }
+
+  /**
+   * Re-reads the viewport box. The CDK caches it and re-reads it only on a
+   * window resize, so a resize while an ancestor was hidden cached zero.
+   */
+  remeasure(): void {
+    this.viewport()?.checkViewportSize();
   }
 
   protected trackRow(_index: number, row: ChangeRow): string {

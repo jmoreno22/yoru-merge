@@ -184,3 +184,29 @@ export function buildCommitMenu(ctx: CommitMenuContext): MenuItem[] {
     },
   ];
 }
+
+/**
+ * Lifts the given ids to the top of a built menu, keeping their order.
+ *
+ * The collapsed inspector header uses it for the actions its summary line
+ * could not fit: they move rather than get copied, so no action is ever
+ * offered twice in the same menu.
+ */
+export function promoteMenuItems(
+  items: readonly MenuItem[],
+  ids: readonly string[],
+): MenuItem[] {
+  const promoted = ids
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item) => item !== undefined)
+    .map((item) => ({ ...item, separatorBefore: false }));
+  if (promoted.length === 0) return [...items];
+
+  const rest = items.filter((item) => !ids.includes(item.id));
+  return [
+    ...promoted,
+    ...rest.map((item, index) =>
+      index === 0 ? { ...item, separatorBefore: true } : item,
+    ),
+  ];
+}

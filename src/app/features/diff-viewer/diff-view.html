@@ -44,21 +44,23 @@
       @for (file of visibleFiles(); track file.path) {
         <section class="dv-file" [style.--dv-num-w]="file.numberWidth + 'ch'">
           <header class="dv-file-head">
-            <button
-              type="button"
-              class="dv-icon-button"
-              [attr.aria-expanded]="file.expanded"
-              [attr.aria-label]="
-                (file.expanded ? 'Collapse ' : 'Expand ') + file.path
-              "
-              (click)="toggleFile(file)"
-            >
-              <ng-icon
-                [name]="file.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
-                size="14px"
-                aria-hidden="true"
-              />
-            </button>
+            @if (!inWorkspace()) {
+              <button
+                type="button"
+                class="dv-icon-button"
+                [attr.aria-expanded]="file.expanded"
+                [attr.aria-label]="
+                  (file.expanded ? 'Collapse ' : 'Expand ') + file.path
+                "
+                (click)="toggleFile(file)"
+              >
+                <ng-icon
+                  [name]="file.expanded ? 'lucideChevronDown' : 'lucideChevronRight'"
+                  size="14px"
+                  aria-hidden="true"
+                />
+              </button>
+            }
 
             <ng-icon
               [name]="statusIcon(file.status)"

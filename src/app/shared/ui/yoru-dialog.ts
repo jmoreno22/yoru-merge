@@ -3,11 +3,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   output,
 } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTriangleAlert, lucideX } from '@ng-icons/lucide';
+import { EscapeRank } from '../../core/services/escape-layers';
+import { EscapeLayersService } from '../../core/services/escape-layers.service';
 
 export type DialogSize = 'sm' | 'md' | 'lg' | 'full';
 export type DialogTone = 'default' | 'danger' | 'conflict';
@@ -48,7 +51,6 @@ let nextDialogId = 0;
   viewProviders: [provideIcons({ lucideX, lucideTriangleAlert })],
   templateUrl: './yoru-dialog.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown.escape)': 'onEscape()' },
 })
 export class YoruDialog {
   readonly open = input<boolean>(false);
@@ -72,8 +74,10 @@ export class YoruDialog {
     () => `flex-1 truncate text-y-lg font-semibold ${TONES[this.tone()]}`,
   );
 
-  protected onEscape(): void {
-    if (this.open()) this.closed.emit();
+  constructor() {
+    inject(EscapeLayersService).bind(EscapeRank.dialog, this.open, () =>
+      this.closed.emit(),
+    );
   }
 
   protected onBackdrop(): void {

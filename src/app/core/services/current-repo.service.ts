@@ -71,7 +71,7 @@ export type { DiffSource } from './workspace.store';
 const OWN_WRITE_WINDOW_MS = 1000;
 
 /** Debounce for watcher-driven refreshes; absorbs bursts from an IDE save. */
-const WATCHER_DEBOUNCE_MS = 400;
+export const WATCHER_DEBOUNCE_MS = 400;
 
 /**
  * Facade over the active repository tab.
@@ -173,6 +173,8 @@ export class CurrentRepoService {
 
   // ── staging / branches / sequencer ─────────────────────────────────────
   readonly stagingBusy = this.proxyWritable((state) => state.stagingBusy);
+  /** Who caused the working tree the last refresh published (AC-13, AC-16). */
+  readonly changesOrigin = this.proxyWritable((state) => state.changesOrigin);
   readonly branchBusy = this.proxyWritable((state) => state.branchBusy);
   readonly sequencerBusy = this.proxyWritable((state) => state.sequencerBusy);
   /** Last cherry-pick / revert / rebase failure, for inline surfaces. */

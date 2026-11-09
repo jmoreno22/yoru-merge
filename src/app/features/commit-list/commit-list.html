@@ -58,6 +58,7 @@
         *cdkVirtualFor="let row of rows(); trackBy: trackBySha; let i = index"
         [id]="rowId(row.sha)"
         [attr.data-testid]="'commit-row-' + row.sha"
+        [attr.data-focus-key]="rowFocusKey(row.sha)"
         role="option"
         [attr.aria-selected]="isSelected(row.sha)"
         [attr.aria-label]="row.title"

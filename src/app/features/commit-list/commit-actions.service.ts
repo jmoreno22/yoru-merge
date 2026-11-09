@@ -7,7 +7,7 @@ import type { MenuAnchor } from '../../shared/ui';
 import { ClipboardService, ContextMenuService } from '../../shared/ui';
 import { InteractiveRebaseService } from '../commit-inspector/interactive-rebase.service';
 import { DialogsService } from '../dialogs/dialogs.service';
-import { buildCommitMenu } from './commit-menu';
+import { buildCommitMenu, promoteMenuItems } from './commit-menu';
 import { CommitPromptService } from './commit-prompt.service';
 import { isHeadCommit } from './commit-refs';
 
@@ -49,6 +49,8 @@ export class CommitActions {
     anchor: MenuAnchor,
     sha: string,
     selection: readonly string[],
+    /** Ids to lift to the top: what a collapsed header could not fit inline. */
+    promote: readonly string[] = [],
   ): Promise<void> {
     const target = this.find(sha);
     if (!target) return;
@@ -59,20 +61,18 @@ export class CommitActions {
       await this.repo.listRemotesAction();
     }
 
-    const choice = await this.menu.open(
-      buildCommitMenu({
-        shortSha: target.shortSha,
-        isHead: isHeadCommit(target.refs),
-        onCurrentBranch: target.onCurrentBranch,
-        parentCount: target.parents.length,
-        currentBranch: this.repo.currentBranch(),
-        detachedHead: this.repo.repoState().head_detached,
-        selectionCount: selection.length,
-        hasRemoteUrl: this.webUrl(sha) !== null,
-        sequencerActive: this.repo.sequencerActive(),
-      }),
-      anchor,
-    );
+    const items = buildCommitMenu({
+      shortSha: target.shortSha,
+      isHead: isHeadCommit(target.refs),
+      onCurrentBranch: target.onCurrentBranch,
+      parentCount: target.parents.length,
+      currentBranch: this.repo.currentBranch(),
+      detachedHead: this.repo.repoState().head_detached,
+      selectionCount: selection.length,
+      hasRemoteUrl: this.webUrl(sha) !== null,
+      sequencerActive: this.repo.sequencerActive(),
+    });
+    const choice = await this.menu.open(promoteMenuItems(items, promote), anchor);
     if (choice === null) return;
     await this.run(choice, sha, selection);
   }

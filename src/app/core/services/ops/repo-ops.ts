@@ -122,7 +122,16 @@ export class RepoOps {
       );
     }
     if (kinds.has('worktree') || kinds.has('index')) {
-      tasks.push(this.loadChanges(state), this.loadConflicts(state));
+      // The staging operations reload the shown diff themselves; this is the
+      // path for every change they do not run, above all the watcher, which
+      // would otherwise leave stale patch text on screen (AC-16). Only a
+      // working-tree diff is reloaded — `refreshActiveDiff` leaves a commit
+      // diff, which no worktree event can invalidate, where it is.
+      tasks.push(
+        this.loadChanges(state),
+        this.loadConflicts(state),
+        this.refreshActiveDiff(state),
+      );
     }
     const results = await Promise.allSettled(tasks);
     this.reportFailures(results, state);
@@ -202,11 +211,15 @@ export class RepoOps {
     const repo = state.repo();
     const source = state.diffSource();
     if (!repo || source.kind !== 'workingFile') return;
+    const { file, staged } = source;
     try {
-      state.diffText.set(
-        await this.ops.git.getDiff(repo.path, source.file, source.staged),
-      );
+      const diff = await this.ops.git.getDiff(repo.path, file, staged);
+      // A refresh started before the developer stepped to another file must
+      // not put the patch it read over the one now on screen (AC-16).
+      if (!isSelectedFile(state, file, staged)) return;
+      state.diffText.set(diff);
     } catch {
+      if (!isSelectedFile(state, file, staged)) return;
       // The diff legitimately disappears once a file is fully staged.
       state.diffText.set('');
     }
@@ -275,7 +288,15 @@ export class RepoOps {
   private async loadChanges(state: RepoState): Promise<void> {
     const repo = state.repo();
     if (!repo) return;
-    state.changes.set(await this.ops.git.getWorkingChanges(repo.path));
+    // Every staging action holds this flag across the refresh it triggers, and
+    // the watcher drops its events while it is up, so a load that runs without
+    // it is publishing a change the app did not make (AC-13, AC-16). Read
+    // before the await and written beside `changes`: two loads in flight
+    // together would otherwise publish under each other's origin.
+    const origin = state.stagingBusy() ? 'own' : 'external';
+    const changes = await this.ops.git.getWorkingChanges(repo.path);
+    state.changesOrigin.set(origin);
+    state.changes.set(changes);
   }
 
   /**
