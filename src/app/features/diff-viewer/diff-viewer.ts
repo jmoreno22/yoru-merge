@@ -4,6 +4,7 @@ import {
   computed,
   DestroyRef,
   inject,
+  input,
   output,
   viewChild,
 } from '@angular/core';
@@ -77,6 +78,7 @@ const CONTEXT_OPTIONS: readonly SegmentedOption[] = [
   host: {
     'data-testid': 'diff-viewer',
     class: 'block h-full min-h-0 w-full',
+    '[inert]': 'parked()',
   },
 })
 export class DiffViewer {
@@ -84,6 +86,14 @@ export class DiffViewer {
   private readonly prefs = inject(PreferencesService);
   private readonly dialogs = inject(DialogsService);
   private readonly clipboard = inject(ClipboardService);
+
+  /**
+   * Set while the workbench keeps this element in its zero-height home with
+   * nothing showing it. It still holds a patch there, so without this its
+   * controls stay in the Tab order and the hunk keys land focus on a hunk
+   * nobody can see.
+   */
+  readonly parked = input(false);
 
   /** Asks the workbench to open blame for this path. */
   readonly openBlame = output<string>();
@@ -172,14 +182,14 @@ export class DiffViewer {
       id: 'diff.next-hunk',
       combo: 'n',
       label: 'Next hunk',
-      when: () => this.hunkTotal() > 0,
+      when: () => !this.parked() && this.hunkTotal() > 0,
       run: () => this.view()?.goToNextHunk(),
     });
     const offPrevious = shortcuts.register({
       id: 'diff.previous-hunk',
       combo: 'p',
       label: 'Previous hunk',
-      when: () => this.hunkTotal() > 0,
+      when: () => !this.parked() && this.hunkTotal() > 0,
       run: () => this.view()?.goToPreviousHunk(),
     });
     inject(DestroyRef).onDestroy(() => {

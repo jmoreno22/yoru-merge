@@ -265,7 +265,8 @@ export class WorkingChangesPanel {
     if (origin === 'own') {
       return `No changes left in ${side === 'staged' ? 'Staged' : 'Unstaged'}`;
     }
-    return `${file} no longer has ${side} changes (changed outside the app)`;
+    const notice = `${file} no longer has ${side} changes`;
+    return origin === 'external' ? `${notice} (changed outside the app)` : notice;
   }
 
   protected selectedIn(section: SectionId): ReadonlySet<string> {

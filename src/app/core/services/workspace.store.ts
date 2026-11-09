@@ -93,8 +93,9 @@ function repoStateDefaults() {
     stagingBusy: false,
     /**
      * Who caused the working tree the last load published: a staging action
-     * this app ran, or anything else (the watcher, a manual refresh). The diff
-     * workspace advances on the first and closes on the second (AC-13, AC-16).
+     * this app ran, another operation it ran (a stash, a checkout, a reset…),
+     * or something outside it (the watcher, a manual refresh). The diff
+     * workspace advances on the first and closes on the others (AC-13, AC-16).
      */
     changesOrigin: 'external' as SetFilesOrigin,
 

@@ -2,7 +2,8 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createTauriGitStub } from '../../../testing/tauri-git-stub';
+import { COMMIT_SHA, commitDetails } from '../../../testing/repo-fixtures';
+import { createTauriGitStub, type TauriGitStub } from '../../../testing/tauri-git-stub';
 import { KeyboardShortcutsService } from '../../shared/ui/keyboard-shortcuts.service';
 import { CurrentRepoService } from './current-repo.service';
 import { DiffWorkspaceService } from './diff-workspace.service';
@@ -113,5 +114,142 @@ describe('DiffWorkspaceService on an emptied commit list (AC-07)', () => {
     expect(workspace.canNext()).toBe(false);
     expect(workspace.canPrev()).toBe(false);
     expect(repo.diffText()).toBe('');
+  });
+});
+
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  resolve(value: T): void;
+}
+
+/** A canned answer released by hand: parked in `responses`, it holds a load. */
+function deferred<T>(): Deferred<T> {
+  let release!: (value: T) => void;
+  const promise = new Promise<T>((resolve) => {
+    release = resolve;
+  });
+  return { promise, resolve: release };
+}
+
+describe('DiffWorkspaceService and the diff source it shows a commit file under', () => {
+  const FILES = ['src/a.ts', 'src/b.ts'];
+  const FILE_DIFF = '@@ -1 +1 @@\n-old\n+new\n';
+  const WORKING_DIFF = '@@ -1 +1 @@\n-mine\n+theirs\n';
+  const WHOLE_DIFF = `${FILE_DIFF}${FILE_DIFF}`;
+  const WORKING_SOURCE = {
+    kind: 'workingFile',
+    file: 'foo.ts',
+    staged: false,
+  } as const;
+
+  let stub: TauriGitStub;
+  let repo: CurrentRepoService;
+  let workspace: DiffWorkspaceService;
+
+  beforeEach(() => {
+    stub = createTauriGitStub({
+      get_commit_file_diff: FILE_DIFF,
+      get_diff: WORKING_DIFF,
+      get_commit_details: commitDetails(FILES),
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: TauriGitService, useValue: stub.service },
+      ],
+    });
+    repo = TestBed.inject(CurrentRepoService);
+    repo.repo.set({
+      path: '/repo',
+      name: 'repo',
+      current_branch: 'main',
+      is_bare: false,
+    });
+    workspace = TestBed.inject(DiffWorkspaceService);
+  });
+
+  function openOnB(): void {
+    workspace.open({
+      source: { kind: 'commit', sha: COMMIT_SHA },
+      files: FILES,
+      index: 1,
+      focusKey: FILES[1],
+    });
+  }
+
+  /** What a visit to Changes leaves behind: no rail switch resets the source. */
+  function leaveWorkingFileOnScreen(): void {
+    repo.selectedCommitSha.set(COMMIT_SHA);
+    repo.diffSource.set(WORKING_SOURCE);
+    repo.diffText.set(WORKING_DIFF);
+  }
+
+  it('AC-14: a commit file put on screen makes the commit the diff source', async () => {
+    leaveWorkingFileOnScreen();
+
+    openOnB();
+    await flushAsync();
+    TestBed.tick();
+
+    expect(repo.diffText()).toBe(FILE_DIFF);
+    expect(repo.diffSource()).toEqual({ kind: 'commit', sha: COMMIT_SHA });
+    expect(workspace.isOpen()).toBe(true);
+  });
+
+  it('AC-14: a commit file diff answering after a working file was picked stays off screen', async () => {
+    leaveWorkingFileOnScreen();
+    const late = deferred<string>();
+    stub.responses['get_commit_file_diff'] = late.promise;
+
+    openOnB();
+    // The developer is back in Changes and picks a file before git answers.
+    await repo.selectWorkingFile('foo.ts', false);
+    late.resolve(FILE_DIFF);
+    await flushAsync();
+    TestBed.tick();
+
+    expect(repo.diffSource()).toEqual(WORKING_SOURCE);
+    expect(repo.diffText()).toBe(WORKING_DIFF);
+  });
+
+  it('AC-06: the whole-commit diff answering late does not replace the file on screen', async () => {
+    const whole = deferred<string>();
+    stub.responses['get_commit_diff'] = whole.promise;
+
+    const selecting = repo.selectCommit(COMMIT_SHA);
+    // The details answer first, so the file list is there to open a file from.
+    await flushAsync();
+    openOnB();
+    await flushAsync();
+    TestBed.tick();
+    expect(repo.diffText()).toBe(FILE_DIFF);
+
+    whole.resolve(WHOLE_DIFF);
+    await selecting;
+    TestBed.tick();
+
+    expect(workspace.current()?.file).toBe('src/b.ts');
+    expect(repo.diffText()).toBe(FILE_DIFF);
+  });
+
+  it('AC-06: re-selecting the selected commit makes the file it showed load again', async () => {
+    stub.responses['get_commit_diff'] = WHOLE_DIFF;
+    await repo.selectCommit(COMMIT_SHA);
+    openOnB();
+    await flushAsync();
+    TestBed.tick();
+    workspace.close();
+
+    // The developer clicks the row of the commit that is already selected.
+    await repo.selectCommit(COMMIT_SHA);
+    TestBed.tick();
+    expect(repo.diffText()).toBe(WHOLE_DIFF);
+
+    openOnB();
+    await flushAsync();
+    TestBed.tick();
+
+    expect(workspace.current()?.file).toBe('src/b.ts');
+    expect(repo.diffText()).toBe(FILE_DIFF);
   });
 });

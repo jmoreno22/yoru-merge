@@ -270,8 +270,9 @@ export class CurrentRepoService {
     }
   }
 
+  /** The manual refresh: it changes nothing, so whatever it finds came from outside. */
   async refreshAll(): Promise<void> {
-    await this.repoOps.refreshAll(this.activeOrFallback());
+    await this.repoOps.refreshAll(this.activeOrFallback(), 'external');
   }
 
   async refreshChanges(): Promise<void> {
@@ -859,7 +860,7 @@ export class CurrentRepoService {
           const kinds = this.pendingKinds.get(state);
           this.pendingKinds.delete(state);
           if (!kinds || this.shouldIgnoreWatcherEvent(state)) return;
-          void this.repoOps.refreshFor(state, kinds);
+          void this.repoOps.refreshFor(state, kinds, 'external');
         }, WATCHER_DEBOUNCE_MS);
       });
     } catch {

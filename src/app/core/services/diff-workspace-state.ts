@@ -40,8 +40,12 @@ export interface OpenDiffWorkspaceInput {
 
 export type SetFilesEffect = 'keep' | 'advance' | 'close';
 
-/** Whether a staging action of the app published the list, or anything else did. */
-export type SetFilesOrigin = 'own' | 'external';
+/**
+ * Who caused the change the published list reflects: a staging action of the
+ * app (`own`), another operation the app ran (`app`), or something outside
+ * the app (`external`).
+ */
+export type SetFilesOrigin = 'own' | 'app' | 'external';
 
 export interface DiffWorkspaceRestore {
   listScrollTop: number;
@@ -109,9 +113,9 @@ export function navigate(state: DiffWorkspaceState, index: number): DiffWorkspac
  * refresh, or a rewritten commit). A commit workspace never closes: its files
  * only move when history is rewritten, and the commit itself still exists
  * (AC-07). A working-tree side walks on to the next file when the developer's
- * own staging action took the shown one away (AC-13), but closes when the
- * change came from outside: what is on screen is no longer what the developer
- * was working on, whatever else the side still holds (AC-16).
+ * own staging action took the shown one away (AC-13), but closes on any other
+ * change: what is on screen is no longer what the developer was working on,
+ * whatever else the side still holds (AC-16).
  */
 export function setFiles(
   state: DiffWorkspaceState,
@@ -130,7 +134,7 @@ export function setFiles(
     if (isCommit) return { state: { ...state, files }, effect: 'keep' };
     return { state: CLOSED, effect: 'close' };
   }
-  if (!isCommit && origin === 'external') return { state: CLOSED, effect: 'close' };
+  if (!isCommit && origin !== 'own') return { state: CLOSED, effect: 'close' };
 
   const index = Math.min(state.index, files.length - 1);
   return {

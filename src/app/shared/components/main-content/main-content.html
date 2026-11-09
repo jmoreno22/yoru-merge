@@ -125,7 +125,10 @@
           [class.h-0]="view() !== 'changes' || workspace.isOpen()"
           data-testid="inspector-diff-slot"
         >
+          <!-- Not the slot's h-0 condition: while the workspace is open the
+               element lives in its outlet and has to stay live there. -->
           <app-diff-viewer
+            [parked]="view() !== 'changes' && !workspace.isOpen()"
             (openBlame)="onOpenBlame($event)"
             (openHistory)="onOpenFileHistory($event)"
           />

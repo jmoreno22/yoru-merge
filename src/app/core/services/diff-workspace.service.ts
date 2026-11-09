@@ -17,7 +17,7 @@ import {
 } from './diff-workspace-state';
 import { PreferencesService } from './preferences.service';
 import { ToastService } from './toast.service';
-import { WorkspaceStore } from './workspace.store';
+import { type DiffSource, WorkspaceStore } from './workspace.store';
 
 const CLOSED: DiffWorkspaceState = { open: false };
 
@@ -80,6 +80,13 @@ export class DiffWorkspaceService {
    * lets an open on the file already on screen skip a second load.
    */
   readonly activeCommitFile = signal<string | null>(null);
+
+  /**
+   * The source `activeCommitFile` was put on screen under. Re-selecting the
+   * selected commit writes an equal-looking source with the whole commit's
+   * diff, and the file name alone would still read as being on screen.
+   */
+  private commitFileSource: DiffSource | null = null;
 
   /** The working-tree side on screen; `null` while a commit diff is shown. */
   private readonly shownSide = computed<'staged' | 'unstaged' | null>(() => {
@@ -266,6 +273,21 @@ export class DiffWorkspaceService {
   }
 
   /**
+   * Makes `file` of `sha` the commit file on screen and the commit the diff
+   * source, so no staging is offered over its patch (AC-14). The source is a
+   * new object even when this commit already is one: a whole-commit load in
+   * flight compares by identity to learn a file took over. The caller writes
+   * the file's diff only while the returned source is still the one shown.
+   */
+  showingCommitFile(sha: string, file: string): DiffSource {
+    const source: DiffSource = { kind: 'commit', sha };
+    this.activeCommitFile.set(file);
+    this.commitFileSource = source;
+    this.repo.diffSource.set(source);
+    return source;
+  }
+
+  /**
    * Hands the `mod+d` shortcut to the list with an active row; the returned
    * function gives it back.
    */
@@ -306,7 +328,8 @@ export class DiffWorkspaceService {
     return (
       shown.kind === 'commit' &&
       shown.sha === source.sha &&
-      this.activeCommitFile() === file
+      this.activeCommitFile() === file &&
+      shown === this.commitFileSource
     );
   }
 
@@ -322,15 +345,16 @@ export class DiffWorkspaceService {
       void this.repo.selectWorkingFile(file, source.side === 'staged');
       return;
     }
-    this.activeCommitFile.set(file);
     void this.showCommitFile(source.sha, file);
   }
 
   private async showCommitFile(sha: string, file: string): Promise<void> {
+    const shown = this.showingCommitFile(sha, file);
     const diff = await this.repo.commitFileDiff(sha, file);
     // Stepping through files leaves several of these in flight; a slow answer
-    // must not overwrite the diff of the file now shown.
-    if (this.activeCommitFile() !== file) return;
+    // must not overwrite the diff of the file now shown, nor land under a
+    // working-tree source picked meanwhile, whose staging would act on it.
+    if (this.activeCommitFile() !== file || this.repo.diffSource() !== shown) return;
     this.repo.diffText.set(diff);
   }
 }

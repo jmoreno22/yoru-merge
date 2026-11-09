@@ -391,12 +391,14 @@ export class CommitInspector {
       onCleanup(() => observer.disconnect());
     });
 
-    // How many icons fit is a width question, and the panel is resizable.
+    // How many icons fit is a width question, and the panel is resizable. The
+    // row is watched, not the actions group: that one is content-sized, so a
+    // narrower panel never resizes it.
     effect((onCleanup) => {
-      const element = this.headerActions()?.nativeElement;
-      if (!element) return;
+      const row = this.headerActions()?.nativeElement.parentElement;
+      if (!row) return;
       const observer = new ResizeObserver(() => this.measureHeaderActions());
-      observer.observe(element);
+      observer.observe(row);
       onCleanup(() => observer.disconnect());
     });
 
@@ -704,11 +706,18 @@ export class CommitInspector {
     // The service cannot read the shown commit file back out of repo state, so
     // whoever puts one in the viewer reports it (AC-06: opening the file
     // already on screen must not fetch its diff a second time).
-    this.workspace.activeCommitFile.set(path);
+    const shown = this.workspace.showingCommitFile(sha, path);
     const diff = await this.repo.commitFileDiff(sha, path);
     // Clicking through files leaves several of these in flight; a slow answer
-    // must not overwrite the diff of the file now open.
-    if (this.activeFile() !== path || this.details()?.sha !== sha) return;
+    // must not overwrite the diff of the file now open, nor land under a
+    // working-tree source picked meanwhile, whose staging would act on it.
+    if (
+      this.activeFile() !== path ||
+      this.details()?.sha !== sha ||
+      this.repo.diffSource() !== shown
+    ) {
+      return;
+    }
     this.repo.diffText.set(diff);
   }
 
