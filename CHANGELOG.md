@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A file's diff now opens at full width.** The diff workspace turns the
+  centre view into one file's diff, with its path and source in the header,
+  previous and next file (`Shift+N` / `Shift+P`) in the list's own order, and
+  Close (`Esc`) back to where you were, with the list's scroll and focus
+  restored. In Staged / Unstaged, double-click a file, use its open-large
+  control or press `Ctrl+D`; staging and discarding work there exactly as in
+  the Changes view.
+
+- **In History, one click opens a commit's file.** A single click on a file in
+  the commit inspector opens it in the diff workspace. The toggle in the file
+  list's header switches that off, and the row then only selects; double-click,
+  the open-large control or `Ctrl+D` open it instead.
+
+### Changed
+
+- **The commit inspector is about the commit, not one diff.** It no longer
+  hosts a diff viewer in History: the commit header and the file list share the
+  column, the file list gets the height, and a long message is clamped to four
+  lines until you expand it. The header collapses to a one-line summary with
+  its actions inline, moving whatever does not fit into a More menu; the file
+  list collapses to its header. Both states are remembered across restarts.
+
+- **`Esc` closes one thing at a time**, in a fixed order: a dialog, the command
+  palette, a text field you are typing in, a line selection, a blame or file
+  history panel, and only then the diff workspace.
+
 ## [1.0.6] - 2026-09-13
 
 ### Fixed

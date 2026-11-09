@@ -169,6 +169,18 @@ Ref pill. `type`: `branch | remote | tag | head` · `label` (required) ·
 </yoru-section-header>
 ```
 
+## yoru-diff-source
+
+The head of a diff strip, shared by the diff viewer and the diff workspace.
+`chip` (required) · `path` (required — split on the last slash) · `side?`
+(`staged | unstaged`, exposed as `data-side`) · `detail?` (sits between chip and
+path) · `pathTitle?` (when the full text is longer than `path`) · `chipTestId?`
+and `pathTestId?`.
+
+```html
+<yoru-diff-source chip="Commit" [detail]="shaAndSubject()" [path]="file()" />
+```
+
 ## yoru-field
 
 Label + projected control + hint/error. `label` (required), `hint?`, `error?`.
@@ -247,6 +259,8 @@ const off = inject(KeyboardShortcutsService).register({
 
 `register` returns the unregister function. `shortcuts()` is a signal of
 everything registered, for the command palette and the Keyboard settings page.
+`hint('Close', 'diff-workspace.close')` returns `Close (Esc)` — a tooltip label
+with the combo read from the registry, so a hint cannot drift from the binding.
 `mod` is Ctrl on Windows and Linux. Modifier matching is exact, so `mod+k` does
 not fire while Shift is held.
 
@@ -256,3 +270,7 @@ not fire while Shift is held.
 `menu-position.ts` (`clampMenuPosition`, `clampSubmenuPosition`) and `avatar.ts`
 (`initialsFrom`, `avatarGradient`) hold the logic that is worth testing without
 a DOM. Their specs run under `pnpm test`.
+
+`virtual-row-focus.ts` (`focusVirtualRow`) sits beside them but is not pure: it
+scrolls a CDK virtual viewport to a row and focuses it, so it reads and writes
+the DOM and its spec needs jsdom.
