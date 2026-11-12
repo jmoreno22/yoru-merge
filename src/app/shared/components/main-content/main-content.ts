@@ -14,6 +14,7 @@ import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
 import { DiffWorkspaceService } from '../../../core/services/diff-workspace.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
+import { workbenchLayout } from '../../../core/services/workbench-layout';
 import { BlameViewer } from '../../../features/blame/blame-viewer';
 import { BranchGraph } from '../../../features/branch-graph/branch-graph';
 import { CommitInspector } from '../../../features/commit-inspector/commit-inspector';
@@ -54,9 +55,9 @@ const MIN_GRAPH_PX = 4 * LANE_WIDTH;
 /**
  * The workbench: refs panel, centre view and inspector column.
  *
- * The rail picks the centre view through the `railView` preference; this
- * component only owns the three column widths and which feature component
- * fills each one.
+ * The rail picks the centre view through the `railView` preference, and
+ * `workbenchLayout` turns that and the rest of the state into what is where.
+ * This component owns the pixels: the panel widths, the split and the drag.
  */
 @Component({
   selector: 'app-main-content',
@@ -96,6 +97,19 @@ export class MainContent {
   protected readonly blameFile = this.repo.blameFile;
   protected readonly blameRev = this.repo.blameRev;
   protected readonly fileHistoryFile = this.repo.fileHistoryFile;
+
+  /** What is where. The template paints it; nothing else decides placement. */
+  protected readonly layout = computed(() =>
+    workbenchLayout({
+      view: this.view(),
+      workspaceOpen: this.workspace.isOpen(),
+      refsVisible: this.appearance.showSidebar(),
+      refsSide: this.sidebarSide(),
+      inspectorPlacement: this.inspectorPlacement(),
+      blameOpen: Boolean(this.blameFile()),
+      fileHistoryOpen: Boolean(this.fileHistoryFile()),
+    }),
+  );
 
   /**
    * Width the graph column needs for every lane. `max_lanes` is global, so it
@@ -257,23 +271,6 @@ export class MainContent {
   }
 
   // ── stacked file panels ──────────────────────────────────────────────────
-
-  /**
-   * The share of the inspector column each stacked panel keeps, frozen as a
-   * fixed basis instead of a growth proportion. The percentages are the ones
-   * the 1.0.5 build gave them — 3/8 and 2/7 alone, 3/10 and 2/10 together —
-   * so a panel that grew would take a cut of every pixel the commit inspector
-   * releases, which belongs to the commit file list alone (AC-19). It is also
-   * why a collapsed list leaves its height empty rather than handing it down
-   * (AC-05).
-   */
-  protected readonly blameFlex = computed(() =>
-    this.fileHistoryFile() ? '0 0 30%' : '0 0 37.5%',
-  );
-
-  protected readonly fileHistoryFlex = computed(() =>
-    this.blameFile() ? '0 0 20%' : '0 0 28.6%',
-  );
 
   protected onOpenBlame(file: string): void {
     void this.repo.loadBlame(file);

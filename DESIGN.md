@@ -436,6 +436,14 @@ The window has no native decorations. Top to bottom:
    section, because everything they would show already lives there.
 4. **Workbench** — refs panel (collapsible, width persisted), the centre view,
    and the inspector column. One splitter, persisted as `workbenchSplit`.
+   **What is where is data**: `workbenchLayout()`
+   (`core/services/workbench-layout.ts`) turns the view, the placement
+   preferences and what is open into the order of the outer row, the axis of
+   the split, the blocks the centre mounts and the blocks the inspector stacks
+   with their sizes. `main-content.html` only paints that description and owns
+   the pixels (widths, split, drag). To move a panel, reorder it there; to add
+   one, add its id, its rule and a `@case` — never a new `[class.x]` condition
+   in the template.
 5. **Repository-state banner** — above the workbench whenever git is parked in a
    merge, rebase, cherry-pick, revert or bisect. Sakura tone, and the only place
    Continue / Skip / Abort / Resolve live.

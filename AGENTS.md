@@ -32,6 +32,7 @@ the `git` CLI, Tailwind CSS 4. pnpm-managed.
 | Call backend from UI | `src/app/core/services/tauri-git.service.ts` | Single `invoke()` bridge, one method per command |
 | Repo state and actions | `src/app/core/services/current-repo.service.ts` + `core/services/ops/*` | Facade over the active tab; features never invoke directly |
 | Add / edit a screen | `src/app/features/` | One folder per screen or dialog |
+| Move or add a workbench panel | `src/app/core/services/workbench-layout.ts` | Pure: decides what is where; `main-content.html` only paints it |
 | App chrome | `src/app/shared/components/` | titlebar, tabs, toolbar, rail, sidebar, `main-content` (the centre view), status bar |
 | Shared UI kit | `src/app/shared/ui/` | `yoru-*` components, context menus, shortcuts, tooltips |
 | Shared types | both `src/app/core/models/` (TS) and `src-tauri/src/models/` (Rust) | Kept in sync by hand via serde; fields are `snake_case` on both sides |

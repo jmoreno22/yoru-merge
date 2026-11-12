@@ -51,6 +51,7 @@ shared/
 | Keyboard shortcut | `shared/ui/keyboard-shortcuts.service.ts`, registered next to the code it runs |
 | A preference | `core/services/preferences-schema.ts` (type + default + sanitizer), then `preferences.service.ts` |
 | Theme tokens | `../styles.css` (DESIGN.md is canonical — edit it first) |
+| Move or add a workbench panel | `core/services/workbench-layout.ts` (+ its spec) — which region sits where, what the centre mounts, what the inspector stacks. `main-content.html` paints the result and owns only the pixels |
 | Plans and agent reports | `docs/plans/` at the repo root |
 
 ## CONVENTIONS (this layer)
