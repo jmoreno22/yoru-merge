@@ -191,11 +191,11 @@ const STATUS_ICON: Readonly<Record<DiffFileStatus, string>> = {
 };
 
 const STATUS_CLASS: Readonly<Record<DiffFileStatus, string>> = {
-  added: 'text-git-added',
-  deleted: 'text-git-deleted',
-  modified: 'text-git-modified',
-  renamed: 'text-git-renamed',
-  copied: 'text-git-renamed',
+  added: 'text-git-added-ink',
+  deleted: 'text-git-deleted-ink',
+  modified: 'text-git-modified-ink',
+  renamed: 'text-git-renamed-ink',
+  copied: 'text-git-renamed-ink',
 };
 
 /**

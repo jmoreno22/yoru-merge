@@ -15,7 +15,7 @@ import { CurrentRepoService } from '../../../core/services/current-repo.service'
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { shortSha } from '../../../core/utils';
 import { DragDropDirective } from '../../directives/drag-drop.directive';
-import { YoruButton, YoruEmptyState, YoruSectionHeader } from '../../ui';
+import { YoruButton, YoruEmptyState, YoruInput, YoruSectionHeader } from '../../ui';
 import { RefsActions } from './refs-actions.service';
 import { buildRefsTree, type RefsNode } from './refs-tree';
 
@@ -35,6 +35,7 @@ import { buildRefsTree, type RefsNode } from './refs-tree';
 @Component({
   selector: 'app-sidebar',
   imports: [
+    YoruInput,
     DragDropDirective,
     NgIcon,
     ScrollingModule,

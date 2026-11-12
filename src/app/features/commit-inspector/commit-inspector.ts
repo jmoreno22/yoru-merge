@@ -28,12 +28,14 @@ import type { MenuItem } from '../../shared/ui';
 import {
   ClipboardService,
   ContextMenuService,
+  fileMenuHeader,
   focusVirtualRow,
   KeyboardShortcutsService,
   YoruAvatar,
   YoruBadge,
   YoruButton,
   YoruEmptyState,
+  YoruIconButton,
   YoruSkeleton,
   YoruTooltip,
 } from '../../shared/ui';
@@ -96,17 +98,17 @@ const SIGNATURE_CHIP: Readonly<Record<SignatureStatus, SignatureChip>> = {
   good: {
     icon: 'lucideShieldCheck',
     label: 'Signature verified',
-    color: 'var(--color-git-added)',
+    color: 'var(--app-added-text)',
   },
   bad: {
     icon: 'lucideTriangleAlert',
     label: 'Bad signature',
-    color: 'var(--color-git-deleted)',
+    color: 'var(--app-deleted-text)',
   },
   unknown: {
     icon: 'lucideTriangleAlert',
     label: 'Signature from an unknown key',
-    color: 'var(--color-git-modified)',
+    color: 'var(--app-modified-text)',
   },
   none: { icon: null, label: 'Unsigned', color: 'var(--app-text-faint)' },
 };
@@ -122,6 +124,7 @@ const SIGNATURE_CHIP: Readonly<Record<SignatureStatus, SignatureChip>> = {
 @Component({
   selector: 'app-commit-inspector',
   imports: [
+    YoruIconButton,
     NgIcon,
     ScrollingModule,
     YoruAvatar,
@@ -747,7 +750,13 @@ export class CommitInspector {
 
     const deleted = file.status === 'deleted';
     const items: MenuItem[] = [
-      { id: 'open', label: 'Open diff', icon: 'lucideFileDiff', tone: 'primary' },
+      {
+        id: 'open',
+        label: 'Open diff',
+        icon: 'lucideFileDiff',
+        tone: 'primary',
+        shortcutId: 'diff-workspace.open',
+      },
       {
         id: 'history',
         label: 'File history',
@@ -781,10 +790,11 @@ export class CommitInspector {
       },
     ];
 
-    const choice = await this.menu.open(items, {
-      x: event.clientX,
-      y: event.clientY,
-    });
+    const choice = await this.menu.open(
+      items,
+      { x: event.clientX, y: event.clientY },
+      { header: fileMenuHeader(file.path) },
+    );
     if (choice === null) return;
     await this.runFileAction(choice, details, file);
   }

@@ -17,6 +17,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
 import {
   ClipboardService,
   ContextMenuService,
+  fileMenuHeader,
   type SegmentedOption,
   YoruButton,
   YoruEmptyState,
@@ -401,6 +402,12 @@ export class WorkingChangesPanel {
     const choice = await this.menu.open(
       fileMenuItems({ entry, targets }),
       event.anchor,
+      {
+        header:
+          targets.length > 1
+            ? { title: `${targets.length} files`, icon: 'lucideFileDiff' }
+            : fileMenuHeader(entry.path),
+      },
     );
     if (choice !== null) await this.runMenuAction(choice, entry, targets);
   }

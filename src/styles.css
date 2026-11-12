@@ -92,6 +92,14 @@
   --color-git-renamed: #00e5ff;
   --color-git-conflict: #ff4fb8;
 
+  /* The same three tones calibrated for *text*, as accent-ink is to accent:
+   * text-git-added-ink for type, bg-git-added / border-git-added for the rest.
+   * The fills as type on a light surface measure about 1.1:1. */
+  --color-git-added-ink: var(--app-added-text);
+  --color-git-modified-ink: var(--app-modified-text);
+  --color-git-deleted-ink: var(--app-deleted-text);
+  --color-git-renamed-ink: var(--app-renamed-text);
+
   /* Accent. Indirected through --app-accent so the preset blocks below can
    * repoint it without every utility having to know which preset is active.
    *
@@ -180,6 +188,10 @@
   --app-text-muted: #465a7f;
   --app-text-faint: #546889; /* ≥ 4.75:1 on every light surface */
   --app-conflict-text: #b0116a; /* same hue as #ff4fb8, ≥ 5.4:1 on light */
+  --app-added-text: #0b6b3c;
+  --app-modified-text: #7a5200;
+  --app-deleted-text: #b3152a;
+  --app-renamed-text: #00697a;
   --app-shadow-panel: 0 18px 50px rgb(24 45 90 / 0.14);
 
   /* Accent, default preset (cyan). --app-accent is the fill and border tone;
@@ -202,6 +214,10 @@
   --app-text-muted: #afc8f7;
   --app-text-faint: #7e93b8; /* ≥ 5.16:1 on every dark surface */
   --app-conflict-text: #ff4fb8; /* ≥ 5.4:1 on every dark surface */
+  --app-added-text: #35f2a2;
+  --app-modified-text: #ffd166;
+  --app-deleted-text: #ff4d5e;
+  --app-renamed-text: #00e5ff;
   --app-shadow-panel: 0 24px 80px rgb(0 0 0 / 0.45);
 
   --app-accent: var(--color-neon-cyan);
@@ -461,7 +477,7 @@ html {
 /* Focus is always visible and always the accent — the one ring in the app. */
 :focus-visible {
   outline: 2px solid var(--app-accent);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset, 2px);
 }
 
 /* The ring's default corner, for an element that has no radius of its own. In
@@ -621,6 +637,62 @@ html {
  */
 .fit-rows .cdk-virtual-scroll-content-wrapper {
   width: 100%;
+}
+
+/* ── `.yoru-row` — the four states of a list row ──────────────────────
+ *
+ * Commits, files, refs, reflog entries and file history all take this class,
+ * so a state looks the same wherever it appears:
+ *
+ *   hover     a wash of the panel tone — the pointer is here
+ *   selected  an accent tint — part of the selection (`aria-selected="true"`
+ *             or `.is-selected`)
+ *   current   a 2px accent edge — the one in effect: the commit the inspector
+ *             shows, the file the diff shows, the checked-out branch
+ *             (`.is-current`)
+ *   focus     the global ring, turned inward: a list clips whatever a row
+ *             draws outside its own box
+ *
+ * The edge is an inset shadow rather than a border so a row never has to
+ * reserve two pixels for a state it is usually not in. No transition: a hover
+ * that fades trails behind the pointer on a list of thousands of rows.
+ */
+.yoru-row {
+  --focus-offset: -2px;
+}
+
+.yoru-row:hover {
+  background-color: color-mix(in srgb, var(--app-panel) 60%, transparent);
+}
+
+.yoru-row.is-selected,
+.yoru-row[aria-selected="true"] {
+  background-color: color-mix(in srgb, var(--app-accent) 14%, transparent);
+}
+
+.yoru-row.is-current {
+  box-shadow: inset 2px 0 0 var(--app-accent);
+}
+
+/* ── Menu origin ──────────────────────────────────────────────────────
+ *
+ * ContextMenuService puts `data-menu-open` on the row or the button a menu
+ * came from, and this keeps that element in its hover look for as long as the
+ * menu is up, so what the menu acts on is never in doubt. Unlayered on
+ * purpose: it has to outrank the element's own resting background utility.
+ *
+ * An accent-filled control is left alone — greying out the primary button
+ * while its menu is open would read as disabling it. So is a selected row,
+ * which already stands out and would lose its tint to the panel tone.
+ */
+[data-menu-open]:not(yoru-button, .bg-accent, .is-selected, [aria-selected="true"]),
+yoru-button[data-menu-open] > button:not(.bg-accent) {
+  background-color: var(--app-panel);
+}
+
+button[data-menu-open]:not(.bg-accent),
+yoru-button[data-menu-open] > button:not(.bg-accent) {
+  color: var(--app-text);
 }
 
 /* ── Drag-and-drop affordances ────────────────────────────────────────

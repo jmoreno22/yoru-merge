@@ -55,7 +55,7 @@
       <span class="flex-1"></span>
       <button
         type="button"
-        class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+        yoruIconButton
         data-testid="blame-close"
         aria-label="Close blame (Escape)"
         title="Close (Escape)"
@@ -98,6 +98,7 @@
           class="bl-row"
           [class.bl-group-start]="row.first"
           [attr.data-testid]="'blame-line-' + row.line.line_no"
+          data-menu-target
           (contextmenu)="onCommitMenu($event, row)"
         >
           @if (row.first) {

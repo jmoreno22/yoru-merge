@@ -23,7 +23,8 @@
     (input)="onScopeInput($event)"
     placeholder="scope"
     aria-label="Commit scope"
-    class="h-[var(--control-h-sm)] w-32 min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-md text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+    yoruInput="sm"
+    class="w-32 font-mono"
   />
   <datalist id="commit-scope-options">
     @for (option of scopeOptions(); track option) {
@@ -39,7 +40,7 @@
     class="h-[var(--control-h-sm)] rounded-xs border px-2 font-mono text-y-xs uppercase tracking-[0.12em] transition-colors"
     [class]="
       breaking()
-        ? 'border-git-deleted/60 bg-git-deleted/15 text-git-deleted'
+        ? 'border-git-deleted/60 bg-git-deleted/15 text-git-deleted-ink'
         : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
     "
   >
@@ -67,7 +68,8 @@
     (input)="onSubjectInput($event)"
     placeholder="Summary"
     aria-label="Commit subject"
-    class="h-[var(--control-h)] w-full min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+    yoruInput
+    class="w-full font-mono"
   />
   <!-- 0–72 ruler with the 50-character tick git recommends. -->
   <div
@@ -92,7 +94,8 @@
   rows="2"
   placeholder="Body — wrap at 72 columns"
   aria-label="Commit body"
-  class="neon-scroll w-full resize-none rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 font-mono text-y-md leading-relaxed text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+  yoruInput="sm"
+  class="neon-scroll w-full resize-none py-1.5 font-mono leading-relaxed"
 ></textarea>
 
 <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -115,7 +118,7 @@
   <p
     role="status"
     data-testid="amend-force-push-warning"
-    class="flex items-start gap-1.5 rounded-xs border border-git-modified/40 bg-git-modified/10 px-2 py-1.5 text-y-sm leading-snug text-git-modified"
+    class="flex items-start gap-1.5 rounded-xs border border-git-modified/40 bg-git-modified/10 px-2 py-1.5 text-y-sm leading-snug text-git-modified-ink"
   >
     <ng-icon
       name="lucideTriangleAlert"
@@ -164,7 +167,9 @@
       [attr.aria-label]="draftLabel()"
       [title]="draftLabel()"
       [attr.aria-busy]="drafting()"
-      class="inline-flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-accent disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)] disabled:hover:bg-transparent"
+      yoruIconButton="sm"
+      tone="outline"
+      class="hover:text-accent"
     >
       <ng-icon
         [name]="drafting() ? 'lucideLoaderCircle' : 'lucideSparkles'"
@@ -181,7 +186,8 @@
     (click)="openRecentMenu($event)"
     [disabled]="!hasRecent()"
     aria-label="Recent commit messages"
-    class="inline-flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+    yoruIconButton="sm"
+    tone="outline"
   >
     <ng-icon name="lucideHistory" size="14px" aria-hidden="true" />
   </button>
@@ -224,7 +230,8 @@
       [value]="tagName()"
       (input)="onTagNameInput($event)"
       placeholder="v1.0.0"
-      class="h-[var(--control-h)] w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+      yoruInput
+      class="w-full font-mono"
     />
   </label>
 
@@ -238,7 +245,8 @@
       [value]="tagMessage()"
       (input)="onTagMessageInput($event)"
       placeholder="Leave empty for a lightweight tag"
-      class="h-[var(--control-h)] w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+      yoruInput
+      class="w-full font-mono"
     />
   </label>
 

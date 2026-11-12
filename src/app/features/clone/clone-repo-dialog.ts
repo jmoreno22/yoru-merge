@@ -12,7 +12,13 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import type { FetchProgress } from '../../core/models';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { ToastService } from '../../core/services/toast.service';
-import { YoruButton, YoruDialog, YoruField, YoruSwitch } from '../../shared/ui';
+import {
+  YoruButton,
+  YoruDialog,
+  YoruField,
+  YoruInput,
+  YoruSwitch,
+} from '../../shared/ui';
 import { folderNameFromUrl, isValidCloneUrl, joinPath } from './clone-url';
 
 /**
@@ -22,7 +28,7 @@ import { folderNameFromUrl, isValidCloneUrl, joinPath } from './clone-url';
  */
 @Component({
   selector: 'app-clone-repo-dialog',
-  imports: [YoruDialog, YoruButton, YoruField, YoruSwitch],
+  imports: [YoruInput, YoruDialog, YoruButton, YoruField, YoruSwitch],
   templateUrl: './clone-repo-dialog.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-testid': 'clone-dialog-host' },

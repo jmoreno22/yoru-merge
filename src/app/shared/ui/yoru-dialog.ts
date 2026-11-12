@@ -11,6 +11,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTriangleAlert, lucideX } from '@ng-icons/lucide';
 import { EscapeRank } from '../../core/services/escape-layers';
 import { EscapeLayersService } from '../../core/services/escape-layers.service';
+import { YoruIconButton } from './yoru-icon-button.directive';
 
 export type DialogSize = 'sm' | 'md' | 'lg' | 'full';
 export type DialogTone = 'default' | 'danger' | 'conflict';
@@ -24,7 +25,7 @@ const SIZES: Readonly<Record<DialogSize, string>> = {
 
 const TONES: Readonly<Record<DialogTone, string>> = {
   default: 'text-accent-ink',
-  danger: 'text-git-deleted',
+  danger: 'text-git-deleted-ink',
   conflict: 'text-[var(--app-conflict-text)]',
 };
 
@@ -47,7 +48,7 @@ let nextDialogId = 0;
  */
 @Component({
   selector: 'yoru-dialog',
-  imports: [CdkTrapFocus, NgIcon],
+  imports: [YoruIconButton, CdkTrapFocus, NgIcon],
   viewProviders: [provideIcons({ lucideX, lucideTriangleAlert })],
   templateUrl: './yoru-dialog.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

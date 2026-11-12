@@ -24,6 +24,15 @@ export interface PaletteSurfaces {
   readonly textMuted: string;
   readonly textFaint: string;
   readonly conflictText: string;
+  /**
+   * The git status tones as *text*. The fills (`--color-git-*`) are tuned for
+   * dots, borders and tints; as type on a light surface the green and the
+   * amber measure about 1.1:1.
+   */
+  readonly addedText: string;
+  readonly modifiedText: string;
+  readonly deletedText: string;
+  readonly renamedText: string;
   readonly shadowPanel: string;
 }
 
@@ -51,6 +60,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#465a7f',
       textFaint: '#546889',
       conflictText: '#b0116a',
+      addedText: '#0b6b3c',
+      modifiedText: '#7a5200',
+      deletedText: '#b3152a',
+      renamedText: '#00697a',
       shadowPanel: '0 18px 50px rgb(24 45 90 / 0.14)',
     },
     dark: {
@@ -63,6 +76,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#afc8f7',
       textFaint: '#7e93b8',
       conflictText: '#ff4fb8',
+      addedText: '#35f2a2',
+      modifiedText: '#ffd166',
+      deletedText: '#ff4d5e',
+      renamedText: '#00e5ff',
       shadowPanel: '0 24px 80px rgb(0 0 0 / 0.45)',
     },
   },
@@ -80,6 +97,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#475569',
       textFaint: '#4f6178',
       conflictText: '#b01243',
+      addedText: '#0b6b3c',
+      modifiedText: '#7a5200',
+      deletedText: '#b3152a',
+      renamedText: '#00697a',
       shadowPanel: '0 18px 50px rgb(15 23 42 / 0.12)',
     },
     dark: {
@@ -92,6 +113,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#cbd5e1',
       textFaint: '#94a3b8',
       conflictText: '#ff6b91',
+      addedText: '#35f2a2',
+      modifiedText: '#ffd166',
+      deletedText: '#ff6271',
+      renamedText: '#00e5ff',
       shadowPanel: '0 24px 80px rgb(0 0 0 / 0.5)',
     },
   },
@@ -109,6 +134,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#5c5340',
       textFaint: '#6b6250',
       conflictText: '#a3123c',
+      addedText: '#0b6b3c',
+      modifiedText: '#7a5200',
+      deletedText: '#b3152a',
+      renamedText: '#00697a',
       shadowPanel: '0 18px 50px rgb(74 66 50 / 0.14)',
     },
     dark: {
@@ -121,6 +150,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#d6cdb9',
       textFaint: '#a89d85',
       conflictText: '#ff7a96',
+      addedText: '#35f2a2',
+      modifiedText: '#ffd166',
+      deletedText: '#ff6675',
+      renamedText: '#00e5ff',
       shadowPanel: '0 24px 80px rgb(0 0 0 / 0.55)',
     },
   },
@@ -138,6 +171,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#434c5e',
       textFaint: '#4c566a',
       conflictText: '#a3123c',
+      addedText: '#0b6b3c',
+      modifiedText: '#7a5200',
+      deletedText: '#b3152a',
+      renamedText: '#00697a',
       shadowPanel: '0 18px 50px rgb(46 52 64 / 0.14)',
     },
     dark: {
@@ -150,6 +187,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#d8dee9',
       textFaint: '#b9c2d0',
       conflictText: '#ffa9bd',
+      addedText: '#35f2a2',
+      modifiedText: '#ffd166',
+      deletedText: '#ffa6af',
+      renamedText: '#00e5ff',
       shadowPanel: '0 24px 80px rgb(0 0 0 / 0.45)',
     },
   },
@@ -167,6 +208,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#4d6570',
       textFaint: '#4f666f',
       conflictText: '#a5142c',
+      addedText: '#0b6b3c',
+      modifiedText: '#7a5200',
+      deletedText: '#b3152a',
+      renamedText: '#00697a',
       shadowPanel: '0 18px 50px rgb(7 54 66 / 0.14)',
     },
     dark: {
@@ -179,6 +224,10 @@ export const COLOR_PALETTES: readonly ColorPalette[] = [
       textMuted: '#b0bdbd',
       textFaint: '#a2afaf',
       conflictText: '#ff9dad',
+      addedText: '#35f2a2',
+      modifiedText: '#ffd166',
+      deletedText: '#ff8a95',
+      renamedText: '#00e5ff',
       shadowPanel: '0 24px 80px rgb(0 0 0 / 0.5)',
     },
   },
@@ -210,6 +259,10 @@ export function paletteTokens(
     '--app-text-muted': surfaces.textMuted,
     '--app-text-faint': surfaces.textFaint,
     '--app-conflict-text': surfaces.conflictText,
+    '--app-added-text': surfaces.addedText,
+    '--app-modified-text': surfaces.modifiedText,
+    '--app-deleted-text': surfaces.deletedText,
+    '--app-renamed-text': surfaces.renamedText,
     '--app-shadow-panel': surfaces.shadowPanel,
   };
 }

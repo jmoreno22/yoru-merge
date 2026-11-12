@@ -22,10 +22,10 @@ const ICONS: Readonly<Record<ToastLevel, YoruIconName>> = {
 };
 
 const TONES: Readonly<Record<ToastLevel, string>> = {
-  success: 'text-git-added',
+  success: 'text-git-added-ink',
   info: 'text-accent-ink',
-  warning: 'text-git-modified',
-  error: 'text-git-deleted',
+  warning: 'text-git-modified-ink',
+  error: 'text-git-deleted-ink',
 };
 
 /**

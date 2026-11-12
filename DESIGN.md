@@ -200,6 +200,18 @@ Never dim text with `opacity-*`. Pick the next token down.
 
 Keep semantic colors consistent across file lists, diff gutters, badges, graph nodes, and notifications.
 
+**Fill versus text.** The hexes above are the *fill* tones: dots, borders, tints,
+diff backgrounds. As type they fail on a light surface — the green and the amber
+measure about 1.1:1 on white — and the red fails on the lighter dark palettes.
+Text takes the ink of the same hue instead: `--app-added-text`,
+`--app-modified-text`, `--app-deleted-text` and `--app-renamed-text`, exposed
+as `text-git-added-ink`, `text-git-modified-ink`, `text-git-deleted-ink` and
+`text-git-renamed-ink`. Each palette defines them
+per mode in `color-palettes.ts`, next to `conflictText`, and
+`color-palettes.spec.ts` holds them to 4.5:1 on all four surfaces. Use
+`bg-git-*` / `border-git-*` for fills and the `-ink` utility for anything that
+is read.
+
 ## Typography
 
 Use distinctive type, but keep the app readable during long Git sessions.
@@ -578,7 +590,9 @@ density and focus behaviour identical across features. Full API and examples:
 | Component | Purpose |
 | --- | --- |
 | `yoru-dialog` | every modal: focus trap, Escape, sizes `sm/md/lg/full`, tones `default/danger/conflict` |
-| `yoru-context-menu` + `ContextMenuService` | the one context menu, opened imperatively, one submenu level, full keyboard |
+| `yoru-context-menu` + `ContextMenuService` | the one context menu, opened imperatively: header, checks, shortcuts, one submenu level, full keyboard (§Context menus) |
+| `yoruIconButton` | the one square icon button, a directive on a native `<button>`: sizes `xs / sm / md`, tones `ghost / outline / danger`, pressed look from `aria-pressed` |
+| `yoruInput` | the one text field, a directive on a native `<input>` or `<textarea>`: sizes `xs / sm / md` |
 | `yoru-button` | `primary / secondary / ghost / danger`, sizes `sm` (`--control-h-sm`) and `md` (`--control-h`), icon and loading states |
 | `yoru-badge` | ref pills for branch / remote / tag / HEAD |
 | `yoru-avatar` | author initials with a deterministic gradient from the email |
@@ -597,21 +611,34 @@ Supporting services: `ClipboardService`, `KeyboardShortcutsService`.
 
 Prefer `<yoru-button>`; the markup below is the contract it implements.
 
-Primary actions should feel like terminal commands with a neon execution key.
+Primary actions should feel like terminal commands with a neon execution key:
+an accent fill, dark type, and the glow only on hover or focus.
 
 ```html
-<button class="rounded-md bg-neon-cyan px-4 py-2 font-mono text-sm font-semibold text-yoru-950 shadow-neon-cyan transition hover:bg-moon-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-cyan">
+<button class="h-[var(--control-h)] rounded-sm bg-accent px-3 text-y-base font-semibold text-yoru-950 hover:bg-moon-50 hover:shadow-accent">
   Commit
 </button>
 ```
 
-Secondary actions should be outlined or translucent:
+Secondary actions are framed and sit on the raised surface, so a button is
+never the same colour as what is behind it:
 
 ```html
-<button class="rounded-md border border-neon-cyan/40 bg-yoru-700/70 px-4 py-2 font-mono text-sm text-neon-cyan transition hover:border-neon-cyan hover:bg-neon-cyan/10">
+<button class="h-[var(--control-h)] rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-3 text-y-base text-[var(--app-text)] hover:border-accent/50 hover:bg-[var(--app-panel)]">
   Pull
 </button>
 ```
+
+A `ghost` button stays flat: it lives inside a row or a strip, where a resting
+fill on every control would be noise. When a group of ghost buttons has to read
+as controls — the toolbar clusters — the *group* takes the border and the raised
+surface, not the buttons.
+
+An icon-only control is `<button yoruIconButton>` and a text field is
+`<input yoruInput>`. Both are directives on the native element, so `disabled`,
+`data-testid`, the tooltip and the events stay on the element that owns them.
+Never restyle a raw `<button>` or `<input>` by hand: the hand-written copies
+were how the app ended up with six control heights and four field styles.
 
 ### Panels
 
@@ -637,7 +664,7 @@ Commit rows need high scanability.
 - Subject: body font, strong foreground.
 - Author/time: muted text.
 - Branch/tag badges: pill shape, mono, low-saturation fill.
-- Selected row: cyan border or left accent, not a full cyan fill.
+- Row states are the shared ones below — never restyled per list.
 
 ```html
 <article class="rounded-md border border-yoru-600/60 bg-yoru-900/72 px-4 py-3 transition hover:border-neon-cyan/50 hover:bg-yoru-800/88">
@@ -645,6 +672,52 @@ Commit rows need high scanability.
   <p class="font-mono text-xs text-moon-200">a91c2ef · main · 12m ago</p>
 </article>
 ```
+
+### Rows
+
+Every list row in the workbench — commits, commit files, working-tree files,
+refs, reflog entries, file history — carries `.yoru-row` (`styles.css`), so a
+state looks the same wherever it appears:
+
+| State | Look | How a row gets it |
+| --- | --- | --- |
+| Hover | a wash of the panel tone | `:hover` |
+| Selected | an accent tint (14 %) | `aria-selected="true"` or `.is-selected` |
+| Current | a 2 px accent edge on the left | `.is-current` — the one in effect: the commit the inspector shows, the file the diff shows, the checked-out branch |
+| Focus | the global ring, drawn inside the row | `:focus-visible`; the row sets `--focus-offset: -2px`, because a list clips anything drawn outside the row |
+| Menu open | the panel tone, held | `data-menu-open`, set by `ContextMenuService` |
+
+Selected and current are different things and they combine: a clicked commit is
+both. The edge is an inset shadow, so a row never reserves two pixels for a
+state it is usually not in. Rows do not transition: a hover that fades trails
+behind the pointer.
+
+### Context menus
+
+One component, opened through `ContextMenuService.open(items, anchor, options)`.
+
+- **It says what it acts on.** A menu opened on a commit, a ref, a file, a tab
+  or a remote passes a `header`: short sha and subject, ref name, file name and
+  folder. Toolbar dropdowns need none — the button is the context.
+- **Its origin stays lit.** The row or the button it came from keeps the panel
+  tone while the menu is open (`data-menu-open`). A pointer menu finds its row
+  by role (`option`, `treeitem`, `tab`); a row without one carries
+  `data-menu-target`.
+- **Focus comes back.** Closing returns the focus to whatever held it, so a
+  keyboard user continues from the same row.
+- **A dropdown belongs to its button.** Opened from an element it aligns to
+  that element's left edge, to its right edge when it would overflow, and opens
+  above it — never over it — when there is no room below.
+- **Submenus forgive the diagonal.** An open submenu survives 200 ms of the
+  pointer crossing sibling items on its way to it.
+- **Items are rows.** They take `--file-row-h`, so a menu is as dense as the
+  list it came from; long labels truncate at 28 rem.
+- **The option in effect is checked** (`checked`): the current branch, the
+  default pull mode. **A shortcut is shown by id** (`shortcutId`) and resolved
+  against the registry when the menu opens, so a rebind never leaves a stale
+  key; `shortcut` is only for a key the list itself handles (`F2`).
+- A destructive item is red and so is its highlight. A disabled item always
+  carries its reason.
 
 ### Diff viewer
 
@@ -906,7 +979,7 @@ It is a file rather than an inline script because the Tauri CSP is
 
 - All text/background combinations for primary surfaces must target WCAG AA contrast. Use `--app-text-faint` instead of stacking `opacity-*` on muted text.
 - Do not rely on color alone for Git states; pair colors with icons, labels, diff markers, or badges.
-- Focus rings are global: `styles.css` declares one `:focus-visible` rule (2 px accent, 2 px offset). Do not remove or override it per component. The ring follows the element's own radius; the 4 px default corner lives in `@layer base` so it applies only to an element that has none, and focus never reshapes a pill or a button.
+- Focus rings are global: `styles.css` declares one `:focus-visible` rule (2 px accent, 2 px offset). Do not remove or override it per component. The ring follows the element's own radius; the 4 px default corner lives in `@layer base` so it applies only to an element that has none, and focus never reshapes a pill or a button. The one thing a component may change is where the ring sits, through `--focus-offset`: rows turn it inward (`-2px`) and text fields by one pixel, because both live in boxes that clip.
 - Disable intense glow animations when `prefers-reduced-motion: reduce` is active.
 - The in-app animations preference (`:root[data-animations="off"]`) also drops
   `backdrop-filter` on the dialog and command-palette scrims. Backdrop blur is

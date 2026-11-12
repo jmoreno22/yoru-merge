@@ -6,6 +6,7 @@ import {
   output,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { YoruIconButton } from './yoru-icon-button.directive';
 
 /**
  * `<yoru-stepper [value]="13" [min]="11" [max]="17" suffix="px" (valueChange)="…" />`
@@ -16,7 +17,7 @@ import { NgIcon } from '@ng-icons/core';
  */
 @Component({
   selector: 'yoru-stepper',
-  imports: [NgIcon],
+  imports: [YoruIconButton, NgIcon],
   templateUrl: './yoru-stepper.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'inline-flex' },

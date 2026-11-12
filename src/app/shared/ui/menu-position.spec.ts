@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { clampMenuPosition, clampSubmenuPosition } from './menu-position';
+import {
+  clampMenuPosition,
+  clampSubmenuPosition,
+  placeAnchoredMenu,
+} from './menu-position';
 
 const viewport = { width: 1000, height: 800 };
 
@@ -65,5 +69,32 @@ describe('clampSubmenuPosition', () => {
     const low = { left: 100, top: 760, right: 300, bottom: 784 };
     const at = clampSubmenuPosition(low, { width: 180, height: 200 }, viewport);
     expect(at.y).toBe(592);
+  });
+});
+
+describe('placeAnchoredMenu', () => {
+  const menu = { width: 200, height: 300 };
+
+  it('opens under the element, left edges aligned', () => {
+    const button = { left: 100, top: 40, right: 180, bottom: 72 };
+    expect(placeAnchoredMenu(button, menu, viewport)).toEqual({ x: 100, y: 76 });
+  });
+
+  it('aligns right edges when the menu would overflow the right side', () => {
+    const button = { left: 900, top: 40, right: 980, bottom: 72 };
+    expect(placeAnchoredMenu(button, menu, viewport).x).toBe(780);
+  });
+
+  it('opens above the element, never over it, when there is no room below', () => {
+    const button = { left: 100, top: 700, right: 180, bottom: 732 };
+    const at = placeAnchoredMenu(button, menu, viewport);
+    expect(at.y).toBe(396);
+    expect(at.y + menu.height).toBeLessThanOrEqual(button.top);
+  });
+
+  it('stays below and clamps when neither side has room', () => {
+    const button = { left: 100, top: 200, right: 180, bottom: 232 };
+    const at = placeAnchoredMenu(button, { width: 200, height: 700 }, viewport);
+    expect(at.y).toBe(92);
   });
 });

@@ -10,6 +10,7 @@ import {
 import { NgIcon } from '@ng-icons/core';
 import type { PullMode } from '../../../core/models';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
+import { PreferencesService } from '../../../core/services/preferences.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { type Toast, ToastService } from '../../../core/services/toast.service';
 import { UpdaterService } from '../../../core/services/updater.service';
@@ -24,6 +25,7 @@ import {
   KeyboardShortcutsService,
   type MenuItem,
   YoruButton,
+  YoruIconButton,
   YoruKbd,
   YoruTooltip,
 } from '../../ui';
@@ -58,7 +60,7 @@ const TOAST_ICON: Readonly<Record<Toast['level'], YoruIconName>> = {
  */
 @Component({
   selector: 'app-toolbar',
-  imports: [NgIcon, YoruButton, YoruKbd, YoruTooltip],
+  imports: [YoruIconButton, NgIcon, YoruButton, YoruKbd, YoruTooltip],
   templateUrl: './toolbar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -78,6 +80,7 @@ export class Toolbar {
   private readonly menu = inject(ContextMenuService);
   private readonly clipboard = inject(ClipboardService);
   private readonly shortcuts = inject(KeyboardShortcutsService);
+  private readonly prefs = inject(PreferencesService);
 
   protected readonly isOpen = this.repo.isOpen;
   protected readonly currentBranch = this.repo.currentBranch;
@@ -201,6 +204,7 @@ export class Toolbar {
         id: 'fetch',
         label: 'Fetch origin',
         icon: 'lucideCloudDownload',
+        shortcutId: 'remote.fetch',
         run: () => void this.fetch({}),
       },
       {
@@ -230,23 +234,31 @@ export class Toolbar {
   }
 
   protected async onPullMenu(event: MouseEvent): Promise<void> {
+    // The check is the mode the Pull button itself runs: the stored default.
+    const mode = this.prefs.pullMode();
     await this.openMenu(event, [
       {
         id: 'merge',
         label: 'Pull (merge)',
         icon: 'lucideGitMerge',
+        checked: mode === 'merge',
+        shortcutId: mode === 'merge' ? 'remote.pull' : undefined,
         run: () => void this.pull({ mode: 'merge' }),
       },
       {
         id: 'rebase',
         label: 'Pull (rebase)',
         icon: 'lucideGitPullRequestArrow',
+        checked: mode === 'rebase',
+        shortcutId: mode === 'rebase' ? 'remote.pull' : undefined,
         run: () => void this.pull({ mode: 'rebase' }),
       },
       {
         id: 'ff',
         label: 'Pull (fast-forward only)',
         icon: 'lucideArrowDown',
+        checked: mode === 'ff_only',
+        shortcutId: mode === 'ff_only' ? 'remote.pull' : undefined,
         run: () => void this.pull({ mode: 'ff_only' }),
       },
       {
@@ -270,6 +282,7 @@ export class Toolbar {
         id: 'push',
         label: 'Push',
         icon: 'lucideCloudUpload',
+        shortcutId: 'remote.push',
         run: () => void this.push({}),
       },
       {
@@ -315,6 +328,7 @@ export class Toolbar {
         label: branch.name,
         icon: 'lucideGitBranch',
         separatorBefore: index === 0,
+        checked: branch.name === current,
         disabled: branch.name === current,
         disabledReason: 'Already checked out',
         run: () => void this.repo.checkoutBranchAction(branch.name),

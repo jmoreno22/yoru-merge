@@ -12,7 +12,7 @@
   <div class="dv-img-grid" data-testid="image-diff">
     @if (beforeUrl(); as url) {
       <figure class="dv-img-side">
-        <figcaption class="dv-img-label text-git-deleted">Old</figcaption>
+        <figcaption class="dv-img-label text-git-deleted-ink">Old</figcaption>
         <div class="dv-img-frame">
           <img class="dv-img" [src]="url" [alt]="'Previous version of ' + oldFile()" />
         </div>
@@ -20,7 +20,7 @@
     }
     @if (afterUrl(); as url) {
       <figure class="dv-img-side">
-        <figcaption class="dv-img-label text-git-added">New</figcaption>
+        <figcaption class="dv-img-label text-git-added-ink">New</figcaption>
         <div class="dv-img-frame">
           <img class="dv-img" [src]="url" [alt]="'New version of ' + file()" />
         </div>

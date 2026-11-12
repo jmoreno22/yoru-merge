@@ -30,23 +30,23 @@ export interface FileStatusStyle {
 
 /** Icon and short letter per status; the letter is what colour-blind eyes read. */
 export const FILE_STATUS_STYLE: Readonly<Record<FileChangeStatus, FileStatusStyle>> = {
-  added: { icon: 'lucideFilePlus', letter: 'A', color: 'var(--color-git-added)' },
+  added: { icon: 'lucideFilePlus', letter: 'A', color: 'var(--app-added-text)' },
   modified: {
     icon: 'lucideFileDiff',
     letter: 'M',
-    color: 'var(--color-git-modified)',
+    color: 'var(--app-modified-text)',
   },
   deleted: {
     icon: 'lucideFileMinus',
     letter: 'D',
-    color: 'var(--color-git-deleted)',
+    color: 'var(--app-deleted-text)',
   },
-  renamed: { icon: 'lucideFile', letter: 'R', color: 'var(--color-git-renamed)' },
-  copied: { icon: 'lucideFile', letter: 'C', color: 'var(--color-git-renamed)' },
+  renamed: { icon: 'lucideFile', letter: 'R', color: 'var(--app-renamed-text)' },
+  copied: { icon: 'lucideFile', letter: 'C', color: 'var(--app-renamed-text)' },
   type_changed: {
     icon: 'lucideFileDiff',
     letter: 'T',
-    color: 'var(--color-git-modified)',
+    color: 'var(--app-modified-text)',
   },
 };
 

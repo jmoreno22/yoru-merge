@@ -19,7 +19,7 @@
           <ng-icon
             name="lucideTriangleAlert"
             size="14px"
-            [class]="tone() === 'danger' ? 'text-git-deleted' : 'text-[var(--app-conflict-text)]'"
+            [class]="tone() === 'danger' ? 'text-git-deleted-ink' : 'text-[var(--app-conflict-text)]'"
             aria-hidden="true"
           />
         }
@@ -28,7 +28,7 @@
           type="button"
           (click)="requestClose()"
           aria-label="Close dialog"
-          class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+          yoruIconButton
         >
           <ng-icon name="lucideX" size="14px" aria-hidden="true" />
         </button>

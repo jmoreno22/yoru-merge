@@ -11,7 +11,12 @@ import { CurrentRepoService } from '../../../core/services/current-repo.service'
 import { relativeTime } from '../../../core/utils';
 import { CommitActions } from '../../../features/commit-list/commit-actions.service';
 import { DialogsService } from '../../../features/dialogs/dialogs.service';
-import { ContextMenuService, YoruEmptyState, YoruSectionHeader } from '../../ui';
+import {
+  ContextMenuService,
+  YoruEmptyState,
+  YoruIconButton,
+  YoruSectionHeader,
+} from '../../ui';
 
 /**
  * `git reflog` as a list: where HEAD has been, and the way back to any of it.
@@ -22,7 +27,7 @@ import { ContextMenuService, YoruEmptyState, YoruSectionHeader } from '../../ui'
  */
 @Component({
   selector: 'app-reflog-view',
-  imports: [NgIcon, YoruEmptyState, YoruSectionHeader],
+  imports: [YoruIconButton, NgIcon, YoruEmptyState, YoruSectionHeader],
   templateUrl: './reflog-view.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -105,6 +110,9 @@ export class ReflogView {
         },
       ],
       anchor,
+      {
+        header: { title: entry.selector, detail: entry.message, icon: 'lucideHistory' },
+      },
     );
   }
 

@@ -15,6 +15,7 @@ import {
   YoruButton,
   YoruDialog,
   YoruEmptyState,
+  YoruInput,
   YoruSectionHeader,
   YoruSpinner,
 } from '../../shared/ui';
@@ -45,6 +46,7 @@ const OPERATION_LABELS: Readonly<Record<string, string>> = {
 @Component({
   selector: 'app-merge-resolver',
   imports: [
+    YoruInput,
     YoruDialog,
     YoruButton,
     YoruSectionHeader,

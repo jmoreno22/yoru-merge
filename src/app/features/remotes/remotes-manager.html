@@ -8,7 +8,7 @@
     @if (error(); as message) {
       <p
         role="alert"
-        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-base text-git-deleted"
+        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-base text-git-deleted-ink"
         data-testid="remotes-error"
       >
         {{ message }}
@@ -70,7 +70,7 @@
               [attr.aria-label]="'Actions for ' + remote.name"
               [attr.data-testid]="'remote-menu-' + remote.name"
               (click)="openRowMenu($event, remote)"
-              class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+              yoruIconButton="sm"
             >
               <ng-icon name="lucideMoreHorizontal" size="14px" aria-hidden="true" />
             </button>
@@ -95,7 +95,8 @@
             [attr.aria-invalid]="nameError() ? 'true' : null"
             (input)="onNameInput($event)"
             placeholder="upstream"
-            class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
+            yoruInput
+            class="w-full font-mono"
           />
         </yoru-field>
 
@@ -110,7 +111,8 @@
             (input)="onUrlInput($event)"
             (keydown.enter)="onAdd()"
             placeholder="https://github.com/owner/repo.git"
-            class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
+            yoruInput
+            class="w-full font-mono"
           />
         </yoru-field>
 

@@ -14,7 +14,7 @@
     @if (error(); as message) {
       <p
         role="alert"
-        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-base text-git-deleted"
+        class="rounded-sm border border-git-deleted/40 bg-git-deleted/10 px-3 py-2 text-y-base text-git-deleted-ink"
         data-testid="repo-manager-error"
       >
         {{ message }}
@@ -106,6 +106,7 @@
                   [disabled]="loading()"
                   [attr.data-testid]="'repo-recent-' + entry.name"
                   (click)="onRecent(entry)"
+                  data-menu-target
                   (contextmenu)="onRecentMenu($event, entry)"
                   class="flex min-w-0 flex-1 items-center gap-3 text-left"
                 >
@@ -138,7 +139,8 @@
                   [attr.aria-label]="'More actions for ' + entry.name"
                   [attr.data-testid]="'repo-recent-menu-' + entry.name"
                   (click)="onRecentMenu($event, entry)"
-                  class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:opacity-100"
+                  yoruIconButton="sm"
+                  class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                 >
                   <ng-icon name="lucideMoreHorizontal" size="14px" aria-hidden="true" />
                 </button>
@@ -148,7 +150,8 @@
                   [attr.aria-label]="'Remove ' + entry.name + ' from recents'"
                   [attr.data-testid]="'repo-recent-remove-' + entry.name"
                   (click)="onRemoveRecent(entry, $event)"
-                  class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-git-deleted focus-visible:opacity-100"
+                  yoruIconButton="sm"
+                  class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-git-deleted-ink focus-visible:opacity-100"
                 >
                   <ng-icon name="lucideX" size="14px" aria-hidden="true" />
                 </button>

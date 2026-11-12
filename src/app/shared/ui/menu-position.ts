@@ -79,3 +79,35 @@ export function clampSubmenuPosition(
 
   return { x: clamp(x, margin, maxX), y: clamp(y, margin, maxY) };
 }
+
+/** Gap between an element and the dropdown opened from it. */
+export const MENU_ANCHOR_GAP = 4;
+
+/**
+ * Places a dropdown against the element that opened it: under it with the
+ * left edges aligned, right edges aligned when that would overflow, and above
+ * it when there is no room below. Flipping a dropdown the way a pointer menu
+ * flips would lay it over its own button.
+ */
+export function placeAnchoredMenu(
+  anchor: Bounds,
+  menu: Size,
+  viewport: Size,
+  margin: number = MENU_VIEWPORT_MARGIN,
+): Point {
+  const maxX = viewport.width - margin - menu.width;
+  const maxY = viewport.height - margin - menu.height;
+
+  let x = anchor.left;
+  if (x > maxX) {
+    x = anchor.right - menu.width;
+  }
+
+  let y = anchor.bottom + MENU_ANCHOR_GAP;
+  const above = anchor.top - MENU_ANCHOR_GAP - menu.height;
+  if (y > maxY && above >= margin) {
+    y = above;
+  }
+
+  return { x: clamp(x, margin, maxX), y: clamp(y, margin, maxY) };
+}

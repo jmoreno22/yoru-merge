@@ -62,7 +62,7 @@ export class WorkspaceActions {
           id: 'open',
           label: 'Open repository…',
           icon: 'lucideFolderOpen',
-          shortcut: 'mod+o',
+          shortcutId: 'repo.open',
           run: () => void this.openRepo(),
         },
         {
@@ -95,7 +95,7 @@ export class WorkspaceActions {
           id: 'close',
           label: 'Close',
           icon: 'lucideX',
-          shortcut: 'mod+w',
+          shortcutId: 'tab.close',
           run: () => void this.closeTab(state.tabId),
         },
         {
@@ -129,6 +129,13 @@ export class WorkspaceActions {
         },
       ],
       anchor,
+      {
+        header: {
+          title: path.split(/[\\/]/).filter(Boolean).pop() ?? path,
+          detail: path,
+          icon: 'lucideDatabase',
+        },
+      },
     );
   }
 

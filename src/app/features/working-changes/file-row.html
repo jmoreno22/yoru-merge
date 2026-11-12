@@ -57,7 +57,8 @@
       [attr.aria-label]="openLargeLabel()"
       [attr.data-testid]="openLargeTestId()"
       [yoruTooltip]="shortcuts.hint('Open in diff workspace', 'diff-workspace.open')"
-      class="inline-flex size-[var(--control-h-xs)] items-center justify-center rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+      yoruIconButton
+      tone="outline"
     >
       <ng-icon name="lucideMaximize2" size="14px" aria-hidden="true" />
     </button>
@@ -92,7 +93,8 @@
       type="button"
       (click)="onDiscard($event)"
       [attr.aria-label]="discardLabel()"
-      class="inline-flex size-[var(--control-h-xs)] items-center justify-center rounded-xs border border-git-deleted/40 bg-git-deleted/5 text-git-deleted transition-colors hover:bg-git-deleted/20"
+      yoruIconButton
+      tone="danger"
     >
       <ng-icon
         [name]="untracked() ? 'lucideTrash2' : 'lucideUndo2'"

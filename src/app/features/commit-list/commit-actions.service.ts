@@ -4,7 +4,11 @@ import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { ToastService } from '../../core/services/toast.service';
 import { commitUrl, parseRemoteUrl, shortSha, validateRefName } from '../../core/utils';
 import type { MenuAnchor } from '../../shared/ui';
-import { ClipboardService, ContextMenuService } from '../../shared/ui';
+import {
+  ClipboardService,
+  ContextMenuService,
+  commitMenuHeader,
+} from '../../shared/ui';
 import { InteractiveRebaseService } from '../commit-inspector/interactive-rebase.service';
 import { DialogsService } from '../dialogs/dialogs.service';
 import { buildCommitMenu, promoteMenuItems } from './commit-menu';
@@ -72,7 +76,9 @@ export class CommitActions {
       hasRemoteUrl: this.webUrl(sha) !== null,
       sequencerActive: this.repo.sequencerActive(),
     });
-    const choice = await this.menu.open(promoteMenuItems(items, promote), anchor);
+    const choice = await this.menu.open(promoteMenuItems(items, promote), anchor, {
+      header: commitMenuHeader(target.shortSha, target.subject),
+    });
     if (choice === null) return;
     await this.run(choice, sha, selection);
   }

@@ -8,7 +8,13 @@ import {
   signal,
 } from '@angular/core';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
-import { YoruButton, YoruDialog, YoruField, YoruSwitch } from '../../shared/ui';
+import {
+  YoruButton,
+  YoruDialog,
+  YoruField,
+  YoruInput,
+  YoruSwitch,
+} from '../../shared/ui';
 
 /**
  * `git stash push` with the two flags the plain toolbar entries hard-code.
@@ -18,7 +24,7 @@ import { YoruButton, YoruDialog, YoruField, YoruSwitch } from '../../shared/ui';
  */
 @Component({
   selector: 'app-stash-options-dialog',
-  imports: [YoruDialog, YoruButton, YoruField, YoruSwitch],
+  imports: [YoruInput, YoruDialog, YoruButton, YoruField, YoruSwitch],
   templateUrl: './stash-options-dialog.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-testid': 'stash-options-host' },

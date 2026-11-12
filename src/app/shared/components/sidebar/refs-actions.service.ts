@@ -11,6 +11,7 @@ import {
   branchUrl,
   parseRemoteUrl,
   pullRequestUrl,
+  shortSha,
   validateRefName,
 } from '../../../core/utils';
 import { DialogsService } from '../../../features/dialogs/dialogs.service';
@@ -18,6 +19,7 @@ import {
   ClipboardService,
   ContextMenuService,
   type MenuAnchor,
+  type MenuHeader,
   type MenuItem,
 } from '../../ui';
 import { CheckoutFlow } from './checkout-flow.service';
@@ -85,7 +87,7 @@ export class RefsActions {
   async openMenu(node: RefsNode, anchor: MenuAnchor): Promise<void> {
     const items = this.menuFor(node);
     if (items.length === 0) return;
-    const choice = await this.menu.open(items, anchor);
+    const choice = await this.menu.open(items, anchor, { header: headerOf(node) });
     if (choice !== null) await this.run(node, choice);
   }
 
@@ -561,5 +563,31 @@ function nameOf(node: RefsNode): string | null {
       return `stash@{${node.stash.index}}`;
     default:
       return null;
+  }
+}
+
+/** What a ref menu acts on. Folders and sections name themselves in the row. */
+function headerOf(node: RefsNode): MenuHeader | undefined {
+  switch (node.kind) {
+    case 'branch':
+      return {
+        title: node.branch.name,
+        detail: node.current ? 'current branch' : (node.branch.upstream ?? undefined),
+        icon: node.remote === null ? 'lucideGitBranch' : 'lucideGlobe',
+      };
+    case 'tag':
+      return {
+        title: node.tag.name,
+        detail: shortSha(node.tag.sha),
+        icon: 'lucideTag',
+      };
+    case 'stash':
+      return {
+        title: `stash@{${node.stash.index}}`,
+        detail: node.label,
+        icon: 'lucideArchive',
+      };
+    default:
+      return undefined;
   }
 }

@@ -107,7 +107,7 @@
             <yoru-spinner [size]="16" label="Loading the conflicted file" />
           </div>
         } @else if (loadError(); as message) {
-          <p role="alert" class="text-y-base text-git-deleted">{{ message }}</p>
+          <p role="alert" class="text-y-base text-git-deleted-ink">{{ message }}</p>
         } @else {
           <div class="grid min-h-0 shrink-0 grid-cols-2 gap-3">
             <div class="flex min-w-0 flex-col gap-1">
@@ -227,7 +227,8 @@
               data-testid="resolver-result"
               [value]="text()"
               (input)="onTextInput($event)"
-              class="neon-scroll min-h-40 flex-1 resize-none rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-y-md leading-relaxed text-[var(--app-text)] focus:border-accent focus:outline-none"
+              yoruInput="sm"
+              class="neon-scroll min-h-40 flex-1 resize-none p-2 font-mono leading-relaxed"
             ></textarea>
           </label>
 

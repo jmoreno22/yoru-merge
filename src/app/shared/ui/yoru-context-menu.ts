@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -14,15 +15,29 @@ import {
   viewChildren,
 } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideChevronRight } from '@ng-icons/lucide';
+import { lucideCheck, lucideChevronRight } from '@ng-icons/lucide';
 import { formatCombo } from './combo';
-import type { MenuItem } from './context-menu.model';
-import { clampMenuPosition, clampSubmenuPosition, type Point } from './menu-position';
+import type { MenuHeader, MenuItem } from './context-menu.model';
+import {
+  type Bounds,
+  clampMenuPosition,
+  clampSubmenuPosition,
+  type Point,
+  placeAnchoredMenu,
+} from './menu-position';
 
 let nextMenuId = 0;
 
 /** How long a typeahead buffer survives between keystrokes. */
 const TYPEAHEAD_TIMEOUT_MS = 600;
+
+/**
+ * How long an open submenu survives the pointer landing on a sibling item. The
+ * straight line from a parent item to its submenu crosses the items below it,
+ * and without the grace period the first one crossed would close the submenu
+ * the pointer is heading for.
+ */
+const SUBMENU_GRACE_MS = 200;
 
 /** Off-screen parking spot used until the panel has been measured. */
 const OFFSCREEN: Point = { x: -9999, y: -9999 };
@@ -33,14 +48,16 @@ const OFFSCREEN: Point = { x: -9999, y: -9999 };
  */
 @Component({
   selector: 'yoru-context-menu',
-  imports: [NgIcon],
-  viewProviders: [provideIcons({ lucideChevronRight })],
+  imports: [NgIcon, NgTemplateOutlet],
+  viewProviders: [provideIcons({ lucideCheck, lucideChevronRight })],
   templateUrl: './yoru-context-menu.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class YoruContextMenu {
   readonly items = input.required<readonly MenuItem[]>();
-  readonly anchor = input.required<Point>();
+  /** A point for a pointer menu, the opener's box for a dropdown. */
+  readonly anchor = input.required<Point | Bounds>();
+  readonly header = input<MenuHeader | null>(null);
 
   readonly selected = output<string>();
   readonly dismissed = output<void>();
@@ -63,8 +80,15 @@ export class YoruContextMenu {
     return this.items().find((item) => item.id === owner)?.children ?? [];
   });
 
+  protected readonly panelClass =
+    'neon-scroll yoru-fade-in fixed z-[var(--z-dropdown)] max-h-[70vh] ' +
+    'max-w-[min(28rem,calc(100vw-1rem))] overflow-y-auto rounded-sm border ' +
+    'border-[var(--app-border)] bg-[var(--app-surface-raised)] py-1 shadow-panel ' +
+    'outline-none';
+
   private typeahead = '';
   private typeaheadAt = 0;
+  private hoverIntent: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     afterNextRender(() => {
@@ -87,6 +111,7 @@ export class YoruContextMenu {
     window.addEventListener('blur', dismiss);
 
     destroyRef.onDestroy(() => {
+      this.cancelHoverIntent();
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('contextmenu', onPointerDown, true);
       window.removeEventListener('scroll', dismiss, true);
@@ -99,20 +124,28 @@ export class YoruContextMenu {
     return formatCombo(combo);
   }
 
+  protected roleOf(item: MenuItem): 'menuitem' | 'menuitemcheckbox' {
+    return item.checked === undefined ? 'menuitem' : 'menuitemcheckbox';
+  }
+
+  /**
+   * An item is a row: it takes the row height, so a menu is as dense as the
+   * list it was opened from. No hover variant and no transition on purpose —
+   * the highlight is the active index alone, which is what lets it stay on the
+   * parent of an open submenu while the pointer crosses the items below.
+   */
   protected itemClass(item: MenuItem, active: boolean): string {
     const base =
-      'flex w-full items-start gap-2 px-2.5 py-1 text-left text-y-base leading-[20px] transition-colors';
+      'flex min-h-[var(--file-row-h)] w-full items-center gap-2 px-2.5 py-0.5 ' +
+      'text-left text-y-base leading-tight';
     if (item.disabled) {
       return `${base} cursor-not-allowed text-[var(--app-text-faint)]`;
     }
-    const tone =
-      item.tone === 'danger'
-        ? 'text-git-deleted'
-        : item.tone === 'primary'
-          ? 'text-accent-ink'
-          : 'text-[var(--app-text)]';
-    const highlight = active ? 'bg-accent/10' : 'hover:bg-accent/10';
-    return `${base} ${tone} ${highlight}`;
+    if (item.tone === 'danger') {
+      return `${base} text-git-deleted-ink ${active ? 'bg-git-deleted/10' : ''}`;
+    }
+    const tone = item.tone === 'primary' ? 'text-accent-ink' : 'text-[var(--app-text)]';
+    return `${base} ${tone} ${active ? 'bg-accent/10' : ''}`;
   }
 
   protected onItemClick(item: MenuItem, index: number, inSubmenu: boolean): void {
@@ -125,10 +158,31 @@ export class YoruContextMenu {
   }
 
   protected onItemHover(index: number, inSubmenu: boolean): void {
+    this.cancelHoverIntent();
     if (inSubmenu) {
       this.submenuActiveIndex.set(index);
       return;
     }
+
+    const owner = this.submenuOwner();
+    if (owner !== null && this.items()[index]?.id !== owner) {
+      this.hoverIntent = setTimeout(() => {
+        this.hoverIntent = null;
+        this.activateRootItem(index);
+      }, SUBMENU_GRACE_MS);
+      return;
+    }
+    this.activateRootItem(index);
+  }
+
+  /** The pointer reached the submenu: whatever it crossed on the way is moot. */
+  protected cancelHoverIntent(): void {
+    if (this.hoverIntent === null) return;
+    clearTimeout(this.hoverIntent);
+    this.hoverIntent = null;
+  }
+
+  private activateRootItem(index: number): void {
     this.activeIndex.set(index);
     const item = this.items()[index];
     if (item?.children?.length && !item.disabled) {
@@ -139,6 +193,7 @@ export class YoruContextMenu {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
+    this.cancelHoverIntent();
     const inSubmenu = this.submenuOwner() !== null;
     const list = inSubmenu ? this.submenuItems() : this.items();
 
@@ -289,12 +344,13 @@ export class YoruContextMenu {
 
   private placeRoot(): void {
     const panel = this.panel().nativeElement;
+    const anchor = this.anchor();
+    const size = { width: panel.offsetWidth, height: panel.offsetHeight };
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
     this.position.set(
-      clampMenuPosition(
-        this.anchor(),
-        { width: panel.offsetWidth, height: panel.offsetHeight },
-        { width: window.innerWidth, height: window.innerHeight },
-      ),
+      'left' in anchor
+        ? placeAnchoredMenu(anchor, size, viewport)
+        : clampMenuPosition(anchor, size, viewport),
     );
   }
 

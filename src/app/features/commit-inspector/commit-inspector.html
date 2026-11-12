@@ -224,34 +224,31 @@
       />
       <button
         type="button"
-        class="mode-button"
+        yoruIconButton
         aria-label="Show files as a tree"
         [attr.aria-pressed]="viewMode() === 'tree'"
-        [class.is-active]="viewMode() === 'tree'"
         (click)="setViewMode('tree')"
       >
         <ng-icon name="lucideFolderTree" size="14px" aria-hidden="true" />
       </button>
       <button
         type="button"
-        class="mode-button"
+        yoruIconButton
         aria-label="Show files as a flat list"
         [attr.aria-pressed]="viewMode() === 'list'"
-        [class.is-active]="viewMode() === 'list'"
         (click)="setViewMode('list')"
       >
         <ng-icon name="lucideList" size="14px" aria-hidden="true" />
       </button>
       <button
         type="button"
-        class="mode-button"
+        yoruIconButton
         [attr.aria-label]="
           clickOpensWorkspace()
             ? 'A single click opens the diff workspace'
             : 'A single click only selects the file'
         "
         [attr.aria-pressed]="clickOpensWorkspace()"
-        [class.is-active]="clickOpensWorkspace()"
         data-testid="inspector-click-opens"
         [yoruTooltip]="
           clickOpensWorkspace()
@@ -312,7 +309,7 @@
           @if (row.kind === 'folder') {
             <button
               type="button"
-              class="folder-row"
+              class="yoru-row folder-row"
               [style.padding-left.px]="8 + row.depth * 14"
               [attr.aria-expanded]="!row.collapsed"
               (click)="toggleFolder(row.path)"
@@ -329,8 +326,10 @@
             <!-- The open-large control is a button of its own, so it sits
                  beside the row rather than inside it. -->
             <div
-              class="file-row-wrap group"
+              class="yoru-row file-row-wrap group"
+              data-menu-target
               [class.is-active]="activeFile() === row.path"
+              [class.is-selected]="activeFile() === row.path"
               (dblclick)="openLarge(row.path)"
             >
               <button

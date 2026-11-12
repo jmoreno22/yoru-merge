@@ -40,6 +40,10 @@ const TEXTS: readonly (keyof PaletteSurfaces)[] = [
   'textMuted',
   'textFaint',
   'conflictText',
+  'addedText',
+  'modifiedText',
+  'deletedText',
+  'renamedText',
 ];
 
 /** WCAG AA for body text. Every palette is held to it, built-in or not. */
@@ -155,10 +159,14 @@ describe('paletteTokens', () => {
   it('emits the whole contract, so no token is left from the previous palette', () => {
     const tokens = paletteTokens(palette, 'dark');
     expect(Object.keys(tokens).sort()).toEqual([
+      '--app-added-text',
       '--app-bg',
       '--app-border',
       '--app-conflict-text',
+      '--app-deleted-text',
+      '--app-modified-text',
       '--app-panel',
+      '--app-renamed-text',
       '--app-shadow-panel',
       '--app-surface',
       '--app-surface-raised',

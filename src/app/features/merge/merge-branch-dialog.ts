@@ -19,6 +19,7 @@ import {
   YoruDialog,
   YoruEmptyState,
   YoruField,
+  YoruInput,
   YoruSegmented,
 } from '../../shared/ui';
 import { DialogsService } from '../dialogs/dialogs.service';
@@ -34,7 +35,15 @@ type MergeMode = 'default' | 'no_ff' | 'squash' | 'ff_only';
  */
 @Component({
   selector: 'app-merge-branch-dialog',
-  imports: [YoruDialog, YoruButton, YoruField, YoruSegmented, YoruEmptyState, NgIcon],
+  imports: [
+    YoruInput,
+    YoruDialog,
+    YoruButton,
+    YoruField,
+    YoruSegmented,
+    YoruEmptyState,
+    NgIcon,
+  ],
   templateUrl: './merge-branch-dialog.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-testid': 'merge-branch-host' },

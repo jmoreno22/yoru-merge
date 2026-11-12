@@ -8,18 +8,26 @@ export {
   type ParsedCombo,
   parseCombo,
 } from './combo';
-export type { MenuAnchor, MenuItem } from './context-menu.model';
+export type {
+  MenuAnchor,
+  MenuHeader,
+  MenuItem,
+  MenuOptions,
+} from './context-menu.model';
 export { ContextMenuService } from './context-menu.service';
 export {
   KeyboardShortcutsService,
   type Shortcut,
 } from './keyboard-shortcuts.service';
+export { commitMenuHeader, fileMenuHeader } from './menu-headers';
 export {
   type Bounds,
   clampMenuPosition,
   clampSubmenuPosition,
+  MENU_ANCHOR_GAP,
   MENU_VIEWPORT_MARGIN,
   type Point,
+  placeAnchoredMenu,
   type Size,
 } from './menu-position';
 export { focusVirtualRow } from './virtual-row-focus';
@@ -31,6 +39,12 @@ export { type DialogSize, type DialogTone, YoruDialog } from './yoru-dialog';
 export { YoruDiffSource } from './yoru-diff-source';
 export { YoruEmptyState } from './yoru-empty-state';
 export { YoruField } from './yoru-field';
+export {
+  type IconButtonSize,
+  type IconButtonTone,
+  YoruIconButton,
+} from './yoru-icon-button.directive';
+export { type InputSize, YoruInput } from './yoru-input.directive';
 export { YoruKbd } from './yoru-kbd';
 export { YoruSectionHeader } from './yoru-section-header';
 export { type SegmentedOption, YoruSegmented } from './yoru-segmented';

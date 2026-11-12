@@ -22,6 +22,8 @@ import {
   type MenuItem,
   YoruButton,
   YoruDialog,
+  YoruIconButton,
+  YoruInput,
   YoruKbd,
   YoruSwitch,
 } from '../../shared/ui';
@@ -66,7 +68,15 @@ type CommitMode = 'commit' | 'commit-push' | 'commit-tag' | 'commit-fixup';
  */
 @Component({
   selector: 'app-commit-composer',
-  imports: [NgIcon, YoruButton, YoruDialog, YoruKbd, YoruSwitch],
+  imports: [
+    YoruIconButton,
+    YoruInput,
+    NgIcon,
+    YoruButton,
+    YoruDialog,
+    YoruKbd,
+    YoruSwitch,
+  ],
   templateUrl: './commit-composer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -208,9 +218,9 @@ export class CommitComposer {
   protected readonly counterClass = computed(() => {
     switch (this.subjectState()) {
       case 'error':
-        return 'text-git-deleted';
+        return 'text-git-deleted-ink';
       case 'warn':
-        return 'text-git-modified';
+        return 'text-git-modified-ink';
       default:
         return 'text-[var(--app-text-faint)]';
     }

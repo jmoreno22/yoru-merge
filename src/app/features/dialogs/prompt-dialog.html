@@ -22,7 +22,8 @@
         [attr.aria-invalid]="error() ? 'true' : null"
         (input)="onInput($event)"
         (keydown.enter)="onSubmit()"
-        class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 text-y-base text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
+        yoruInput
+        class="w-full"
       />
     </yoru-field>
 

@@ -102,8 +102,7 @@ const SECTION_DEFAULT_EXPANDED: Readonly<Record<RefsSectionId, boolean>> = {
 /** Tree indent per level, from the density spec. */
 const INDENT_PX = 18;
 
-const ROW_BASE =
-  'flex w-full cursor-pointer select-none items-center transition-colors hover:bg-[var(--app-panel)]';
+const ROW_BASE = 'yoru-row flex w-full cursor-pointer select-none items-center';
 
 /**
  * Section rows are `--ref-row-h` like every other row: the tree is one
@@ -115,7 +114,7 @@ const SECTION_CLASS = `${ROW_BASE} h-[var(--ref-row-h)] gap-2 border-b border-[v
 const LEAF_CLASS = `${ROW_BASE} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md text-[var(--app-text)]`;
 
 // Weight, not colour: the marker icon and `aria-current` carry the state too.
-const CURRENT_LEAF_CLASS = `${ROW_BASE} h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md font-semibold text-accent-ink`;
+const CURRENT_LEAF_CLASS = `${ROW_BASE} is-current h-[var(--ref-row-h)] gap-1.5 pr-2 font-mono text-y-md font-semibold text-accent-ink`;
 
 function indentOf(level: number): number {
   return 8 + level * INDENT_PX;

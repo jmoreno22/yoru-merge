@@ -25,12 +25,12 @@
       @if (row.kind === 'folder') {
         <div
           role="option"
-          class="flex h-[var(--file-row-h)] cursor-pointer select-none items-center gap-1.5 border-l-2 border-transparent pr-2 text-y-md outline-none hover:bg-[var(--app-panel)]/60"
+          class="yoru-row flex h-[var(--file-row-h)] cursor-pointer select-none items-center gap-1.5 pr-2 text-y-md"
           [attr.data-path]="row.path"
           [attr.tabindex]="row.path === tabbablePath() ? 0 : -1"
           [attr.aria-expanded]="!row.collapsed"
           [attr.aria-selected]="false"
-          [style.paddingLeft.px]="8 + row.depth * 18"
+          [style.paddingLeft.px]="10 + row.depth * 18"
           [title]="row.path"
           (click)="folderToggle.emit(row.path)"
         >

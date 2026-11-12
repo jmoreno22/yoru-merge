@@ -20,8 +20,10 @@ import type { MenuItem } from '../../shared/ui';
 import {
   ClipboardService,
   ContextMenuService,
+  commitMenuHeader,
   YoruAvatar,
   YoruEmptyState,
+  YoruIconButton,
   YoruSkeleton,
 } from '../../shared/ui';
 
@@ -42,7 +44,14 @@ interface HistoryRow {
  */
 @Component({
   selector: 'app-file-history-panel',
-  imports: [NgIcon, ScrollingModule, YoruAvatar, YoruEmptyState, YoruSkeleton],
+  imports: [
+    YoruIconButton,
+    NgIcon,
+    ScrollingModule,
+    YoruAvatar,
+    YoruEmptyState,
+    YoruSkeleton,
+  ],
   templateUrl: './file-history-panel.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-testid': 'file-history-host' },
@@ -160,6 +169,15 @@ export class FileHistoryPanel {
         run: () => void this.clipboard.writeText(row.commit.message),
       },
     ];
-    await this.menu.open(items, { x: event.clientX, y: event.clientY });
+    await this.menu.open(
+      items,
+      { x: event.clientX, y: event.clientY },
+      {
+        header: commitMenuHeader(
+          row.commit.short_sha,
+          row.commit.message.split('\n', 1)[0] ?? '',
+        ),
+      },
+    );
   }
 }

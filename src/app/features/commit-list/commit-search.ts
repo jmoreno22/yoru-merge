@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
-import { KeyboardShortcutsService } from '../../shared/ui';
+import { KeyboardShortcutsService, YoruIconButton, YoruInput } from '../../shared/ui';
 
 /**
  * Search box for the commit history.
@@ -20,7 +20,7 @@ import { KeyboardShortcutsService } from '../../shared/ui';
  */
 @Component({
   selector: 'app-commit-search',
-  imports: [NgIcon],
+  imports: [YoruIconButton, YoruInput, NgIcon],
   templateUrl: './commit-search.html',
   styleUrl: './commit-search.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

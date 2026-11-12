@@ -63,11 +63,11 @@
 }
 
 .added {
-  color: var(--color-git-added);
+  color: var(--app-added-text);
 }
 
 .deleted {
-  color: var(--color-git-deleted);
+  color: var(--app-deleted-text);
 }
 
 .subject {
@@ -155,27 +155,6 @@
   appearance: none;
 }
 
-.mode-button {
-  display: inline-flex;
-  height: var(--control-h-xs);
-  width: var(--control-h-xs);
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-xs);
-  color: var(--app-text-muted);
-}
-
-.mode-button:hover {
-  background: var(--app-panel);
-  color: var(--app-text);
-}
-
-.mode-button.is-active {
-  background: var(--app-panel);
-  color: var(--app-accent-text);
-}
-
 /* The layout policy's other half: a virtual viewport has no natural height, so
  * the row allowance is what gives it one and anything past it scrolls. The row
  * height itself is the density token and is never overridden here. */
@@ -224,15 +203,6 @@
   height: var(--file-row-h);
   align-items: center;
   padding-right: var(--panel-pad);
-}
-
-.folder-row:hover,
-.file-row-wrap:hover {
-  background: var(--app-panel);
-}
-
-.file-row-wrap.is-active {
-  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
 }
 
 .folder-count {

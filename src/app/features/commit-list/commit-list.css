@@ -50,21 +50,8 @@ cdk-virtual-scroll-viewport {
   height: var(--row-h);
   align-items: center;
   gap: 8px;
-  padding: 0 8px 0 6px;
-  border-left: 2px solid transparent;
+  padding: 0 8px;
   cursor: default;
-}
-
-.commit-row:hover {
-  background: var(--app-panel);
-}
-
-.commit-row.is-selected {
-  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
-}
-
-.commit-row.is-current {
-  border-left-color: var(--app-accent);
 }
 
 .commit-row:focus-visible {

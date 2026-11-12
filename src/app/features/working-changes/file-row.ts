@@ -9,7 +9,7 @@ import {
 import { NgIcon } from '@ng-icons/core';
 import { focusKeyFor } from '../../core/services/diff-workspace-state';
 import type { YoruIconName } from '../../shared/icons';
-import { KeyboardShortcutsService, YoruTooltip } from '../../shared/ui';
+import { KeyboardShortcutsService, YoruIconButton, YoruTooltip } from '../../shared/ui';
 import { type ChipKind, chipLabel, type FileRow } from './changes-tree';
 
 /** Status icon and colour, straight from the design system's status table. */
@@ -25,11 +25,11 @@ const STATUS_ICONS: Readonly<Record<ChipKind, YoruIconName>> = {
 };
 
 const STATUS_COLORS: Readonly<Record<ChipKind, string>> = {
-  added: 'text-git-added',
-  modified: 'text-git-modified',
-  deleted: 'text-git-deleted',
-  renamed: 'text-git-renamed',
-  copied: 'text-git-renamed',
+  added: 'text-git-added-ink',
+  modified: 'text-git-modified-ink',
+  deleted: 'text-git-deleted-ink',
+  renamed: 'text-git-renamed-ink',
+  copied: 'text-git-renamed-ink',
   type_changed: 'text-neon-violet',
   untracked: 'text-[var(--app-text-muted)]',
   conflicted: 'text-[var(--app-conflict-text)]',
@@ -49,7 +49,7 @@ export function rowFocusKey(side: WorkingSide, path: string): string {
  */
 @Component({
   selector: 'app-file-row',
-  imports: [NgIcon, YoruTooltip],
+  imports: [YoruIconButton, NgIcon, YoruTooltip],
   templateUrl: './file-row.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -80,15 +80,12 @@ export class FileRowItem {
   readonly openLarge = output<void>();
 
   protected readonly hostClass = computed(() => {
+    // The selection tint comes from `aria-selected`; the edge marks the row
+    // the diff viewer is showing, which is not the same thing.
     const base =
-      'group flex h-[var(--file-row-h)] items-center gap-2 border-l-2 pr-1 ' +
-      'text-y-md cursor-pointer select-none outline-none';
-    const fill = this.selected()
-      ? 'bg-[var(--app-panel)]'
-      : 'hover:bg-[var(--app-panel)]/60';
-    // The cyan edge marks the row the diff viewer is showing, not the selection.
-    const edge = this.openInDiff() ? 'border-accent' : 'border-transparent';
-    return `${base} ${fill} ${edge}`;
+      'group yoru-row flex h-[var(--file-row-h)] items-center gap-2 pl-0.5 pr-1 ' +
+      'text-y-md cursor-pointer select-none';
+    return this.openInDiff() ? `${base} is-current` : base;
   });
 
   protected readonly entry = computed(() => this.row().entry);
@@ -138,7 +135,7 @@ export class FileRowItem {
   protected readonly primaryClass = computed(() =>
     this.staged()
       ? 'border-accent/40 bg-accent/5 text-accent-ink hover:bg-accent/20'
-      : 'border-git-added/40 bg-git-added/5 text-git-added hover:bg-git-added/20',
+      : 'border-git-added/40 bg-git-added/5 text-git-added-ink hover:bg-git-added/20',
   );
 
   protected readonly primaryLabel = computed(() => {

@@ -88,9 +88,37 @@ async onContextMenu(event: MouseEvent, branch: BranchInfo): Promise<void> {
 }
 ```
 
-`MenuItem`: `id`, `label`, `icon?`, `shortcut?`, `tone?`, `disabled?`,
-`disabledReason?`, `children?` (one level), `separatorBefore?`, `run?`.
-The anchor is `{ x, y }` or an `HTMLElement` (the menu opens under it).
+`MenuItem`: `id`, `label`, `icon?`, `shortcut?`, `shortcutId?`, `tone?`,
+`checked?`, `disabled?`, `disabledReason?`, `children?` (one level),
+`separatorBefore?`, `run?`.
+
+- `shortcutId` names a registered shortcut; the menu shows whichever combo owns
+  it when it opens. `shortcut` is a literal combo, for a key the list itself
+  handles (`f2`).
+- `checked` marks the option in effect. Give it to every member of the set,
+  `false` included.
+
+The anchor is `{ x, y }` (a pointer menu) or an `HTMLElement` (a dropdown: it
+opens under the element, aligned to it, and above it when there is no room
+below).
+
+The third argument is optional:
+
+```ts
+await this.menu.open(items, anchor, {
+  header: commitMenuHeader(commit.short_sha, subject), // or fileMenuHeader(path)
+  target: rowElement,
+});
+```
+
+- `header` names what the menu acts on (`title`, `detail?`, `icon?`).
+- `target` is the row a pointer menu acts on. It is found without it when the
+  row under the pointer is an `option`, a `treeitem`, a `tab`, or carries
+  `data-menu-target`.
+
+While the menu is open its origin — the anchor element or the target row —
+carries `data-menu-open` and keeps its hover look. Closing returns the focus to
+whatever held it.
 
 Keyboard: `↑ ↓ Home End` move, `Enter`/`Space` activate, `→`/`←` open and close
 a submenu, `Esc` closes, `Tab` dismisses, and typing jumps to a label prefix.
@@ -107,6 +135,39 @@ The menu also closes on outside click, scroll, resize and window blur.
   Commit
 </yoru-button>
 ```
+
+## yoruIconButton
+
+The one square icon button, as a directive on a native `<button>`.
+
+```html
+<button type="button" yoruIconButton aria-label="Close" (click)="close()">
+  <ng-icon name="lucideX" size="14px" aria-hidden="true" />
+</button>
+
+<button type="button" yoruIconButton="sm" tone="outline" [attr.aria-pressed]="on()">
+  …
+</button>
+```
+
+`yoruIconButton`: `xs` (default, fits a row) · `sm` · `md` — the three control
+heights. `tone`: `ghost` (default, flat) · `outline` (framed, for a control that
+stands alone) · `danger`. A toggle sets `aria-pressed`; the pressed look follows.
+An icon-only control always needs an `aria-label`.
+
+## yoruInput
+
+The one text field, as a directive on a native `<input>` or `<textarea>`.
+
+```html
+<input yoruInput class="w-full font-mono" placeholder="https://…" />
+<input yoruInput="xs" type="search" placeholder="Filter files" />
+<textarea yoruInput="sm" rows="2" class="w-full resize-none"></textarea>
+```
+
+`yoruInput`: `md` (default: dialogs and forms) · `sm` · `xs` (inside a panel
+head or a strip). The class attribute is for layout and for `font-mono` only —
+the frame, the type size and the focus ring belong to the directive.
 
 ## yoru-empty-state
 

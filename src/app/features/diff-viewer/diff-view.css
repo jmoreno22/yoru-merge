@@ -322,7 +322,7 @@ app-diff-view .dv-add {
 }
 
 app-diff-view .dv-add .dv-mark {
-  color: var(--color-git-added);
+  color: var(--app-added-text);
 }
 
 app-diff-view .dv-del {
@@ -330,7 +330,7 @@ app-diff-view .dv-del {
 }
 
 app-diff-view .dv-del .dv-mark {
-  color: var(--color-git-deleted);
+  color: var(--app-deleted-text);
 }
 
 app-diff-view .dv-sel {

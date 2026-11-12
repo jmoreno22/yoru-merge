@@ -5,7 +5,7 @@ import {
   inject,
   linkedSignal,
 } from '@angular/core';
-import { YoruButton, YoruDialog, YoruField } from '../../shared/ui';
+import { YoruButton, YoruDialog, YoruField, YoruInput } from '../../shared/ui';
 import { DialogsService } from './dialogs.service';
 
 /**
@@ -14,7 +14,7 @@ import { DialogsService } from './dialogs.service';
  */
 @Component({
   selector: 'app-prompt-dialog',
-  imports: [YoruDialog, YoruButton, YoruField],
+  imports: [YoruInput, YoruDialog, YoruButton, YoruField],
   templateUrl: './prompt-dialog.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-testid': 'prompt-dialog-host' },

@@ -11,11 +11,11 @@ const VARIANTS: Readonly<Record<ButtonVariant, string>> = {
   primary:
     'bg-accent text-yoru-950 font-semibold hover:bg-moon-50 hover:shadow-accent focus-visible:shadow-accent',
   secondary:
-    'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:border-accent/50 hover:bg-[var(--app-panel)]',
+    'border border-[var(--app-border)] bg-[var(--app-surface-raised)] text-[var(--app-text)] hover:border-accent/50 hover:bg-[var(--app-panel)]',
   ghost:
     'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]',
   danger:
-    'border border-git-deleted/50 bg-git-deleted/10 text-git-deleted hover:bg-git-deleted/20',
+    'border border-git-deleted/50 bg-git-deleted/10 text-git-deleted-ink hover:bg-git-deleted/20',
 };
 
 const SIZES: Readonly<Record<ButtonSize, string>> = {
@@ -57,7 +57,7 @@ export class YoruButton {
 
   protected readonly buttonClass = computed(
     () =>
-      'inline-flex w-full items-center justify-center rounded-sm transition-colors ' +
+      'inline-flex w-full items-center justify-center whitespace-nowrap rounded-sm transition-colors ' +
       'disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:shadow-none ' +
       `${SIZES[this.size()]} ${VARIANTS[this.variant()]}`,
   );

@@ -35,7 +35,7 @@
       <span class="flex-1"></span>
       <button
         type="button"
-        class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+        yoruIconButton
         data-testid="file-history-close"
         aria-label="Close file history (Escape)"
         title="Close (Escape)"
@@ -94,18 +94,15 @@
           *cdkVirtualFor="let row of rows(); trackBy: trackRow"
           role="option"
           tabindex="0"
-          class="flex h-[var(--history-row-h)] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3 outline-none transition-colors hover:bg-[var(--app-panel)] focus-visible:bg-[var(--app-panel)]"
-          [class]="
-            row.commit.sha === selectedSha()
-              ? 'bg-[var(--app-panel)] border-l-2 border-l-accent'
-              : ''
-          "
+          class="yoru-row flex h-[var(--history-row-h)] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3"
+          [class.is-current]="row.commit.sha === selectedSha()"
           [attr.aria-selected]="row.commit.sha === selectedSha()"
           [attr.data-testid]="'file-history-item-' + row.commit.sha"
           [title]="row.commit.message"
           (click)="onSelect(row.commit.sha)"
           (keydown.enter)="onSelect(row.commit.sha)"
           (keydown.space)="onSelect(row.commit.sha)"
+          data-menu-target
           (contextmenu)="onRowMenu($event, row)"
         >
           <div class="flex items-center gap-2 font-mono text-y-sm">

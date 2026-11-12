@@ -24,6 +24,7 @@ import {
   YoruButton,
   YoruDiffSource,
   YoruEmptyState,
+  YoruIconButton,
   YoruSegmented,
 } from '../../shared/ui';
 import { DialogsService } from '../dialogs/dialogs.service';
@@ -66,6 +67,7 @@ const CONTEXT_OPTIONS: readonly SegmentedOption[] = [
 @Component({
   selector: 'app-diff-viewer',
   imports: [
+    YoruIconButton,
     DiffView,
     NgIcon,
     YoruButton,

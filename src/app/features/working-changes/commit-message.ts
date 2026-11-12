@@ -193,6 +193,7 @@ export function commitMenuItems(context: CommitMenuContext): MenuItem[] {
       label: context.amend ? 'Amend commit' : 'Commit',
       icon: 'lucideGitCommitHorizontal',
       tone: 'primary',
+      shortcutId: 'working-changes.commit',
     },
     {
       id: 'commit-push',

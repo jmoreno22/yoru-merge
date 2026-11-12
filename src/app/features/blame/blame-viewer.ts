@@ -20,8 +20,10 @@ import type { MenuItem } from '../../shared/ui';
 import {
   ClipboardService,
   ContextMenuService,
+  commitMenuHeader,
   YoruAvatar,
   YoruEmptyState,
+  YoruIconButton,
   YoruSkeleton,
 } from '../../shared/ui';
 
@@ -44,7 +46,14 @@ interface BlameRow {
  */
 @Component({
   selector: 'app-blame-viewer',
-  imports: [NgIcon, ScrollingModule, YoruAvatar, YoruEmptyState, YoruSkeleton],
+  imports: [
+    YoruIconButton,
+    NgIcon,
+    ScrollingModule,
+    YoruAvatar,
+    YoruEmptyState,
+    YoruSkeleton,
+  ],
   templateUrl: './blame-viewer.html',
   styleUrl: './blame-viewer.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -157,6 +166,10 @@ export class BlameViewer {
         run: () => void this.clipboard.writeText(row.line.content),
       },
     ];
-    await this.menu.open(items, { x: event.clientX, y: event.clientY });
+    await this.menu.open(
+      items,
+      { x: event.clientX, y: event.clientY },
+      { header: commitMenuHeader(row.shortSha, row.line.message) },
+    );
   }
 }

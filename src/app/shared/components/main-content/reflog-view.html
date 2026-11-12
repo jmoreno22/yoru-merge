@@ -16,8 +16,9 @@
     @for (entry of entries(); track entry.selector) {
       <li>
         <div
-          class="group flex items-center gap-2 border-b border-[var(--app-border)]/50 px-3 py-1.5 transition-colors hover:bg-[var(--app-panel)]/60"
-          [class.bg-[var(--app-panel)]]="selectedSha() === entry.sha"
+          class="group yoru-row flex items-center gap-2 border-b border-[var(--app-border)]/50 px-3 py-1.5"
+          [class.is-selected]="selectedSha() === entry.sha"
+          [class.is-current]="selectedSha() === entry.sha"
         >
           <button
             type="button"
@@ -49,7 +50,8 @@
             (click)="onMenu(entry, menuAnchor)"
             [disabled]="busy()"
             [attr.aria-label]="'Actions for ' + entry.selector"
-            class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-colors hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)] focus-visible:opacity-100 group-hover:opacity-100"
+            yoruIconButton="sm"
+            class="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
           >
             <ng-icon name="lucideEllipsisVertical" size="14px" aria-hidden="true" />
           </button>

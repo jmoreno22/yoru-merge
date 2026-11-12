@@ -23,7 +23,7 @@
 
         <button
           type="button"
-          class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+          yoruIconButton
           [attr.aria-label]="'Copy ' + head.title"
           title="Copy"
           (click)="copyHeading()"
@@ -37,10 +37,10 @@
           >
             {{ stats.files }} {{ stats.files === 1 ? "file" : "files" }}
           </span>
-          <span class="shrink-0 font-mono text-y-sm tabular-nums text-git-added">
+          <span class="shrink-0 font-mono text-y-sm tabular-nums text-git-added-ink">
             +{{ stats.additions }}
           </span>
-          <span class="shrink-0 font-mono text-y-sm tabular-nums text-git-deleted">
+          <span class="shrink-0 font-mono text-y-sm tabular-nums text-git-deleted-ink">
             -{{ stats.deletions }}
           </span>
         }
@@ -156,7 +156,7 @@
       </span>
       <button
         type="button"
-        class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+        yoruIconButton
         aria-label="Previous hunk (p)"
         title="Previous hunk (p)"
         [disabled]="hunkTotal() === 0"
@@ -166,7 +166,7 @@
       </button>
       <button
         type="button"
-        class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+        yoruIconButton
         aria-label="Next hunk (n)"
         title="Next hunk (n)"
         [disabled]="hunkTotal() === 0"

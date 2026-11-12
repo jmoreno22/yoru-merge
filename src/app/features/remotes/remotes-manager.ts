@@ -19,6 +19,8 @@ import {
   YoruButton,
   YoruDialog,
   YoruField,
+  YoruIconButton,
+  YoruInput,
 } from '../../shared/ui';
 import { DialogsService } from '../dialogs/dialogs.service';
 import { isValidRemoteName, isValidRemoteUrl } from './remote-form';
@@ -31,7 +33,7 @@ import { isValidRemoteName, isValidRemoteUrl } from './remote-form';
  */
 @Component({
   selector: 'app-remotes-manager',
-  imports: [YoruDialog, YoruButton, YoruField, NgIcon],
+  imports: [YoruInput, YoruIconButton, YoruDialog, YoruButton, YoruField, NgIcon],
   templateUrl: './remotes-manager.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-testid': 'remotes-manager-host' },
@@ -243,6 +245,8 @@ export class RemotesManager {
         run: () => void this.onRemove(remote),
       },
     ];
-    await this.menu.open(items, event.currentTarget as HTMLElement);
+    await this.menu.open(items, event.currentTarget as HTMLElement, {
+      header: { title: remote.name, detail: remote.fetch_url, icon: 'lucideGlobe' },
+    });
   }
 }

@@ -12,7 +12,12 @@ import type { RepoEntry } from '../../core/models';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { SystemOps } from '../../core/services/ops';
 import { relativeTime, validateRefName } from '../../core/utils';
-import { ClipboardService, ContextMenuService, YoruEmptyState } from '../../shared/ui';
+import {
+  ClipboardService,
+  ContextMenuService,
+  YoruEmptyState,
+  YoruIconButton,
+} from '../../shared/ui';
 import { DialogsService } from '../dialogs/dialogs.service';
 
 /**
@@ -21,7 +26,7 @@ import { DialogsService } from '../dialogs/dialogs.service';
  */
 @Component({
   selector: 'app-repo-manager',
-  imports: [YoruEmptyState, NgIcon],
+  imports: [YoruIconButton, YoruEmptyState, NgIcon],
   templateUrl: './repo-manager.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -136,6 +141,7 @@ export class RepoManager implements OnInit {
         },
       ],
       { x: event.clientX, y: event.clientY },
+      { header: { title: entry.name, detail: entry.path, icon: 'lucideDatabase' } },
     );
   }
 
