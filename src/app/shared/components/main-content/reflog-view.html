@@ -30,7 +30,7 @@
               <span class="shrink-0 font-mono text-y-xs text-accent-ink">
                 {{ entry.selector }}
               </span>
-              <span class="truncate text-xs text-[var(--app-text)]">
+              <span class="truncate text-y-md text-[var(--app-text)]">
                 {{ entry.message }}
               </span>
             </span>
@@ -49,7 +49,7 @@
             (click)="onMenu(entry, menuAnchor)"
             [disabled]="busy()"
             [attr.aria-label]="'Actions for ' + entry.selector"
-            class="flex size-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-colors hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)] focus-visible:opacity-100 group-hover:opacity-100"
+            class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-colors hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)] focus-visible:opacity-100 group-hover:opacity-100"
           >
             <ng-icon name="lucideEllipsisVertical" size="14px" aria-hidden="true" />
           </button>

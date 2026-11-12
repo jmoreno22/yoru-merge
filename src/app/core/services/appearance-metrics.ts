@@ -36,6 +36,15 @@ const PAD = {
   historyRow: 16,
   /** Pure spacing, with no text line under it. */
   panel: 16,
+  // Controls are budgeted like the bars that host them, and each budget stays
+  // under its host's: `control` under `toolbar`, `controlSm` under `panelHead`
+  // and `fileRow`, `controlXs` under every row, `railItem` under `rail`. That
+  // gap is the air around the control, and it is what keeps a button from
+  // outgrowing its bar when density shrinks the bar.
+  control: 17,
+  controlSm: 13,
+  controlXs: 9,
+  railItem: 25,
 } as const;
 
 const DENSITY_PAD_SCALE: Record<UiDensity, number> = {
@@ -57,6 +66,13 @@ export interface AppearanceMetrics {
   railWidth: number;
   statusbarHeight: number;
   panelPad: number;
+  /** Buttons and inputs in the toolbar, dialogs and forms. */
+  controlHeight: number;
+  /** Buttons and segmented controls inside a panel head. */
+  controlSmHeight: number;
+  /** Icon buttons and filters inside a row or a dense strip. */
+  controlXsHeight: number;
+  railItemSize: number;
 }
 
 export interface AppearanceInput {
@@ -97,6 +113,10 @@ export function computeMetrics(input: AppearanceInput): AppearanceMetrics {
     railWidth: height(PAD.rail),
     statusbarHeight: height(PAD.statusbar),
     panelPad: Math.round(PAD.panel * padScale),
+    controlHeight: height(PAD.control),
+    controlSmHeight: height(PAD.controlSm),
+    controlXsHeight: height(PAD.controlXs),
+    railItemSize: height(PAD.railItem),
   };
 }
 
@@ -125,6 +145,10 @@ export function appearanceTokens(input: AppearanceTokenInput): Record<string, st
     '--toolbar-h': `${metrics.toolbarHeight}px`,
     '--rail-w': `${metrics.railWidth}px`,
     '--statusbar-h': `${metrics.statusbarHeight}px`,
+    '--control-h': `${metrics.controlHeight}px`,
+    '--control-h-sm': `${metrics.controlSmHeight}px`,
+    '--control-h-xs': `${metrics.controlXsHeight}px`,
+    '--rail-item': `${metrics.railItemSize}px`,
     '--code-tab-width': `${input.codeTabWidth}`,
     // `calt` carries JetBrains Mono's ligatures; switching both off is what
     // "no ligatures" means for a variable font that ships them on by default.

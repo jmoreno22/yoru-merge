@@ -128,7 +128,7 @@
 }
 
 .file-filter {
-  height: 24px;
+  height: var(--control-h-xs);
   min-width: 0;
   flex: 1 1 auto;
   border: 1px solid var(--app-border);
@@ -157,8 +157,8 @@
 
 .mode-button {
   display: inline-flex;
-  height: 24px;
-  width: 24px;
+  height: var(--control-h-xs);
+  width: var(--control-h-xs);
   flex-shrink: 0;
   align-items: center;
   justify-content: center;

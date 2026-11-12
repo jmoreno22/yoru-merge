@@ -23,12 +23,12 @@
     [disabled]="remoteDisabled()"
     (click)="onFetchMenu($event)"
     data-testid="toolbar-fetch-menu"
-    class="flex h-8 w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+    class="flex h-[var(--control-h)] w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
   >
     <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
   </button>
 
-  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+  <span class="h-[calc(var(--control-h)*0.625)] w-px bg-[var(--app-border)]" aria-hidden="true"></span>
 
   <yoru-button
     variant="ghost"
@@ -46,12 +46,12 @@
     [disabled]="remoteDisabled()"
     (click)="onPullMenu($event)"
     data-testid="toolbar-pull-menu"
-    class="flex h-8 w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+    class="flex h-[var(--control-h)] w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
   >
     <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
   </button>
 
-  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+  <span class="h-[calc(var(--control-h)*0.625)] w-px bg-[var(--app-border)]" aria-hidden="true"></span>
 
   <yoru-button
     variant="ghost"
@@ -69,7 +69,7 @@
     [disabled]="remoteDisabled()"
     (click)="onPushMenu($event)"
     data-testid="toolbar-push-menu"
-    class="flex h-8 w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+    class="flex h-[var(--control-h)] w-6 items-center justify-center text-[var(--app-text-muted)] transition-colors hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
   >
     <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
   </button>
@@ -91,7 +91,7 @@
     Branch
   </yoru-button>
 
-  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+  <span class="h-[calc(var(--control-h)*0.625)] w-px bg-[var(--app-border)]" aria-hidden="true"></span>
 
   <yoru-button
     variant="ghost"
@@ -103,7 +103,7 @@
     Merge
   </yoru-button>
 
-  <span class="h-5 w-px bg-[var(--app-border)]" aria-hidden="true"></span>
+  <span class="h-[calc(var(--control-h)*0.625)] w-px bg-[var(--app-border)]" aria-hidden="true"></span>
 
   <yoru-button
     variant="ghost"
@@ -120,7 +120,7 @@
   type="button"
   (click)="onOpenPalette()"
   data-testid="toolbar-command-bar"
-  class="mx-auto flex h-8 w-full max-w-100 min-w-0 items-center gap-2 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 text-left transition-colors hover:border-accent/50"
+  class="mx-auto flex h-[var(--control-h)] w-full max-w-100 min-w-0 items-center gap-2 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 text-left transition-colors hover:border-accent/50"
 >
   <ng-icon
     name="lucideSearch"
@@ -128,7 +128,7 @@
     class="shrink-0 text-[var(--app-text-muted)]"
     aria-hidden="true"
   />
-  <span class="min-w-0 flex-1 truncate text-xs text-[var(--app-text-muted)]">
+  <span class="min-w-0 flex-1 truncate text-y-md text-[var(--app-text-muted)]">
     Search commands, branches and commits
   </span>
   <yoru-kbd combo="mod+k" />
@@ -146,7 +146,7 @@
           : 'Current branch ' + branch + ' — copy name'
       "
       data-testid="toolbar-branch-chip"
-      class="flex h-8 max-w-72 items-center gap-1.5 rounded-sm border border-[var(--app-border)] px-2 font-mono text-xs transition-colors hover:border-accent/50"
+      class="flex h-[var(--control-h)] max-w-72 items-center gap-1.5 rounded-sm border border-[var(--app-border)] px-2 font-mono text-y-md transition-colors hover:border-accent/50"
     >
       <ng-icon
         name="lucideGitBranch"
@@ -186,7 +186,7 @@
       [yoruTooltip]="pill.aria"
       (click)="onUpdate()"
       data-testid="toolbar-update"
-      class="flex h-8 max-w-56 shrink-0 items-center gap-1.5 rounded-sm border border-accent/40 bg-accent/10 px-2 text-xs text-accent-ink transition-colors hover:border-accent hover:bg-accent/20"
+      class="flex h-[var(--control-h)] max-w-56 shrink-0 items-center gap-1.5 rounded-sm border border-accent/40 bg-accent/10 px-2 text-y-md text-accent-ink transition-colors hover:border-accent hover:bg-accent/20"
     >
       <ng-icon [name]="pill.icon" size="14px" class="shrink-0" aria-hidden="true" />
       <span class="truncate">{{ pill.label }}</span>
@@ -201,7 +201,7 @@
     [yoruTooltip]="'Notifications'"
     (click)="onBell($event)"
     data-testid="toolbar-bell"
-    class="relative flex size-8 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    class="relative flex size-[var(--control-h)] items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
   >
     <ng-icon name="lucideBell" size="16px" aria-hidden="true" />
     @if (unread() > 0) {
@@ -218,7 +218,7 @@
     [yoruTooltip]="'Settings'"
     (click)="onOpenSettings()"
     data-testid="toolbar-settings"
-    class="flex size-8 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    class="flex size-[var(--control-h)] items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
   >
     <ng-icon name="lucideSettings2" size="16px" aria-hidden="true" />
   </button>
@@ -229,7 +229,7 @@
     [yoruTooltip]="themeLabel()"
     (click)="onToggleTheme()"
     data-testid="toolbar-theme"
-    class="flex size-8 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    class="flex size-[var(--control-h)] items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
   >
     <ng-icon [name]="themeIcon()" size="16px" aria-hidden="true" />
   </button>

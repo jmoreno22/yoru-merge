@@ -138,7 +138,7 @@
                   [attr.aria-label]="'More actions for ' + entry.name"
                   [attr.data-testid]="'repo-recent-menu-' + entry.name"
                   (click)="onRecentMenu($event, entry)"
-                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:opacity-100"
+                  class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:opacity-100"
                 >
                   <ng-icon name="lucideMoreHorizontal" size="14px" aria-hidden="true" />
                 </button>
@@ -148,7 +148,7 @@
                   [attr.aria-label]="'Remove ' + entry.name + ' from recents'"
                   [attr.data-testid]="'repo-recent-remove-' + entry.name"
                   (click)="onRemoveRecent(entry, $event)"
-                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-git-deleted focus-visible:opacity-100"
+                  class="flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[var(--app-surface)] hover:text-git-deleted focus-visible:opacity-100"
                 >
                   <ng-icon name="lucideX" size="14px" aria-hidden="true" />
                 </button>

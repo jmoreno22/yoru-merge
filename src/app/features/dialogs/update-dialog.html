@@ -3,7 +3,7 @@
     <!-- One projectable root: a branch with several of them lands outside the
          dialog body altogether. -->
     <ng-container dialog-body>
-      <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+      <div class="flex flex-wrap items-center gap-2 font-mono text-y-md">
         <span class="text-[var(--app-text-muted)]" data-testid="update-current-version">
           {{ update.currentVersion }}
         </span>
@@ -32,7 +32,7 @@
                nothing in the app renders untrusted HTML. -->
           <pre
             data-testid="update-notes"
-            class="neon-scroll max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-xs leading-[1.6] text-[var(--app-text)]"
+            class="neon-scroll max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-y-md leading-[1.6] text-[var(--app-text)]"
           >{{ update.notes }}</pre>
         </div>
       }
@@ -46,12 +46,12 @@
             >
               <span class="block h-full bg-accent" [style.width.%]="done"></span>
             </span>
-            <span class="font-mono text-xs text-[var(--app-text-muted)]">
+            <span class="font-mono text-y-md text-[var(--app-text-muted)]">
               Downloading… {{ done }}%
             </span>
           } @else {
             <span
-              class="flex items-center gap-2 font-mono text-xs text-[var(--app-text-muted)]"
+              class="flex items-center gap-2 font-mono text-y-md text-[var(--app-text-muted)]"
             >
               <yoru-spinner [size]="12" label="Downloading update" />
               Downloading…

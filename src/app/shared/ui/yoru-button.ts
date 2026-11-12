@@ -19,8 +19,8 @@ const VARIANTS: Readonly<Record<ButtonVariant, string>> = {
 };
 
 const SIZES: Readonly<Record<ButtonSize, string>> = {
-  sm: 'h-7 gap-1.5 px-2.5 text-xs',
-  md: 'h-8 gap-2 px-3 text-y-base',
+  sm: 'h-[var(--control-h-sm)] gap-1.5 px-2.5 text-y-md',
+  md: 'h-[var(--control-h)] gap-2 px-3 text-y-base',
 };
 
 /**

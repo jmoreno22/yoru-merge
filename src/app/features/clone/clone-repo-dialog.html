@@ -22,7 +22,7 @@
       [attr.aria-invalid]="urlValid() ? null : 'true'"
       (input)="onUrlInput($event)"
       placeholder="https://github.com/owner/repo.git"
-      class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
+      class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
     />
   </yoru-field>
 
@@ -37,7 +37,7 @@
         [disabled]="cloning()"
         (input)="onParentInput($event)"
         placeholder="Parent folder"
-        class="h-8 min-w-0 flex-1 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
+        class="h-[var(--control-h)] min-w-0 flex-1 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
       />
       <yoru-button
         size="sm"
@@ -62,7 +62,7 @@
       [disabled]="cloning()"
       (input)="onFolderInput($event)"
       placeholder="repo"
-      class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
+      class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
     />
   </yoru-field>
 
@@ -101,7 +101,7 @@
               [disabled]="cloning()"
               (input)="onDepthInput($event)"
               placeholder="full"
-              class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
+              class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
             />
           </yoru-field>
           <yoru-field label="Branch" hint="Blank for the default branch">
@@ -114,7 +114,7 @@
               [disabled]="cloning()"
               (input)="onBranchInput($event)"
               placeholder="main"
-              class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
+              class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none disabled:opacity-50"
             />
           </yoru-field>
         </div>

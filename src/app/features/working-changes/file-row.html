@@ -57,7 +57,7 @@
       [attr.aria-label]="openLargeLabel()"
       [attr.data-testid]="openLargeTestId()"
       [yoruTooltip]="shortcuts.hint('Open in diff workspace', 'diff-workspace.open')"
-      class="inline-flex h-6 w-6 items-center justify-center rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+      class="inline-flex size-[var(--control-h-xs)] items-center justify-center rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
     >
       <ng-icon name="lucideMaximize2" size="14px" aria-hidden="true" />
     </button>
@@ -72,7 +72,7 @@
       type="button"
       (click)="onResolve($event)"
       [attr.aria-label]="'Resolve ' + row().name"
-      class="inline-flex h-6 items-center gap-1 rounded-xs border border-sakura-400/50 bg-sakura-400/10 px-1.5 font-mono text-y-xs uppercase tracking-[0.1em] text-[var(--app-conflict-text)] transition-colors hover:bg-sakura-400/20"
+      class="inline-flex h-[var(--control-h-xs)] items-center gap-1 rounded-xs border border-sakura-400/50 bg-sakura-400/10 px-1.5 font-mono text-y-xs uppercase tracking-[0.1em] text-[var(--app-conflict-text)] transition-colors hover:bg-sakura-400/20"
     >
       <ng-icon name="lucideGitMerge" size="12px" aria-hidden="true" />
       Resolve
@@ -82,7 +82,7 @@
     type="button"
     (click)="onPrimary($event)"
     [attr.aria-label]="primaryLabel()"
-    class="inline-flex h-6 w-6 items-center justify-center rounded-xs border transition-colors"
+    class="inline-flex size-[var(--control-h-xs)] items-center justify-center rounded-xs border transition-colors"
     [class]="primaryClass()"
   >
     <ng-icon [name]="primaryIcon()" size="14px" aria-hidden="true" />
@@ -92,7 +92,7 @@
       type="button"
       (click)="onDiscard($event)"
       [attr.aria-label]="discardLabel()"
-      class="inline-flex h-6 w-6 items-center justify-center rounded-xs border border-git-deleted/40 bg-git-deleted/5 text-git-deleted transition-colors hover:bg-git-deleted/20"
+      class="inline-flex size-[var(--control-h-xs)] items-center justify-center rounded-xs border border-git-deleted/40 bg-git-deleted/5 text-git-deleted transition-colors hover:bg-git-deleted/20"
     >
       <ng-icon
         [name]="untracked() ? 'lucideTrash2' : 'lucideUndo2'"

@@ -43,7 +43,7 @@
                   aria-hidden="true"
                   class="shrink-0 text-[var(--app-conflict-text)]"
                 />
-                <span class="truncate font-mono text-xs" [title]="entry.path">
+                <span class="truncate font-mono text-y-md" [title]="entry.path">
                   {{ entry.path }}
                 </span>
                 <span
@@ -67,7 +67,7 @@
         <header
           class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-3 border-b border-[var(--app-border)]"
         >
-          <span class="truncate font-mono text-xs text-[var(--app-text)]" [title]="path">
+          <span class="truncate font-mono text-y-md text-[var(--app-text)]" [title]="path">
             {{ path }}
           </span>
           <span
@@ -134,7 +134,7 @@
                 </yoru-button>
               </div>
               <pre
-                class="neon-scroll max-h-40 min-h-16 overflow-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs text-[var(--app-text)]"
+                class="neon-scroll max-h-40 min-h-16 overflow-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-y-md leading-[1.333] text-[var(--app-text)]"
                 data-testid="pane-ours"
               >{{ oursText() }}</pre>
             </div>
@@ -163,7 +163,7 @@
                 </yoru-button>
               </div>
               <pre
-                class="neon-scroll max-h-40 min-h-16 overflow-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs text-[var(--app-text)]"
+                class="neon-scroll max-h-40 min-h-16 overflow-auto rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-y-md leading-[1.333] text-[var(--app-text)]"
                 data-testid="pane-theirs"
               >{{ theirsText() }}</pre>
             </div>
@@ -227,7 +227,7 @@
               data-testid="resolver-result"
               [value]="text()"
               (input)="onTextInput($event)"
-              class="neon-scroll min-h-40 flex-1 resize-none rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-xs leading-relaxed text-[var(--app-text)] focus:border-accent focus:outline-none"
+              class="neon-scroll min-h-40 flex-1 resize-none rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-2 font-mono text-y-md leading-relaxed text-[var(--app-text)] focus:border-accent focus:outline-none"
             ></textarea>
           </label>
 

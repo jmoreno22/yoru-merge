@@ -312,6 +312,13 @@
   --rail-w: 48px;
   --statusbar-h: 26px;
 
+  /* Controls. Never give a button or an input a fixed height: a control that
+   * does not shrink with its bar overflows it at compact density. */
+  --control-h: 32px;
+  --control-h-sm: 28px;
+  --control-h-xs: 24px;
+  --rail-item: 40px;
+
   /* Code rendering. */
   --code-tab-width: 2;
   --code-font-features: "calt" 0, "liga" 0;
@@ -455,7 +462,15 @@ html {
 :focus-visible {
   outline: 2px solid var(--app-accent);
   outline-offset: 2px;
-  border-radius: 4px;
+}
+
+/* The ring's default corner, for an element that has no radius of its own. In
+ * `base` on purpose: unlayered, it would outrank every radius utility and
+ * reshape a pill or a button the moment the keyboard lands on it. */
+@layer base {
+  :focus-visible {
+    border-radius: 4px;
+  }
 }
 
 /* ── Code surfaces ────────────────────────────────────────────────────
@@ -520,10 +535,10 @@ html {
 @keyframes yoru-pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgb(0 229 255 / 0);
+    box-shadow: 0 0 0 0 transparent;
   }
   50% {
-    box-shadow: 0 0 8px 0 rgb(0 229 255 / 0.45);
+    box-shadow: 0 0 8px 0 color-mix(in srgb, var(--app-accent) 45%, transparent);
   }
 }
 
@@ -583,17 +598,29 @@ html {
    * design intent is "neon but not harsh" during long sessions. */
   background-color: color-mix(in srgb, var(--app-accent) 55%, var(--app-border));
   background-clip: padding-box;
-  box-shadow: 0 0 6px rgb(0 229 255 / 0.3);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--app-accent) 30%, transparent);
 }
 
 .neon-scroll::-webkit-scrollbar-thumb:active {
   background-color: color-mix(in srgb, var(--app-accent) 70%, var(--app-border));
   background-clip: padding-box;
-  box-shadow: 0 0 6px rgb(0 229 255 / 0.3);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--app-accent) 30%, transparent);
 }
 
 .neon-scroll::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* ── `.fit-rows` — rows of a virtual list truncate instead of widening it ──
+ *
+ * The CDK positions its content wrapper absolutely, so its width is
+ * shrink-to-fit: one long name makes the wrapper as wide as that name, the
+ * list scrolls sideways and nothing ever reaches its ellipsis. Apply it to the
+ * viewport of any list whose rows are meant to truncate; leave it off where a
+ * row has to be free to grow (the blame viewer).
+ */
+.fit-rows .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
 }
 
 /* ── Drag-and-drop affordances ────────────────────────────────────────
@@ -612,7 +639,7 @@ html {
 .drag-over {
   box-shadow:
     inset 0 0 0 1px var(--app-accent),
-    0 0 12px 0 rgb(0 229 255 / 0.35);
+    0 0 12px 0 color-mix(in srgb, var(--app-accent) 35%, transparent);
   background-color: color-mix(
     in srgb,
     var(--app-accent) 8%,

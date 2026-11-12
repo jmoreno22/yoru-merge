@@ -39,7 +39,7 @@
       [value]="filter()"
       (input)="onFilter($event)"
       (keydown.arrowdown)="focusFirstRow()"
-      class="h-7 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] pl-6 pr-2 font-mono text-y-sm text-[var(--app-text)] transition-colors placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+      class="h-[var(--control-h-sm)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface-raised)] pl-6 pr-2 font-mono text-y-sm text-[var(--app-text)] transition-colors placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
     />
   </div>
 
@@ -65,7 +65,7 @@
       role="tree"
       aria-label="Repository refs"
       data-testid="refs-tree"
-      class="neon-scroll min-h-0 flex-1"
+      class="neon-scroll fit-rows min-h-0 flex-1"
       [itemSize]="rowHeight()"
       (keydown)="onKeydown($event)"
     >
@@ -82,7 +82,7 @@
           [tabindex]="node.id === activeId() ? 0 : -1"
           [title]="node.title"
           [class]="node.rowClass"
-          [style.padding-left.px]="node.indent"
+          [style.padding-left.px]="node.kind === 'section' ? null : node.indent"
           [appDragDrop]="node.payload"
           (focus)="onRowFocus(node)"
           (click)="onClick(node, $event)"

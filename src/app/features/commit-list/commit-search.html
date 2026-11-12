@@ -15,7 +15,7 @@
   [attr.aria-busy]="isSearching()"
   [value]="query()"
   (input)="onInput($any($event.target).value)"
-  class="h-[24px] min-w-0 flex-1 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
+  class="h-[var(--control-h-xs)] min-w-0 flex-1 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-md text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
 />
 @if (isActive()) {
   <span
@@ -35,7 +35,7 @@
     data-testid="commit-search-clear"
     aria-label="Clear search"
     title="Clear search (Esc)"
-    class="inline-flex size-6 shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
   >
     <ng-icon name="lucideX" size="14px" aria-hidden="true" />
   </button>

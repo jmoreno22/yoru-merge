@@ -14,7 +14,7 @@
       [value]="query()"
       (input)="onQueryInput($event)"
       placeholder="Search local and remote branches"
-      class="h-8 w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 text-y-base text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
+      class="h-[var(--control-h)] w-full rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 text-y-base text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] focus:border-accent focus:outline-none"
     />
   </yoru-field>
 
@@ -51,7 +51,7 @@
                 aria-hidden="true"
                 class="shrink-0"
               />
-              <span class="truncate font-mono text-xs">{{ branch.name }}</span>
+              <span class="truncate font-mono text-y-md">{{ branch.name }}</span>
               @if (branch.is_remote) {
                 <span
                   class="ml-auto shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-faint)]"

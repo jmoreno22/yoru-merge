@@ -20,7 +20,7 @@
         History
       </span>
       <span
-        class="min-w-0 truncate font-mono text-xs text-[var(--app-text)]"
+        class="min-w-0 truncate font-mono text-y-md text-[var(--app-text)]"
         [title]="currentFile"
       >
         {{ currentFile }}
@@ -35,7 +35,7 @@
       <span class="flex-1"></span>
       <button
         type="button"
-        class="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+        class="inline-flex size-[var(--control-h-xs)] shrink-0 items-center justify-center rounded-xs text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
         data-testid="file-history-close"
         aria-label="Close file history (Escape)"
         title="Close (Escape)"
@@ -47,7 +47,7 @@
 
     <button
       type="button"
-      class="flex h-8 shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3 text-left text-xs transition-colors hover:bg-[var(--app-panel)]"
+      class="flex h-[var(--control-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3 text-left text-y-md transition-colors hover:bg-[var(--app-panel)]"
       [class]="
         selectedSha() === null
           ? 'text-accent-ink'
@@ -125,7 +125,7 @@
               {{ row.when }}
             </span>
           </div>
-          <div class="truncate text-xs text-[var(--app-text)]">
+          <div class="truncate text-y-md text-[var(--app-text)]">
             {{ row.commit.message }}
           </div>
         </div>

@@ -2,7 +2,7 @@
   role="radiogroup"
   [attr.aria-label]="ariaLabel() || null"
   (keydown)="onKeydown($event)"
-  class="inline-flex items-center gap-0.5 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-0.5"
+  class="inline-flex h-[var(--control-h-sm)] items-stretch gap-0.5 rounded-sm border border-[var(--app-border)] bg-[var(--app-surface)] p-0.5"
 >
   @for (option of options(); track option.value) {
     <button
@@ -12,7 +12,7 @@
       [attr.aria-checked]="option.value === value()"
       [tabindex]="option.value === value() ? 0 : -1"
       (click)="select(option.value)"
-      class="inline-flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-xs transition-colors"
+      class="inline-flex items-center gap-1.5 rounded-[7px] px-2 text-y-md transition-colors"
       [class]="
         option.value === value()
           ? 'bg-accent/15 text-accent-ink'

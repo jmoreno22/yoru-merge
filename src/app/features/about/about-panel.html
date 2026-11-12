@@ -18,23 +18,23 @@
 
 <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-y-base">
   <dt class="text-[var(--app-text-muted)]">Version</dt>
-  <dd class="font-mono text-xs text-[var(--app-text)]" data-testid="about-app-version">
+  <dd class="font-mono text-y-md text-[var(--app-text)]" data-testid="about-app-version">
     {{ appVersion() }}
   </dd>
 
   <dt class="text-[var(--app-text-muted)]">Git</dt>
-  <dd class="font-mono text-xs text-[var(--app-text)]" data-testid="about-git-version">
+  <dd class="font-mono text-y-md text-[var(--app-text)]" data-testid="about-git-version">
     {{ gitVersion() }}
   </dd>
 
   <dt class="text-[var(--app-text-muted)]">Platform</dt>
-  <dd class="font-mono text-xs text-[var(--app-text)]">{{ platform() }}</dd>
+  <dd class="font-mono text-y-md text-[var(--app-text)]">{{ platform() }}</dd>
 
   <dt class="text-[var(--app-text-muted)]">Licence</dt>
-  <dd class="font-mono text-xs text-[var(--app-text)]">MIT</dd>
+  <dd class="font-mono text-y-md text-[var(--app-text)]">MIT</dd>
 
   <dt class="text-[var(--app-text-muted)]">Design</dt>
-  <dd class="font-mono text-xs text-[var(--app-text)]">DESIGN.md</dd>
+  <dd class="font-mono text-y-md text-[var(--app-text)]">DESIGN.md</dd>
 </dl>
 
 <div class="flex flex-col gap-2">
@@ -66,7 +66,7 @@
        announced reliably. -->
   <p
     role="status"
-    class="min-h-4 text-xs text-[var(--app-text-muted)]"
+    class="min-h-4 text-y-md text-[var(--app-text-muted)]"
     data-testid="about-update-status"
   >
     {{ updateStatus() }}

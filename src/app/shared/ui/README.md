@@ -98,8 +98,8 @@ The menu also closes on outside click, scroll, resize and window blur.
 
 ## yoru-button
 
-`variant`: `primary | secondary | ghost | danger` · `size`: `sm` (28 px) /
-`md` (32 px) · `icon?: YoruIconName` · `loading` · `disabled` ·
+`variant`: `primary | secondary | ghost | danger` · `size`: `sm` (`--control-h-sm`) /
+`md` (`--control-h`), both density-derived · `icon?: YoruIconName` · `loading` · `disabled` ·
 `type: 'button' | 'submit' | 'reset'`. The label is projected content.
 
 ```html

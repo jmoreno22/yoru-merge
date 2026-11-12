@@ -82,7 +82,7 @@ export class FileRowItem {
   protected readonly hostClass = computed(() => {
     const base =
       'group flex h-[var(--file-row-h)] items-center gap-2 border-l-2 pr-1 ' +
-      'text-xs cursor-pointer select-none outline-none';
+      'text-y-md cursor-pointer select-none outline-none';
     const fill = this.selected()
       ? 'bg-[var(--app-panel)]'
       : 'hover:bg-[var(--app-panel)]/60';

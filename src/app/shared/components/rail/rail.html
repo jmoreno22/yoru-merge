@@ -12,7 +12,7 @@
       (click)="select(item)"
       [attr.data-rail-item]="item.id"
       [attr.data-active]="isActive(item) ? 'true' : null"
-      class="relative flex size-10 items-center justify-center rounded-sm transition-colors"
+      class="relative flex size-[var(--rail-item)] items-center justify-center rounded-sm transition-colors"
       [class.text-accent-ink]="isActive(item)"
       [class.bg-[var(--app-panel)]]="isActive(item)"
       [class.text-[var(--app-text-muted)]]="!isActive(item)"
@@ -45,7 +45,7 @@
   [yoruTooltip]="'Settings'"
   (click)="openSettings()"
   data-testid="rail-settings"
-  class="flex size-10 items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+  class="flex size-[var(--rail-item)] items-center justify-center rounded-sm text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
 >
   <ng-icon name="lucideSettings2" size="18px" aria-hidden="true" />
 </button>

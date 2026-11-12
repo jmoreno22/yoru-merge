@@ -25,7 +25,7 @@
       @if (row.kind === 'folder') {
         <div
           role="option"
-          class="flex h-[var(--file-row-h)] cursor-pointer select-none items-center gap-1.5 border-l-2 border-transparent pr-2 text-xs outline-none hover:bg-[var(--app-panel)]/60"
+          class="flex h-[var(--file-row-h)] cursor-pointer select-none items-center gap-1.5 border-l-2 border-transparent pr-2 text-y-md outline-none hover:bg-[var(--app-panel)]/60"
           [attr.data-path]="row.path"
           [attr.tabindex]="row.path === tabbablePath() ? 0 : -1"
           [attr.aria-expanded]="!row.collapsed"

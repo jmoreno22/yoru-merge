@@ -23,7 +23,7 @@
     (input)="onScopeInput($event)"
     placeholder="scope"
     aria-label="Commit scope"
-    class="h-7 w-32 min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-xs text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+    class="h-[var(--control-h-sm)] w-32 min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-md text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
   />
   <datalist id="commit-scope-options">
     @for (option of scopeOptions(); track option) {
@@ -36,7 +36,7 @@
     (click)="breaking.set(!breaking())"
     [attr.aria-pressed]="breaking()"
     aria-label="Breaking change"
-    class="h-7 rounded-xs border px-2 font-mono text-y-xs uppercase tracking-[0.12em] transition-colors"
+    class="h-[var(--control-h-sm)] rounded-xs border px-2 font-mono text-y-xs uppercase tracking-[0.12em] transition-colors"
     [class]="
       breaking()
         ? 'border-git-deleted/60 bg-git-deleted/15 text-git-deleted'
@@ -67,7 +67,7 @@
     (input)="onSubjectInput($event)"
     placeholder="Summary"
     aria-label="Commit subject"
-    class="h-8 w-full min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+    class="h-[var(--control-h)] w-full min-w-0 rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
   />
   <!-- 0–72 ruler with the 50-character tick git recommends. -->
   <div
@@ -92,7 +92,7 @@
   rows="2"
   placeholder="Body — wrap at 72 columns"
   aria-label="Commit body"
-  class="neon-scroll w-full resize-none rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 font-mono text-xs leading-relaxed text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+  class="neon-scroll w-full resize-none rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 font-mono text-y-md leading-relaxed text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
 ></textarea>
 
 <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -164,7 +164,7 @@
       [attr.aria-label]="draftLabel()"
       [title]="draftLabel()"
       [attr.aria-busy]="drafting()"
-      class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-accent disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)] disabled:hover:bg-transparent"
+      class="inline-flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-accent disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)] disabled:hover:bg-transparent"
     >
       <ng-icon
         [name]="drafting() ? 'lucideLoaderCircle' : 'lucideSparkles'"
@@ -181,7 +181,7 @@
     (click)="openRecentMenu($event)"
     [disabled]="!hasRecent()"
     aria-label="Recent commit messages"
-    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
+    class="inline-flex size-[var(--control-h-sm)] shrink-0 items-center justify-center rounded-xs border border-[var(--app-border)] text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-panel)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)]"
   >
     <ng-icon name="lucideHistory" size="14px" aria-hidden="true" />
   </button>
@@ -202,7 +202,7 @@
       (click)="openCommitMenu($event)"
       [disabled]="!readiness().canCommit"
       aria-label="More commit actions"
-      class="inline-flex h-7 w-6 items-center justify-center rounded-sm bg-accent text-yoru-950 transition-colors hover:bg-moon-50 disabled:cursor-not-allowed disabled:opacity-45"
+      class="inline-flex h-[var(--control-h-sm)] w-6 items-center justify-center rounded-sm bg-accent text-yoru-950 transition-colors hover:bg-moon-50 disabled:cursor-not-allowed disabled:opacity-45"
     >
       <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
     </button>
@@ -224,7 +224,7 @@
       [value]="tagName()"
       (input)="onTagNameInput($event)"
       placeholder="v1.0.0"
-      class="h-8 w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+      class="h-[var(--control-h)] w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
     />
   </label>
 
@@ -238,7 +238,7 @@
       [value]="tagMessage()"
       (input)="onTagMessageInput($event)"
       placeholder="Leave empty for a lightweight tag"
-      class="h-8 w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
+      class="h-[var(--control-h)] w-full rounded-xs border border-[var(--app-border)] bg-[var(--app-surface)] px-2 font-mono text-y-base text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-faint)] focus:border-accent/60"
     />
   </label>
 

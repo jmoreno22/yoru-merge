@@ -18,7 +18,7 @@
           [tabindex]="section() === item.id ? 0 : -1"
           [attr.data-testid]="'settings-tab-' + item.id"
           (click)="select(item.id)"
-          class="flex h-8 items-center rounded-sm px-2.5 text-left text-y-base transition-colors"
+          class="flex h-[var(--control-h)] items-center rounded-sm px-2.5 text-left text-y-base transition-colors"
           [class]="
             section() === item.id
               ? 'bg-accent/12 text-accent-ink'
@@ -269,7 +269,7 @@
                   [attr.data-testid]="'settings-accent-' + option.id"
                   [title]="option.label"
                   (click)="onAccent(option.id)"
-                  class="flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors"
+                  class="flex size-[var(--control-h-sm)] items-center justify-center rounded-full border-2 transition-colors"
                   [class]="
                     prefs.accent() === option.id
                       ? 'border-[var(--app-text)]'
@@ -527,7 +527,7 @@
             hint="Detected from the origin URL. GitHub, GitLab and Bitbucket are supported."
           >
             <p
-              class="font-mono text-xs text-[var(--app-text-muted)]"
+              class="font-mono text-y-md text-[var(--app-text-muted)]"
               data-testid="settings-remote-provider"
             >
               {{ remoteProvider() }}

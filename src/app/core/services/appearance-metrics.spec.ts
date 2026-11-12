@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { appearanceTokens, computeMetrics } from './appearance-metrics';
-import { DEFAULT_PREFERENCES } from './preferences-schema';
+import {
+  DEFAULT_PREFERENCES,
+  MAX_UI_FONT_SIZE,
+  MIN_UI_FONT_SIZE,
+} from './preferences-schema';
 
 const defaults = {
   uiFontSize: DEFAULT_PREFERENCES.uiFontSize,
@@ -27,7 +31,44 @@ describe('computeMetrics', () => {
       railWidth: 48,
       statusbarHeight: 26,
       panelPad: 16,
+      controlHeight: 32,
+      controlSmHeight: 28,
+      controlXsHeight: 24,
+      railItemSize: 40,
     });
+  });
+
+  /**
+   * A control with a hardcoded height overflows the bar that hosts it as soon
+   * as the bar shrinks: at compact / 11px the toolbar is 32px and a 32px button
+   * inside a bordered group needs 34. Deriving both from the same arithmetic is
+   * what makes that impossible, and this is the proof for the whole range.
+   */
+  it('fits every control inside the bar or row that hosts it', () => {
+    for (
+      let uiFontSize = MIN_UI_FONT_SIZE;
+      uiFontSize <= MAX_UI_FONT_SIZE;
+      uiFontSize++
+    ) {
+      for (const density of ['compact', 'comfortable', 'relaxed'] as const) {
+        const m = computeMetrics({ ...defaults, uiFontSize, density });
+        const where = `${density} / ${uiFontSize}px`;
+
+        // Toolbar groups carry a 1px border on each side of the control.
+        expect(m.controlHeight + 2, where).toBeLessThanOrEqual(m.toolbarHeight);
+        // The rail's own right border is inside its width.
+        expect(m.railItemSize + 1, where).toBeLessThanOrEqual(m.railWidth);
+        // A panel head's bottom border is inside its height.
+        expect(m.controlSmHeight + 1, where).toBeLessThanOrEqual(m.panelHeadHeight);
+        expect(m.controlSmHeight, where).toBeLessThanOrEqual(m.fileRowHeight);
+        expect(m.controlXsHeight, where).toBeLessThanOrEqual(m.fileRowHeight);
+        expect(m.controlXsHeight, where).toBeLessThanOrEqual(m.refRowHeight);
+        expect(m.controlXsHeight, where).toBeLessThanOrEqual(m.rowHeight);
+
+        expect(m.controlXsHeight, where).toBeLessThan(m.controlSmHeight);
+        expect(m.controlSmHeight, where).toBeLessThan(m.controlHeight);
+      }
+    }
   });
 
   it('grows every UI height with the UI type size', () => {
@@ -90,6 +131,10 @@ describe('appearanceTokens', () => {
     expect(tokens['--ui-font-size']).toBe('13px');
     expect(tokens['--mono-font-size']).toBe('12px');
     expect(tokens['--code-tab-width']).toBe('2');
+    expect(tokens['--control-h']).toBe('32px');
+    expect(tokens['--control-h-sm']).toBe('28px');
+    expect(tokens['--control-h-xs']).toBe('24px');
+    expect(tokens['--rail-item']).toBe('40px');
   });
 
   it('switches the ligature feature flags off by default', () => {

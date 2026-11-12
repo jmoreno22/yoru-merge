@@ -323,6 +323,10 @@ type size are defined only by that function.
 | Panel header | `--panel-head-h` | `PAD.panelHead` |
 | Panel padding | `--panel-pad` | `PAD.panel` (pure spacing, no text line) |
 | Status bar | `--statusbar-h` | `PAD.statusbar` |
+| Control — toolbar, dialogs, forms | `--control-h` | `PAD.control` |
+| Control — inside a panel head | `--control-h-sm` | `PAD.controlSm` |
+| Control — inside a row or a dense strip | `--control-h-xs` | `PAD.controlXs` |
+| Rail item | `--rail-item` | `PAD.railItem` |
 
 Each is `round(textRatio × typeSize + PAD.<surface> × densityScale)`, with
 `DENSITY_PAD_SCALE` at `0.6 / 1 / 1.5` for compact / comfortable / relaxed —
@@ -330,8 +334,24 @@ density means «how much air around the text», never «how big is the text».
 `--panel-pad` is the exception: pure spacing, so it is
 `round(PAD.panel × densityScale)`, with no text term.
 
+**Controls are sized by the same arithmetic as the bars that host them.** A
+button, an input or an icon button is one line of text plus a padding budget,
+and each budget is smaller than its host's: `control` under `toolbar`,
+`controlSm` under `panelHead` and `fileRow`, `controlXs` under every row,
+`railItem` under `rail`. The difference is the air around the control, and it
+scales with density like everything else. A control therefore **never carries a
+fixed height** — `h-8`, `h-7` or `size-10` on a button is a defect, because the
+bar shrinks at compact and the button does not: at compact / 11 px a 32 px
+button sat in a 32 px toolbar and a 40 px rail item in a 32 px rail.
+`yoru-button` is `--control-h` at `md` and `--control-h-sm` at `sm`;
+`yoru-segmented` is `--control-h-sm`; an icon button or a filter inside a row
+or a strip is `--control-h-xs`. `appearance-metrics.spec.ts` asserts the fit
+for every density and every type size the preference allows.
+
 Type scale: body 13 px, mono 12 px, headings 15 px, labels 10.5 px uppercase
-with `tracking-[0.12em]`.
+with `tracking-[0.12em]`. Those are the `text-y-*` steps at the default type
+size; each is a ratio of `--ui-font-size`. Tailwind's own `text-xs` / `text-sm`
+are fixed `rem` sizes that ignore the type-size preference — never use them.
 
 **Compact density.** Density is applied as inline custom properties on
 `<html>`: `AppearanceService` derives every metric from the type size and the
@@ -452,10 +472,12 @@ Use vertical separators sparingly. Prefer translucent borders and layered surfac
 
 ### Background treatment
 
-Use one atmospheric background layer at app level:
+Use one atmospheric background layer at app level. The top-right glow is the
+accent (`--app-accent`), so it follows the accent preset; the bottom-left one
+stays sakura.
 
 ```html
-<main class="min-h-screen bg-yoru-950 text-moon-50 [background-image:radial-gradient(circle_at_top_right,rgba(0,229,255,0.16),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,79,184,0.10),transparent_30%)]">
+<main class="min-h-screen bg-yoru-950 text-moon-50 [background-image:radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--app-accent)_16%,transparent),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,79,184,0.10),transparent_30%)]">
   <!-- app shell -->
 </main>
 ```
@@ -476,7 +498,7 @@ Recommended shadows:
 
 ```css
 --shadow-panel: 0 24px 80px rgb(0 0 0 / 0.45);
---shadow-neon-cyan: 0 0 24px rgb(0 229 255 / 0.28);
+--shadow-accent: 0 0 24px color-mix(in srgb, var(--app-accent) 28%, transparent);
 --shadow-neon-pink: 0 0 24px rgb(255 79 184 / 0.25);
 --shadow-light-panel: 0 18px 50px rgb(24 45 90 / 0.14);
 ```
@@ -484,6 +506,12 @@ Recommended shadows:
 `--shadow-panel` resolves through `--app-shadow-panel`, which is redefined per
 theme, so `shadow-panel` is correct in both modes and a panel never has to know
 which theme it is painted in.
+
+**Every glow is the accent.** A glow is written as
+`color-mix(in srgb, var(--app-accent) N%, transparent)`, never as a literal
+cyan: with any other accent preset a hardcoded `rgb(0 229 255 / …)` leaves the
+scrollbar, the drop target and the fetch pulse glowing in a colour the rest of
+the interface no longer uses.
 
 Usage:
 
@@ -551,7 +579,7 @@ density and focus behaviour identical across features. Full API and examples:
 | --- | --- |
 | `yoru-dialog` | every modal: focus trap, Escape, sizes `sm/md/lg/full`, tones `default/danger/conflict` |
 | `yoru-context-menu` + `ContextMenuService` | the one context menu, opened imperatively, one submenu level, full keyboard |
-| `yoru-button` | `primary / secondary / ghost / danger`, sizes 28 px and 32 px, icon and loading states |
+| `yoru-button` | `primary / secondary / ghost / danger`, sizes `sm` (`--control-h-sm`) and `md` (`--control-h`), icon and loading states |
 | `yoru-badge` | ref pills for branch / remote / tag / HEAD |
 | `yoru-avatar` | author initials with a deterministic gradient from the email |
 | `yoru-empty-state` | zero-state copy with optional kanji watermark |
@@ -663,9 +691,9 @@ Every scrollable container in the app uses the shared `.neon-scroll` utility cla
 
 | State | Track | Thumb fill | Glow |
 | --- | --- | --- | --- |
-| Resting | transparent | `color-mix(in srgb, var(--color-neon-cyan) 18%, var(--app-border))` with 2px transparent inset | none |
-| Hover | transparent | `color-mix(in srgb, var(--color-neon-cyan) 55%, var(--app-border))` | soft `0 0 6px rgb(0 229 255 / 0.30)` |
-| Active | transparent | `color-mix(in srgb, var(--color-neon-cyan) 70%, var(--app-border))` | matches hover |
+| Resting | transparent | `color-mix(in srgb, var(--app-accent) 18%, var(--app-border))` with 2px transparent inset | none |
+| Hover | transparent | `color-mix(in srgb, var(--app-accent) 55%, var(--app-border))` | soft `0 0 6px color-mix(in srgb, var(--app-accent) 30%, transparent)` |
+| Active | transparent | `color-mix(in srgb, var(--app-accent) 70%, var(--app-border))` | matches hover |
 
 - Gutter width: `10px` (horizontal + vertical), thumb visually narrows to ~6px via the transparent inset border + `background-clip: padding-box`.
 - Thumb shape: pill (`border-radius: 999px`).
@@ -690,7 +718,12 @@ Apply the class to the scrollable element itself — not a parent wrapper:
 - DO let the resting state carry the dark-border tone — the cyan should only whisper.
 - DO NOT add a blanket `*::-webkit-scrollbar` global override; the utility is opt-in by class.
 - DO NOT raise the cyan opacity above the spec — "neon pero no tan fuerte" is the design intent.
-- DO NOT hardcode hex colors; always pull from `--color-neon-cyan` / `--app-border` so the utility adapts to future palette tweaks and to both themes.
+- DO NOT hardcode hex colors; always pull from `--app-accent` / `--app-border` so the utility adapts to the accent preset, to future palette tweaks and to both themes.
+
+A virtual list whose rows truncate also takes `.fit-rows` on its viewport. The
+CDK content wrapper is shrink-to-fit, so without it one long name widens the
+whole list, the list scrolls sideways and no row ever reaches its ellipsis.
+Leave it off only where a row must be free to grow (the blame viewer).
 
 ## Do's and Don'ts
 
@@ -773,7 +806,7 @@ YoruMerge uses Tailwind CSS 4. Put these tokens in `src/styles.css` near the Tai
 
   /* Follows the theme through --app-shadow-panel. */
   --shadow-panel: var(--app-shadow-panel);
-  --shadow-neon-cyan: 0 0 24px rgb(0 229 255 / 0.28);
+  --shadow-accent: 0 0 24px color-mix(in srgb, var(--app-accent) 28%, transparent);
   --shadow-neon-pink: 0 0 24px rgb(255 79 184 / 0.25);
   --shadow-light-panel: 0 18px 50px rgb(24 45 90 / 0.14);
 }
@@ -873,7 +906,7 @@ It is a file rather than an inline script because the Tauri CSP is
 
 - All text/background combinations for primary surfaces must target WCAG AA contrast. Use `--app-text-faint` instead of stacking `opacity-*` on muted text.
 - Do not rely on color alone for Git states; pair colors with icons, labels, diff markers, or badges.
-- Focus rings are global: `styles.css` declares one `:focus-visible` rule (2 px cyan, 2 px offset). Do not remove or override it per component.
+- Focus rings are global: `styles.css` declares one `:focus-visible` rule (2 px accent, 2 px offset). Do not remove or override it per component. The ring follows the element's own radius; the 4 px default corner lives in `@layer base` so it applies only to an element that has none, and focus never reshapes a pill or a button.
 - Disable intense glow animations when `prefers-reduced-motion: reduce` is active.
 - The in-app animations preference (`:root[data-animations="off"]`) also drops
   `backdrop-filter` on the dialog and command-palette scrims. Backdrop blur is
