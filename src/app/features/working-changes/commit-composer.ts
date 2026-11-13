@@ -26,6 +26,7 @@ import {
   YoruInput,
   YoruKbd,
   YoruSwitch,
+  YoruTooltip,
 } from '../../shared/ui';
 import { SettingsDialogService } from '../settings/settings-dialog.service';
 import { CommitComposerFocus } from './commit-composer-focus.service';
@@ -76,6 +77,7 @@ type CommitMode = 'commit' | 'commit-push' | 'commit-tag' | 'commit-fixup';
     YoruDialog,
     YoruKbd,
     YoruSwitch,
+    YoruTooltip,
   ],
   templateUrl: './commit-composer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

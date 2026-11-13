@@ -12,14 +12,11 @@
       (click)="select(item)"
       [attr.data-rail-item]="item.id"
       [attr.data-active]="isActive(item) ? 'true' : null"
+      [attr.data-state]="state(item)"
       class="relative flex size-[var(--rail-item)] items-center justify-center rounded-sm transition-colors"
-      [class.text-accent-ink]="isActive(item)"
-      [class.bg-[var(--app-panel)]]="isActive(item)"
-      [class.text-[var(--app-text-muted)]]="!isActive(item)"
-      [class.hover:bg-[var(--app-panel)]]="!isActive(item)"
-      [class.hover:text-[var(--app-text)]]="!isActive(item)"
+      [class]="stateClass(item)"
     >
-      @if (isActive(item)) {
+      @if (state(item) === 'view') {
         <span
           class="pointer-events-none absolute inset-y-1 left-0 w-[2px] rounded-full bg-accent"
           aria-hidden="true"

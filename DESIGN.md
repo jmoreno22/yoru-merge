@@ -433,7 +433,12 @@ The window has no native decorations. Top to bottom:
 3. **Icon rail** — Changes · History · Refs · Remotes · Tags · Stashes · Reflog.
    It drives the `railView` preference; Remotes,
    Tags and Stashes are not separate views — they open the refs panel on that
-   section, because everything they would show already lives there.
+   section, because everything they would show already lives there. An item
+   has three states, and the two lit ones never look alike: the **view** on
+   screen carries the accent edge and the accent ink, like any current row; a
+   **panel toggle that is on** — the refs panel — is pressed and nothing more
+   (panel fill, plain ink, no edge); the rest are idle. `railItemState()` in
+   `rail-views.ts` decides which, and exactly one view is always lit.
 4. **Workbench** — refs panel (collapsible, width persisted), the centre view,
    and the inspector column. One splitter, persisted as `workbenchSplit`.
    **What is where is data**: `workbenchLayout()`
@@ -745,6 +750,16 @@ One component, opened through `ContextMenuService.open(items, anchor, options)`.
   the keys, and the active item is the highlight.
 - A destructive item is red and so is its highlight. A disabled item always
   carries its reason.
+
+### Commit composer
+
+Four rows, so the file lists above it keep the height: the type chips with
+*breaking* at their end; scope, subject and the length counter on one line,
+over the 72-column ruler; the body; and one row holding the switches (Amend,
+Sign-off, Skip hooks, GPG sign) and the commit cluster. That last row wraps in
+a narrow column — switches first, commit cluster second and right-aligned. A
+disabled switch explains itself in a tooltip on its wrapper, not in a line of
+text under it. Nothing new takes a row of its own: it joins one of the four.
 
 ### Diff viewer
 

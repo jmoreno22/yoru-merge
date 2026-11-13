@@ -1,3 +1,6 @@
+<!-- Four rows, so the file lists above keep the height: type, subject, body,
+     and one row for the options and the commit itself. Everything that used to
+     take a row of its own — scope, breaking, the switches — sits on one of them. -->
 <div class="flex flex-wrap items-center gap-1">
   @for (option of types; track option) {
     <button
@@ -14,30 +17,13 @@
       {{ option }}
     </button>
   }
-</div>
-
-<div class="flex items-center gap-2">
-  <input
-    list="commit-scope-options"
-    [value]="scope()"
-    (input)="onScopeInput($event)"
-    placeholder="scope"
-    aria-label="Commit scope"
-    yoruInput="sm"
-    class="w-32 font-mono"
-  />
-  <datalist id="commit-scope-options">
-    @for (option of scopeOptions(); track option) {
-      <option [value]="option"></option>
-    }
-  </datalist>
 
   <button
     type="button"
     (click)="breaking.set(!breaking())"
     [attr.aria-pressed]="breaking()"
     aria-label="Breaking change"
-    class="h-[var(--control-h-sm)] rounded-xs border px-2 font-mono text-y-xs uppercase tracking-[0.12em] transition-colors"
+    class="ml-auto h-5 rounded-full border px-2 font-mono text-y-xs uppercase tracking-[0.12em] transition-colors"
     [class]="
       breaking()
         ? 'border-git-deleted/60 bg-git-deleted/15 text-git-deleted-ink'
@@ -46,9 +32,53 @@
   >
     breaking !
   </button>
+</div>
+
+<div class="flex items-start gap-2">
+  <input
+    yoruInput
+    list="commit-scope-options"
+    [value]="scope()"
+    (input)="onScopeInput($event)"
+    placeholder="scope"
+    aria-label="Commit scope"
+    class="w-28 shrink-0 font-mono"
+  />
+  <datalist id="commit-scope-options">
+    @for (option of scopeOptions(); track option) {
+      <option [value]="option"></option>
+    }
+  </datalist>
+
+  <div class="flex min-w-0 flex-1 flex-col gap-1">
+    <input
+      yoruInput
+      #subjectInput
+      [value]="subject()"
+      (input)="onSubjectInput($event)"
+      placeholder="Summary"
+      aria-label="Commit subject"
+      class="w-full font-mono"
+    />
+    <!-- 0–72 ruler with the 50-character tick git recommends. -->
+    <div
+      class="relative h-[2px] w-full rounded-full bg-[var(--app-border)]"
+      aria-hidden="true"
+    >
+      <div
+        class="h-full rounded-full transition-[width]"
+        [class]="rulerClass()"
+        [style.width.%]="rulerPercent()"
+      ></div>
+      <span
+        class="absolute top-[-2px] h-[6px] w-px bg-[var(--app-text-faint)]"
+        [style.left.%]="warnTickPercent"
+      ></span>
+    </div>
+  </div>
 
   <span
-    class="ml-auto shrink-0 font-mono text-y-xs"
+    class="flex h-[var(--control-h)] shrink-0 items-center font-mono text-y-xs"
     [class]="counterClass()"
     [title]="
       'Subject length: keep it under ' +
@@ -61,58 +91,15 @@
   </span>
 </div>
 
-<div class="flex flex-col gap-1">
-  <input
-    #subjectInput
-    [value]="subject()"
-    (input)="onSubjectInput($event)"
-    placeholder="Summary"
-    aria-label="Commit subject"
-    yoruInput
-    class="w-full font-mono"
-  />
-  <!-- 0–72 ruler with the 50-character tick git recommends. -->
-  <div
-    class="relative h-[2px] w-full rounded-full bg-[var(--app-border)]"
-    aria-hidden="true"
-  >
-    <div
-      class="h-full rounded-full transition-[width]"
-      [class]="rulerClass()"
-      [style.width.%]="rulerPercent()"
-    ></div>
-    <span
-      class="absolute top-[-2px] h-[6px] w-px bg-[var(--app-text-faint)]"
-      [style.left.%]="warnTickPercent"
-    ></span>
-  </div>
-</div>
-
 <textarea
+  yoruInput="sm"
   [value]="body()"
   (input)="onBodyInput($event)"
   rows="2"
   placeholder="Body — wrap at 72 columns"
   aria-label="Commit body"
-  yoruInput="sm"
   class="neon-scroll w-full resize-none py-1.5 font-mono leading-relaxed"
 ></textarea>
-
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-  <yoru-switch
-    [checked]="amend()"
-    (checkedChange)="onAmendChange($event)"
-    label="Amend"
-  />
-  <yoru-switch [(checked)]="signoff" label="Sign-off" />
-  <yoru-switch [(checked)]="noVerify" label="Skip hooks" />
-  <yoru-switch
-    [checked]="gpgSign()"
-    [disabled]="true"
-    label="GPG sign"
-    [hint]="gpgHint()"
-  />
-</div>
 
 @if (amendWarning(); as warning) {
   <p
@@ -148,70 +135,86 @@
   </p>
 }
 
-<div class="flex items-center gap-2">
-  <p class="min-w-0 flex-1 truncate font-mono text-y-xs text-[var(--app-text-faint)]">
-    {{ summaryText() }}
-  </p>
+<!-- Wraps in a narrow column: the switches keep the first line, the commit
+     cluster drops to the second and stays right-aligned. -->
+<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+  <yoru-switch
+    [checked]="amend()"
+    (checkedChange)="onAmendChange($event)"
+    label="Amend"
+  />
+  <yoru-switch [(checked)]="signoff" label="Sign-off" />
+  <yoru-switch [(checked)]="noVerify" label="Skip hooks" />
+  <!-- The reason lives on the wrapper: a disabled switch fires no hover. -->
+  <span [yoruTooltip]="gpgHint()">
+    <yoru-switch [checked]="gpgSign()" [disabled]="true" label="GPG sign" />
+  </span>
 
-  @if (readiness().reason; as reason) {
-    <span class="shrink-0 text-y-sm text-[var(--app-text-faint)]">{{ reason }}</span>
-  } @else {
-    <yoru-kbd combo="mod+enter" />
-  }
+  <div class="ml-auto flex min-w-0 items-center gap-2">
+    <p class="min-w-0 truncate font-mono text-y-xs text-[var(--app-text-faint)]">
+      {{ summaryText() }}
+    </p>
 
-  @if (aiOffered()) {
+    @if (readiness().reason; as reason) {
+      <span class="shrink-0 text-y-sm text-[var(--app-text-faint)]">{{ reason }}</span>
+    } @else {
+      <yoru-kbd combo="mod+enter" />
+    }
+
+    @if (aiOffered()) {
+      <button
+        type="button"
+        yoruIconButton="sm"
+        tone="outline"
+        (click)="draftMessage()"
+        [disabled]="!canDraft()"
+        [attr.aria-label]="draftLabel()"
+        [title]="draftLabel()"
+        [attr.aria-busy]="drafting()"
+        class="hover:text-accent"
+      >
+        <ng-icon
+          [name]="drafting() ? 'lucideLoaderCircle' : 'lucideSparkles'"
+          [class.animate-spin]="drafting()"
+          [class.opacity-50]="!aiConfigured()"
+          size="14px"
+          aria-hidden="true"
+        />
+      </button>
+    }
+
     <button
       type="button"
-      (click)="draftMessage()"
-      [disabled]="!canDraft()"
-      [attr.aria-label]="draftLabel()"
-      [title]="draftLabel()"
-      [attr.aria-busy]="drafting()"
       yoruIconButton="sm"
       tone="outline"
-      class="hover:text-accent"
+      (click)="openRecentMenu($event)"
+      [disabled]="!hasRecent()"
+      aria-label="Recent commit messages"
     >
-      <ng-icon
-        [name]="drafting() ? 'lucideLoaderCircle' : 'lucideSparkles'"
-        [class.animate-spin]="drafting()"
-        [class.opacity-50]="!aiConfigured()"
-        size="14px"
-        aria-hidden="true"
-      />
+      <ng-icon name="lucideHistory" size="14px" aria-hidden="true" />
     </button>
-  }
 
-  <button
-    type="button"
-    (click)="openRecentMenu($event)"
-    [disabled]="!hasRecent()"
-    aria-label="Recent commit messages"
-    yoruIconButton="sm"
-    tone="outline"
-  >
-    <ng-icon name="lucideHistory" size="14px" aria-hidden="true" />
-  </button>
-
-  <div class="flex shrink-0 items-stretch gap-px">
-    <yoru-button
-      variant="primary"
-      size="sm"
-      icon="lucideGitCommitHorizontal"
-      [disabled]="!readiness().canCommit"
-      [loading]="busy()"
-      (click)="commit('commit')"
-    >
-      {{ commitLabel() }}
-    </yoru-button>
-    <button
-      type="button"
-      (click)="openCommitMenu($event)"
-      [disabled]="!readiness().canCommit"
-      aria-label="More commit actions"
-      class="inline-flex h-[var(--control-h-sm)] w-6 items-center justify-center rounded-sm bg-accent text-yoru-950 transition-colors hover:bg-moon-50 disabled:cursor-not-allowed disabled:opacity-45"
-    >
-      <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
-    </button>
+    <div class="flex shrink-0 items-stretch gap-px">
+      <yoru-button
+        variant="primary"
+        size="sm"
+        icon="lucideGitCommitHorizontal"
+        [disabled]="!readiness().canCommit"
+        [loading]="busy()"
+        (click)="commit('commit')"
+      >
+        {{ commitLabel() }}
+      </yoru-button>
+      <button
+        type="button"
+        (click)="openCommitMenu($event)"
+        [disabled]="!readiness().canCommit"
+        aria-label="More commit actions"
+        class="inline-flex h-[var(--control-h-sm)] w-6 items-center justify-center rounded-sm bg-accent text-yoru-950 transition-colors hover:bg-moon-50 disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        <ng-icon name="lucideChevronDown" size="14px" aria-hidden="true" />
+      </button>
+    </div>
   </div>
 </div>
 

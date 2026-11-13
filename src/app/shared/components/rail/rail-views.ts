@@ -96,12 +96,27 @@ export const RAIL_ITEMS: readonly RailItem[] = [
  * only while the panel is open, otherwise three items would look active at
  * once on the history view.
  */
+/**
+ * What a rail item is showing. The two lit states mean different things and
+ * must not look alike: `view` is the centre view on screen — one of them is
+ * always lit — while `open` is a panel toggle that happens to be on.
+ */
+export type RailItemState = 'view' | 'open' | 'idle';
+
+export function railItemState(
+  item: RailItem,
+  view: RailView,
+  refsPanelOpen: boolean,
+): RailItemState {
+  if (item.id === 'refs') return refsPanelOpen ? 'open' : 'idle';
+  if (item.section !== null) return 'idle';
+  return item.view === view ? 'view' : 'idle';
+}
+
 export function isRailItemActive(
   item: RailItem,
   view: RailView,
   refsPanelOpen: boolean,
 ): boolean {
-  if (item.id === 'refs') return refsPanelOpen;
-  if (item.section !== null) return false;
-  return item.view === view;
+  return railItemState(item, view, refsPanelOpen) !== 'idle';
 }

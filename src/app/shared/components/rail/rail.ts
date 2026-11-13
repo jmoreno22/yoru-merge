@@ -11,7 +11,21 @@ import { CurrentRepoService } from '../../../core/services/current-repo.service'
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { SettingsDialogService } from '../../../features/settings/settings-dialog.service';
 import { KeyboardShortcutsService, YoruTooltip } from '../../ui';
-import { isRailItemActive, RAIL_ITEMS, type RailItem } from './rail-views';
+import {
+  isRailItemActive,
+  RAIL_ITEMS,
+  type RailItem,
+  type RailItemState,
+  railItemState,
+} from './rail-views';
+
+const STATE_CLASS: Readonly<Record<RailItemState, string>> = {
+  // The view on screen: the accent edge and the accent ink, like any current row.
+  view: 'bg-[var(--app-panel)] text-accent-ink',
+  // A panel that is open: pressed, and nothing more.
+  open: 'bg-[var(--app-panel)] text-[var(--app-text)]',
+  idle: 'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]',
+};
 
 /**
  * The icon rail: it picks the centre view and opens the refs panel.
@@ -75,6 +89,14 @@ export class Rail {
 
   protected isActive(item: RailItem): boolean {
     return isRailItemActive(item, this.view(), this.refsPanelOpen());
+  }
+
+  protected state(item: RailItem): RailItemState {
+    return railItemState(item, this.view(), this.refsPanelOpen());
+  }
+
+  protected stateClass(item: RailItem): string {
+    return STATE_CLASS[this.state(item)];
   }
 
   protected badgeFor(item: RailItem): number {

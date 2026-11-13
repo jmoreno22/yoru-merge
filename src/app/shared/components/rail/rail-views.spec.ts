@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRailItemActive, RAIL_ITEMS } from './rail-views';
+import { isRailItemActive, RAIL_ITEMS, railItemState } from './rail-views';
 
 describe('RAIL_ITEMS', () => {
   it('has unique ids', () => {
@@ -25,6 +25,35 @@ describe('RAIL_ITEMS', () => {
     for (const item of RAIL_ITEMS.filter((i) => i.section !== null)) {
       expect(item.view).toBe('history');
     }
+  });
+});
+
+describe('railItemState', () => {
+  const item = (id: string) => {
+    const found = RAIL_ITEMS.find((candidate) => candidate.id === id);
+    if (!found) throw new Error(`No rail item ${id}.`);
+    return found;
+  };
+
+  // The whole point: the centre view and an open panel were drawn the same.
+  it('tells the view on screen from a panel that is merely open', () => {
+    expect(railItemState(item('history'), 'history', true)).toBe('view');
+    expect(railItemState(item('refs'), 'history', true)).toBe('open');
+  });
+
+  it('always has exactly one view lit, whatever the panel does', () => {
+    for (const view of ['changes', 'history', 'reflog'] as const) {
+      for (const refsPanelOpen of [false, true]) {
+        const lit = RAIL_ITEMS.filter(
+          (candidate) => railItemState(candidate, view, refsPanelOpen) === 'view',
+        );
+        expect(lit.map((candidate) => candidate.id)).toEqual([view]);
+      }
+    }
+  });
+
+  it('leaves the refs toggle idle while the panel is closed', () => {
+    expect(railItemState(item('refs'), 'changes', false)).toBe('idle');
   });
 });
 
