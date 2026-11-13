@@ -106,6 +106,14 @@ export class WorkspaceTabs {
         event.preventDefault();
         this.moveFocus(-1);
         break;
+      case 'Home':
+        event.preventDefault();
+        this.focusTab(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        this.focusTab(this.tabs().length - 1);
+        break;
       case 'Delete':
         event.preventDefault();
         void this.actions.closeTab(state.tabId);
@@ -119,6 +127,13 @@ export class WorkspaceTabs {
 
   private moveFocus(step: number): void {
     this.actions.moveTab(step);
+    this.focusRequest.update((seq) => seq + 1);
+  }
+
+  private focusTab(index: number): void {
+    const tab = this.tabs()[index];
+    if (!tab) return;
+    this.store.setActive(tab.tabId);
     this.focusRequest.update((seq) => seq + 1);
   }
 }

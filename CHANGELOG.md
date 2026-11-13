@@ -81,6 +81,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **"Stage hunk" no longer wraps onto two lines** beside a long hunk header.
 
+- **File history works from the keyboard.** The list is one Tab stop instead of
+  one per commit: the arrows, Home and End move through it and Enter or Space
+  shows that commit's change to the file.
+
+- **Home and End** jump to the first and last item in the Settings sections,
+  the repository tabs and the segmented toggles (diff layout, context lines).
+
+- **Picking quickly no longer shows the wrong content.** In file history and in
+  the conflict resolver, a slower answer for an earlier choice could replace
+  the one asked for last.
+
 ## [1.1.0] - 2026-11-09
 
 ### Added

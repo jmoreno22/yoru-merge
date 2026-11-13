@@ -5,7 +5,9 @@ import {
   effect,
   inject,
   input,
+  linkedSignal,
   output,
+  resource,
   signal,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
@@ -72,11 +74,28 @@ export class MergeResolver {
   protected readonly busy = this.currentRepo.mergeBusy;
 
   protected readonly file = signal<string | null>(null);
-  protected readonly content = signal<MergeContent | null>(null);
-  protected readonly text = signal('');
-  protected readonly activeIndex = signal(0);
-  protected readonly loading = signal(false);
-  protected readonly loadError = signal<string | null>(null);
+
+  private readonly mergeContent = resource({
+    params: () => this.file() ?? undefined,
+    loader: ({ params }) => this.currentRepo.getMergeContentAction(params),
+  });
+
+  protected readonly content = computed<MergeContent | null>(() =>
+    this.mergeContent.hasValue() ? this.mergeContent.value() : null,
+  );
+  protected readonly loading = this.mergeContent.isLoading;
+  protected readonly loadError = computed(() =>
+    this.mergeContent.status() === 'resolved' && this.content() === null
+      ? 'Could not read the conflicted file.'
+      : null,
+  );
+
+  /** Reseeded only when a file's content arrives, so typing is never overwritten. */
+  protected readonly text = linkedSignal(() => this.content()?.current ?? '');
+  protected readonly activeIndex = linkedSignal({
+    source: this.content,
+    computation: () => 0,
+  });
   protected readonly saving = signal(false);
 
   protected readonly blocks = computed<ParsedConflict[]>(() =>
@@ -134,8 +153,6 @@ export class MergeResolver {
     effect(() => {
       if (!this.open()) {
         this.file.set(null);
-        this.content.set(null);
-        this.text.set('');
         return;
       }
       const requested = this.initialFile();
@@ -148,17 +165,6 @@ export class MergeResolver {
           : list[0]?.path) ?? null;
       this.file.set(next);
     });
-
-    effect(() => {
-      const path = this.file();
-      if (path === null) {
-        this.content.set(null);
-        this.text.set('');
-        this.loadError.set(null);
-        return;
-      }
-      void this.load(path);
-    });
   }
 
   private sideLine(
@@ -168,25 +174,6 @@ export class MergeResolver {
     if (!side || !lines || lines.length === 0) return -1;
     const at = findSequence(side.split('\n'), lines);
     return at < 0 ? -1 : at + 1;
-  }
-
-  private async load(path: string): Promise<void> {
-    this.loading.set(true);
-    this.loadError.set(null);
-    try {
-      const content = await this.currentRepo.getMergeContentAction(path);
-      if (!content) {
-        this.loadError.set('Could not read the conflicted file.');
-        this.content.set(null);
-        this.text.set('');
-        return;
-      }
-      this.content.set(content);
-      this.text.set(content.current);
-      this.activeIndex.set(0);
-    } finally {
-      this.loading.set(false);
-    }
   }
 
   protected selectFile(entry: ConflictFile): void {

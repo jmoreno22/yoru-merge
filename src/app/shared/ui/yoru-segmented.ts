@@ -42,20 +42,32 @@ export class YoruSegmented {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    const step =
-      event.key === 'ArrowRight' || event.key === 'ArrowDown'
-        ? 1
-        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-          ? -1
-          : 0;
-    if (step === 0) return;
-
     const options = this.options();
-    if (options.length === 0) return;
+    const count = options.length;
+    if (count === 0) return;
+
+    const current = options.findIndex((o) => o.value === this.value());
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        next = (current + 1) % count;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        next = (current - 1 + count) % count;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = count - 1;
+        break;
+      default:
+        return;
+    }
 
     event.preventDefault();
-    const current = options.findIndex((o) => o.value === this.value());
-    const next = (current + step + options.length) % options.length;
     const option = options[next];
     if (!option) return;
 
