@@ -2,6 +2,7 @@ export * from './conventional-commit';
 export * from './fuzzy';
 export * from './graph-page';
 export * from './group-by-prefix';
+export * from './ipc-payloads';
 export * from './patch-builder';
 export * from './ref-name';
 export * from './relative-time';

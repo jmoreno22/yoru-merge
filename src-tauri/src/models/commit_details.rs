@@ -51,3 +51,10 @@ pub struct CommitDetails {
     pub additions: u32,
     pub deletions: u32,
 }
+
+/// Lines added and removed across a whole diff; binary files count as zero.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiffStats {
+    pub additions: u32,
+    pub deletions: u32,
+}

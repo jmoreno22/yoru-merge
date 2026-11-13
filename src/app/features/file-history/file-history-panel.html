@@ -29,7 +29,7 @@
         <span
           class="shrink-0 font-mono text-y-sm tabular-nums text-[var(--app-text-faint)]"
         >
-          {{ rows().length }}
+          {{ rows().length }}{{ truncated() ? '+' : '' }}
         </span>
       }
       <span class="flex-1"></span>
@@ -83,6 +83,15 @@
         />
       </div>
     } @else {
+      @if (truncated()) {
+        <p
+          class="flex shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 text-y-sm text-[var(--app-text-muted)]"
+          data-testid="file-history-truncated"
+        >
+          <ng-icon name="lucideInfo" size="14px" class="shrink-0" aria-hidden="true" />
+          Showing the newest {{ historyLimit }} commits; older ones are not listed.
+        </p>
+      }
       <cdk-virtual-scroll-viewport
         class="neon-scroll min-h-0 flex-1"
         data-testid="file-history-list"

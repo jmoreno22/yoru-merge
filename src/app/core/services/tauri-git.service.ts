@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type {
   BlameLine,
+  BlameResult,
   BranchList,
   CheckoutResult,
   CommitDetails,
@@ -9,6 +10,7 @@ import type {
   CompareResult,
   ConflictFile,
   ConflictSide,
+  DiffStats,
   FastForwardResult,
   FetchProgress,
   FileSource,
@@ -37,8 +39,21 @@ import type {
   WorkingChanges,
   WritableConfigKey,
 } from '../models';
+import {
+  decodeText,
+  encodeBase64,
+  expandBlame,
+  type RawResponse,
+} from '../utils/ipc-payloads';
 
 export type { ConflictSide, FileSource, PullMode, ResetMode } from '../models';
+
+/**
+ * How many commits the file-history panel lists. `git log --follow` cannot
+ * resume a walk cheaply, so there is one bounded load instead of pages; the
+ * panel says so when a file's history runs past it.
+ */
+export const FILE_HISTORY_LIMIT = 1000;
 
 /** Options accepted by {@link TauriGitService.push}. */
 export interface PushOptions {
@@ -206,37 +221,52 @@ export class TauriGitService {
     return invoke<CommitDetails>('get_commit_details', { path, sha });
   }
 
-  getCommitDiff(path: string, sha: string): Promise<string> {
-    return invoke<string>('get_commit_diff', { path, sha });
+  // Patches, file text and image bytes arrive as raw bytes, not JSON strings.
+  async getCommitDiff(path: string, sha: string): Promise<string> {
+    return decodeText(await invoke<RawResponse>('get_commit_diff', { path, sha }));
   }
 
-  getCommitFileDiff(path: string, sha: string, file: string): Promise<string> {
-    return invoke<string>('get_commit_file_diff', { path, sha, file });
+  async getCommitFileDiff(path: string, sha: string, file: string): Promise<string> {
+    return decodeText(
+      await invoke<RawResponse>('get_commit_file_diff', { path, sha, file }),
+    );
   }
 
-  getFileAtRevision(path: string, rev: string, file: string): Promise<string> {
-    return invoke<string>('get_file_at_revision', { path, rev, file });
+  async getFileAtRevision(path: string, rev: string, file: string): Promise<string> {
+    return decodeText(
+      await invoke<RawResponse>('get_file_at_revision', { path, rev, file }),
+    );
   }
 
   /** `rev = null` blames the work tree; a revision blames the file as of it. */
-  blameFile(
+  async blameFile(
     path: string,
     file: string,
     rev: string | null = null,
   ): Promise<BlameLine[]> {
-    return invoke<BlameLine[]>('blame_file', { path, file, rev });
+    return expandBlame(await invoke<BlameResult>('blame_file', { path, file, rev }));
   }
 
   /**
    * Raw bytes of `file`, base64-encoded, for content the diff viewer cannot
    * render as text (images and other binaries).
    */
-  getFileBase64(path: string, file: string, source: FileSource): Promise<string> {
-    return invoke<string>('get_file_base64', { path, file, source });
+  async getFileBase64(path: string, file: string, source: FileSource): Promise<string> {
+    return encodeBase64(
+      await invoke<RawResponse>('get_file_base64', { path, file, source }),
+    );
   }
 
+  /**
+   * The newest commits touching `file`: up to {@link FILE_HISTORY_LIMIT}, plus
+   * one more when older ones exist, so the caller can say the list is cut.
+   */
   fileHistory(path: string, file: string): Promise<CommitInfo[]> {
-    return invoke<CommitInfo[]>('file_history', { path, file });
+    return invoke<CommitInfo[]>('file_history', {
+      path,
+      file,
+      limit: FILE_HISTORY_LIMIT + 1,
+    });
   }
 
   // ── Working tree ────────────────────────────────────────────────────────
@@ -249,8 +279,12 @@ export class TauriGitService {
     return invoke<WorkingChanges>('get_working_changes', { path, ifFingerprint });
   }
 
-  getDiff(path: string, file: string | null, staged: boolean): Promise<string> {
-    return invoke<string>('get_diff', { path, file, staged });
+  async getDiff(path: string, file: string | null, staged: boolean): Promise<string> {
+    return decodeText(await invoke<RawResponse>('get_diff', { path, file, staged }));
+  }
+
+  getStagedStats(path: string): Promise<DiffStats> {
+    return invoke<DiffStats>('get_staged_stats', { path });
   }
 
   stageFiles(path: string, files: string[]): Promise<void> {

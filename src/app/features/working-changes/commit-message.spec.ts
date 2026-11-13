@@ -5,7 +5,6 @@ import {
   buildCommitMessage,
   commitMenuItems,
   commitReadiness,
-  countDiffStats,
   draftFromMessage,
   EMPTY_DRAFT,
   headerLength,
@@ -166,26 +165,6 @@ describe('recentScopes', () => {
 
   it('honours the limit', () => {
     expect(recentScopes(['feat(a): x', 'feat(b): y'], 1)).toEqual(['a']);
-  });
-});
-
-describe('countDiffStats', () => {
-  it('ignores the file headers', () => {
-    const diff = [
-      'diff --git a/a.ts b/a.ts',
-      '--- a/a.ts',
-      '+++ b/a.ts',
-      '@@ -1,2 +1,2 @@',
-      '-old',
-      '+new',
-      '+extra',
-      ' context',
-    ].join('\n');
-    expect(countDiffStats(diff)).toEqual({ additions: 2, deletions: 1 });
-  });
-
-  it('returns zeros for an empty diff', () => {
-    expect(countDiffStats('')).toEqual({ additions: 0, deletions: 0 });
   });
 });
 

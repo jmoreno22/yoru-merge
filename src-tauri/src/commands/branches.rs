@@ -26,16 +26,9 @@ pub(super) fn overwrite_files(stderr: &str) -> Vec<String> {
     files
 }
 
-fn ref_exists(path: &str, refname: &str) -> bool {
-    GitCmd::in_repo(path)
-        .args(["show-ref", "--verify", "--quiet", refname])
-        .succeeds()
-}
-
-fn head_is_detached(path: &str) -> bool {
-    !GitCmd::in_repo(path)
-        .args(["symbolic-ref", "--quiet", "HEAD"])
-        .succeeds()
+/// Read in process: a `show-ref` per probe cost up to three spawns per checkout.
+fn ref_exists(repo: &Repository, refname: &str) -> bool {
+    repo.find_reference(refname).is_ok()
 }
 
 /// Local branch name implied by a remote-tracking branch (`origin/x` → `x`).
@@ -54,11 +47,13 @@ fn checkout_branch_inner(
 ) -> CheckoutResult {
     let prepared = (|| {
         validate_repo_path(path)?;
-        validate_revision(name)
+        validate_revision(name)?;
+        Repository::open(path).map_err(|e| e.message().to_string())
     })();
-    if let Err(message) = prepared {
-        return CheckoutResult::Error { message };
-    }
+    let repo = match prepared {
+        Ok(repo) => repo,
+        Err(message) => return CheckoutResult::Error { message },
+    };
 
     let mut cmd = GitCmd::in_repo(path).arg("checkout");
     if force {
@@ -67,8 +62,8 @@ fn checkout_branch_inner(
         cmd = cmd.arg("--force");
     }
 
-    let is_local = ref_exists(path, &format!("refs/heads/{name}"));
-    let is_remote = !is_local && ref_exists(path, &format!("refs/remotes/{name}"));
+    let is_local = ref_exists(&repo, &format!("refs/heads/{name}"));
+    let is_remote = !is_local && ref_exists(&repo, &format!("refs/remotes/{name}"));
 
     if is_local {
         cmd = cmd.arg(name);
@@ -78,7 +73,7 @@ fn checkout_branch_inner(
                 message: format!("cannot derive a local branch name from {name}"),
             };
         };
-        if ref_exists(path, &format!("refs/heads/{local}")) {
+        if ref_exists(&repo, &format!("refs/heads/{local}")) {
             cmd = cmd.arg(local);
         } else {
             cmd = cmd.args(["-b", local, "--track", name]);
@@ -103,7 +98,7 @@ fn checkout_branch_inner(
         };
     }
 
-    if head_is_detached(path) {
+    if repo.head_detached().unwrap_or(true) {
         CheckoutResult::DetachedHead
     } else {
         CheckoutResult::Success
@@ -249,8 +244,14 @@ impl AheadBehindCache {
 fn ahead_behind(path: &str, pairs: &[(Oid, Oid)], cache: &AheadBehindCache) -> AheadBehindCounts {
     // Recovering from a poisoned lock is safe here: a value can only ever be
     // the counts of its own key, so no panic can leave a wrong one behind.
-    let mut repos = cache.0.lock().unwrap_or_else(|e| e.into_inner());
-    let previous = repos.remove(path).unwrap_or_default();
+    // The lock is not held across the walks: every repository shares it.
+    let previous = cache
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(path)
+        .cloned()
+        .unwrap_or_default();
 
     let repo = pairs
         .iter()
@@ -272,7 +273,11 @@ fn ahead_behind(path: &str, pairs: &[(Oid, Oid)], cache: &AheadBehindCache) -> A
         }
     }
 
-    repos.insert(path.to_string(), fresh.clone());
+    cache
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(path.to_string(), fresh.clone());
     fresh
 }
 

@@ -6,17 +6,18 @@
 
 use std::collections::HashMap;
 
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine as _;
-use git2::Repository;
+use git2::{Oid, Repository};
+use tauri::ipc::Response;
 
 use super::git::{
     stderr_or, validate_pathspec, validate_repo_path, validate_revision, GitCmd, NO_EXT_DIFF,
     NO_TEXTCONV,
 };
-use super::history::{build_ref_map, format_git2_time};
+use super::history::format_git2_time;
 use super::merge::resolve_in_repo;
-use crate::models::{CommitDetails, CommitFile, FileChangeStatus, FileSource, SignatureStatus};
+use crate::models::{
+    CommitDetails, CommitFile, FileChangeStatus, FileSource, RefInfo, RefType, SignatureStatus,
+};
 
 /// The well-known hash of git's empty tree, used as the base of root commits.
 const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -24,8 +25,7 @@ const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 /// Above this a diff is useless to render and expensive to ship over IPC.
 const MAX_DIFF_BYTES: usize = 10 * 1024 * 1024;
 
-/// Base64 inflates by a third, so a preview larger than this would cost more to
-/// ship over IPC than any image the UI can usefully show.
+/// Larger than any image the UI can usefully show, and costly to ship over IPC.
 const MAX_PREVIEW_BYTES: u64 = 10 * 1024 * 1024;
 
 const TOO_LARGE: &str = "file too large to preview";
@@ -41,15 +41,15 @@ fn diff_base_of(commit: &git2::Commit<'_>) -> String {
         .unwrap_or_else(|_| EMPTY_TREE.to_string())
 }
 
-/// First parent of `rev`, or the empty tree when it is a root commit.
-fn diff_base(path: &str, rev: &str) -> String {
-    GitCmd::in_repo(path)
-        .args(["rev-parse", "--verify", "--quiet", &format!("{rev}^")])
-        .run()
-        .ok()
-        .map(|sha| sha.trim().to_string())
-        .filter(|sha| !sha.is_empty())
-        .unwrap_or_else(|| EMPTY_TREE.to_string())
+/// First parent of `rev`, or the empty tree when it is a root commit, read in
+/// process rather than by spawning `rev-parse <rev>^` before the diff.
+fn diff_base(path: &str, rev: &str) -> Result<String, String> {
+    let repo = Repository::open(path).map_err(|e| e.message().to_string())?;
+    let commit = repo
+        .revparse_single(rev)
+        .and_then(|object| object.peel_to_commit())
+        .map_err(|_| format!("unknown revision: {rev}"))?;
+    Ok(diff_base_of(&commit))
 }
 
 fn map_status(letter: char) -> FileChangeStatus {
@@ -127,6 +127,14 @@ fn parse_raw_numstat(payload: &str) -> Vec<CommitFile> {
         .collect()
 }
 
+/// `%G?` answers `N` for a commit without a signature header, so only a
+/// commit carrying one is worth a process.
+fn has_signature_header(commit: &git2::Commit<'_>) -> bool {
+    ["gpgsig", "gpgsig-sha256"]
+        .iter()
+        .any(|field| commit.header_field_bytes(field).is_ok())
+}
+
 fn signature_status(path: &str, rev: &str) -> SignatureStatus {
     let raw = GitCmd::in_repo(path)
         .args(["log", "-1", "--format=%G?", rev])
@@ -138,6 +146,59 @@ fn signature_status(path: &str, rev: &str) -> SignatureStatus {
         "N" | "" => SignatureStatus::None,
         _ => SignatureStatus::Unknown,
     }
+}
+
+/// The refs pointing at `target`, in `build_ref_map`'s order and naming.
+///
+/// `build_ref_map` peels every ref of the repository to map them all; one
+/// commit only needs the refs that can point at it: a direct ref is compared
+/// by its target, and only symbolic refs and tags (which may be annotated) are
+/// peeled.
+fn refs_at(repo: &Repository, target: Oid) -> Result<Vec<RefInfo>, String> {
+    let points_here =
+        |reference: &git2::Reference<'_>, may_be_annotated: bool| match reference.target() {
+            Some(oid) if oid == target => true,
+            Some(_) if !may_be_annotated => false,
+            _ => reference
+                .peel_to_commit()
+                .is_ok_and(|commit| commit.id() == target),
+        };
+
+    let mut refs = Vec::new();
+    if let Ok(head) = repo.head() {
+        if let (true, Ok(shorthand)) = (points_here(&head, false), head.shorthand()) {
+            refs.push(RefInfo {
+                name: shorthand.to_string(),
+                ref_type: RefType::Head,
+            });
+        }
+    }
+
+    for reference in repo.references().map_err(|e| e.message().to_string())? {
+        let reference = reference.map_err(|e| e.message().to_string())?;
+        let Ok(name) = reference.name() else {
+            continue;
+        };
+        let (short, ref_type) = if let Some(short) = name.strip_prefix("refs/heads/") {
+            (short, RefType::Branch)
+        } else if let Some(short) = name.strip_prefix("refs/remotes/") {
+            if short.ends_with("/HEAD") {
+                continue;
+            }
+            (short, RefType::Remote)
+        } else if let Some(short) = name.strip_prefix("refs/tags/") {
+            (short, RefType::Tag)
+        } else {
+            continue;
+        };
+        if points_here(&reference, matches!(ref_type, RefType::Tag)) {
+            refs.push(RefInfo {
+                name: short.to_string(),
+                ref_type,
+            });
+        }
+    }
+    Ok(refs)
 }
 
 fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> {
@@ -152,10 +213,11 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
     let committer = commit.committer();
 
     let base = diff_base_of(&commit);
+    let signed = has_signature_header(&commit);
     // On a signed commit `%G?` makes git run gpg or ssh-keygen, so it rides
     // alongside the diff instead of adding its latency after it.
     let (raw, signature) = std::thread::scope(|scope| {
-        let signing = scope.spawn(|| signature_status(path, &full_sha));
+        let signing = signed.then(|| scope.spawn(|| signature_status(path, &full_sha)));
         let raw = GitCmd::in_repo(path)
             .args([
                 "diff",
@@ -169,9 +231,11 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
                 &full_sha,
             ])
             .run();
-        let signature = signing
-            .join()
-            .unwrap_or_else(|payload| std::panic::resume_unwind(payload));
+        let signature = signing.map_or(SignatureStatus::None, |signing| {
+            signing
+                .join()
+                .unwrap_or_else(|payload| std::panic::resume_unwind(payload))
+        });
         (raw, signature)
     });
 
@@ -190,10 +254,7 @@ fn commit_details_inner(path: &str, sha: &str) -> Result<CommitDetails, String> 
         committer_date: format_git2_time(committer.when()),
         subject: commit.summary().ok().flatten().unwrap_or("").to_string(),
         body: commit.body().ok().flatten().unwrap_or("").to_string(),
-        refs: build_ref_map(&repo)?
-            .get(&commit.id())
-            .cloned()
-            .unwrap_or_default(),
+        refs: refs_at(&repo, commit.id())?,
         signature,
         files,
         additions,
@@ -210,7 +271,7 @@ fn capped(diff: String) -> Result<String, String> {
 }
 
 fn commit_file_diff_inner(path: &str, sha: &str, file: &str) -> Result<String, String> {
-    let base = diff_base(path, sha);
+    let base = diff_base(path, sha)?;
     capped(
         GitCmd::in_repo(path)
             .args([
@@ -250,10 +311,10 @@ fn show_bytes(path: &str, spec: &str) -> Result<Vec<u8>, String> {
     Ok(out.stdout)
 }
 
-fn file_base64_inner(path: &str, file: &str, source: &FileSource) -> Result<String, String> {
+fn file_bytes_inner(path: &str, file: &str, source: &FileSource) -> Result<Vec<u8>, String> {
     validate_repo_path(path)?;
 
-    let bytes = match source {
+    Ok(match source {
         FileSource::Workdir => {
             let resolved = resolve_in_repo(path, file)?;
             let size = std::fs::metadata(&resolved)
@@ -273,9 +334,7 @@ fn file_base64_inner(path: &str, file: &str, source: &FileSource) -> Result<Stri
             validate_pathspec(file)?;
             show_bytes(path, &format!("{rev}:{file}"))?
         }
-    };
-
-    Ok(STANDARD.encode(bytes))
+    })
 }
 
 #[tauri::command]
@@ -292,14 +351,16 @@ pub async fn get_commit_file_diff(
     path: String,
     sha: String,
     file: String,
-) -> Result<String, String> {
+) -> Result<Response, String> {
     validate_repo_path(&path)?;
     validate_revision(&sha)?;
     let file = file.replace('\\', "/");
     validate_pathspec(&file)?;
-    tauri::async_runtime::spawn_blocking(move || commit_file_diff_inner(&path, &sha, &file))
-        .await
-        .map_err(|e| e.to_string())?
+    let diff =
+        tauri::async_runtime::spawn_blocking(move || commit_file_diff_inner(&path, &sha, &file))
+            .await
+            .map_err(|e| e.to_string())??;
+    Ok(Response::new(diff.into_bytes()))
 }
 
 #[tauri::command]
@@ -307,28 +368,33 @@ pub async fn get_file_at_revision(
     path: String,
     rev: String,
     file: String,
-) -> Result<String, String> {
+) -> Result<Response, String> {
     validate_repo_path(&path)?;
     validate_revision(&rev)?;
     let file = file.replace('\\', "/");
     validate_pathspec(&file)?;
-    tauri::async_runtime::spawn_blocking(move || file_at_revision_inner(&path, &rev, &file))
-        .await
-        .map_err(|e| e.to_string())?
+    let text =
+        tauri::async_runtime::spawn_blocking(move || file_at_revision_inner(&path, &rev, &file))
+            .await
+            .map_err(|e| e.to_string())??;
+    Ok(Response::new(text.into_bytes()))
 }
 
-/// Raw bytes of `file` taken from `source`, base64-encoded so the UI can render
-/// binary content (images) it could never receive as a string.
+/// Raw bytes of `file` taken from `source`, for content (images) that could
+/// never travel as a string. They are sent as they are rather than as base64
+/// inside JSON, and `tauri-git.service.ts` encodes them for the caller.
 #[tauri::command]
 pub async fn get_file_base64(
     path: String,
     file: String,
     source: FileSource,
-) -> Result<String, String> {
+) -> Result<Response, String> {
     let file = file.replace('\\', "/");
-    tauri::async_runtime::spawn_blocking(move || file_base64_inner(&path, &file, &source))
-        .await
-        .map_err(|e| e.to_string())?
+    let bytes =
+        tauri::async_runtime::spawn_blocking(move || file_bytes_inner(&path, &file, &source))
+            .await
+            .map_err(|e| e.to_string())??;
+    Ok(Response::new(bytes))
 }
 
 #[cfg(test)]
@@ -486,6 +552,112 @@ mod tests {
     }
 
     #[test]
+    fn refs_at_lists_what_the_full_ref_map_lists() {
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "file.txt", "x\n", "first");
+        let first = git_ok(&repo, &["rev-parse", "HEAD"]);
+        git_ok(&repo, &["tag", "light"]);
+        git_ok(&repo, &["tag", "-a", "annotated", "-m", "release"]);
+        git_ok(
+            &repo,
+            &["tag", "-a", "nested", "-m", "tag of a tag", "annotated"],
+        );
+        git_ok(&repo, &["branch", "feature"]);
+        git_ok(&repo, &["update-ref", "refs/remotes/origin/main", &first]);
+        git_ok(
+            &repo,
+            &[
+                "symbolic-ref",
+                "refs/remotes/origin/HEAD",
+                "refs/remotes/origin/main",
+            ],
+        );
+        git_ok(
+            &repo,
+            &["symbolic-ref", "refs/heads/alias", "refs/heads/feature"],
+        );
+        commit_file(&repo, "file.txt", "y\n", "second");
+        git_ok(&repo, &["tag", "-a", "later", "-m", "second release"]);
+
+        let opened = Repository::open(&repo).unwrap();
+        let describe = |refs: Vec<RefInfo>| {
+            refs.iter()
+                .map(|r| format!("{:?}:{}", r.ref_type, r.name))
+                .collect::<Vec<_>>()
+        };
+        let map = crate::commands::history::build_ref_map(&opened).unwrap();
+        let check = |rev: &str| {
+            let oid = opened
+                .revparse_single(rev)
+                .unwrap()
+                .peel_to_commit()
+                .unwrap()
+                .id();
+            let expected = describe(map.get(&oid).cloned().unwrap_or_default());
+            assert_eq!(
+                describe(refs_at(&opened, oid).unwrap()),
+                expected,
+                "rev {rev}"
+            );
+            expected
+        };
+        let at_first = check(&first);
+        assert_eq!(at_first.len(), 6, "got: {at_first:?}");
+        assert_eq!(check("HEAD").len(), 3);
+
+        git_ok(&repo, &["checkout", "--detach", &first]);
+        let opened = Repository::open(&repo).unwrap();
+        let map = crate::commands::history::build_ref_map(&opened).unwrap();
+        let oid = Oid::from_str(&first).unwrap();
+        assert_eq!(
+            describe(refs_at(&opened, oid).unwrap()),
+            describe(map.get(&oid).cloned().unwrap_or_default())
+        );
+    }
+
+    /// `%G?` only spawns for a commit carrying a signature header, so the
+    /// header check must see one; what git then answers depends on the
+    /// machine's gpg, which is why the status itself is not asserted.
+    #[test]
+    fn only_a_commit_with_a_signature_header_is_verified() {
+        use std::io::Write;
+
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "file.txt", "x\n", "first");
+        let tree = git_ok(&repo, &["rev-parse", "HEAD^{tree}"]);
+        let object = format!(
+            "tree {tree}\nauthor a <a@example.com> 1700000000 +0000\n\
+             committer a <a@example.com> 1700000000 +0000\n\
+             gpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEE\n \
+             -----END PGP SIGNATURE-----\n\nsigned\n"
+        );
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(object.as_bytes()).unwrap();
+        let out = std::process::Command::new("git")
+            .args(["-C", &repo, "hash-object", "-w", "-t", "commit", "--stdin"])
+            .stdin(file.reopen().unwrap())
+            .output()
+            .unwrap();
+        let sha = String::from_utf8_lossy(&out.stdout).trim().to_string();
+
+        let opened = Repository::open(&repo).unwrap();
+        let commit = |rev: &str| {
+            opened
+                .revparse_single(rev)
+                .unwrap()
+                .peel_to_commit()
+                .unwrap()
+        };
+        assert!(has_signature_header(&commit(&sha)));
+        assert!(!has_signature_header(&commit("HEAD")));
+        commit_details_inner(&repo, &sha).unwrap();
+        assert_eq!(
+            commit_details_inner(&repo, "HEAD").unwrap().signature,
+            SignatureStatus::None
+        );
+    }
+
+    #[test]
     fn unknown_revisions_report_a_readable_error() {
         let (_dir, repo) = init_empty_repo();
         commit_file(&repo, "file.txt", "x\n", "only");
@@ -542,14 +714,27 @@ mod tests {
         commit_file(&repo, "main.txt", "m\n", "main");
         git_ok(&repo, &["merge", "--no-ff", "-m", "merge", "feature"]);
 
-        let opened = Repository::open(&repo).unwrap();
         for rev in ["HEAD", "HEAD^", "HEAD^2", &root] {
-            let commit = opened
-                .revparse_single(rev)
-                .and_then(|object| object.peel_to_commit())
-                .unwrap();
-            assert_eq!(diff_base_of(&commit), diff_base(&repo, rev), "rev {rev}");
+            let spawned = crate::commands::git::test_support::git(
+                &repo,
+                &["rev-parse", "--verify", "--quiet", &format!("{rev}^")],
+            );
+            let spawned = String::from_utf8_lossy(&spawned.stdout).trim().to_string();
+            let expected = if spawned.is_empty() {
+                EMPTY_TREE.to_string()
+            } else {
+                spawned
+            };
+            assert_eq!(diff_base(&repo, rev).unwrap(), expected, "rev {rev}");
         }
+
+        // The file diff of a merge is taken against its first parent too.
+        let merge_diff = commit_file_diff_inner(&repo, "HEAD", "feature.txt").unwrap();
+        assert!(merge_diff.contains("+f"), "got: {merge_diff}");
+        assert!(commit_file_diff_inner(&repo, "HEAD", "main.txt")
+            .unwrap()
+            .is_empty());
+        assert!(commit_file_diff_inner(&repo, "cafebabe", "main.txt").is_err());
 
         let root_details = commit_details_inner(&repo, &root).unwrap();
         assert!(root_details.parents.is_empty());
@@ -569,10 +754,10 @@ mod tests {
     fn diff_base_falls_back_to_the_empty_tree() {
         let (_dir, repo) = init_empty_repo();
         commit_file(&repo, "file.txt", "one\n", "root");
-        assert_eq!(diff_base(&repo, "HEAD"), EMPTY_TREE);
+        assert_eq!(diff_base(&repo, "HEAD").unwrap(), EMPTY_TREE);
 
         commit_file(&repo, "file.txt", "two\n", "second");
-        assert_ne!(diff_base(&repo, "HEAD"), EMPTY_TREE);
+        assert_ne!(diff_base(&repo, "HEAD").unwrap(), EMPTY_TREE);
     }
 
     #[test]
@@ -588,7 +773,7 @@ mod tests {
     }
 
     #[test]
-    fn base64_reads_binary_bytes_from_the_work_tree() {
+    fn reads_binary_bytes_from_the_work_tree() {
         let (_dir, repo) = init_empty_repo();
         commit_file(&repo, "a.txt", "x\n", "one");
         std::fs::write(
@@ -597,13 +782,13 @@ mod tests {
         )
         .unwrap();
 
-        let encoded = file_base64_inner(&repo, "logo.png", &FileSource::Workdir).unwrap();
-        assert_eq!(encoded, "iVBORw==");
-        assert!(file_base64_inner(&repo, "../escape", &FileSource::Workdir).is_err());
+        let bytes = file_bytes_inner(&repo, "logo.png", &FileSource::Workdir).unwrap();
+        assert_eq!(bytes, [0x89u8, 0x50, 0x4E, 0x47]);
+        assert!(file_bytes_inner(&repo, "../escape", &FileSource::Workdir).is_err());
     }
 
     #[test]
-    fn base64_distinguishes_work_tree_index_and_revision() {
+    fn bytes_distinguish_work_tree_index_and_revision() {
         let (_dir, repo) = init_empty_repo();
         commit_file(&repo, "f.txt", "first\n", "one");
         let first = git_ok(&repo, &["rev-parse", "HEAD"]);
@@ -611,25 +796,23 @@ mod tests {
         git_ok(&repo, &["add", "--", "f.txt"]);
         write_file(&repo, "f.txt", "working\n");
 
-        let text = |encoded: String| {
-            String::from_utf8(STANDARD.decode(encoded).expect("valid base64")).expect("utf-8")
-        };
+        let text = |bytes: Vec<u8>| String::from_utf8(bytes).expect("utf-8");
 
         assert_eq!(
-            text(file_base64_inner(&repo, "f.txt", &FileSource::Workdir).unwrap()),
+            text(file_bytes_inner(&repo, "f.txt", &FileSource::Workdir).unwrap()),
             "working\n"
         );
         assert_eq!(
-            text(file_base64_inner(&repo, "f.txt", &FileSource::Index).unwrap()),
+            text(file_bytes_inner(&repo, "f.txt", &FileSource::Index).unwrap()),
             "staged\n"
         );
         assert_eq!(
-            text(file_base64_inner(&repo, "f.txt", &FileSource::Rev { rev: first }).unwrap()),
+            text(file_bytes_inner(&repo, "f.txt", &FileSource::Rev { rev: first }).unwrap()),
             "first\n"
         );
 
-        assert!(file_base64_inner(&repo, "missing.txt", &FileSource::Index).is_err());
-        assert!(file_base64_inner(
+        assert!(file_bytes_inner(&repo, "missing.txt", &FileSource::Index).is_err());
+        assert!(file_bytes_inner(
             &repo,
             "f.txt",
             &FileSource::Rev {
@@ -650,7 +833,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            file_base64_inner(&repo, "big.bin", &FileSource::Workdir).unwrap_err(),
+            file_bytes_inner(&repo, "big.bin", &FileSource::Workdir).unwrap_err(),
             TOO_LARGE
         );
     }

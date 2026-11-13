@@ -34,3 +34,9 @@ export interface CommitDetails {
   additions: number;
   deletions: number;
 }
+
+/** Lines added and removed across a whole diff (output of `get_staged_stats`). */
+export interface DiffStats {
+  additions: number;
+  deletions: number;
+}

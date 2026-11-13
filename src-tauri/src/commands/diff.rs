@@ -3,10 +3,12 @@
 use std::path::Path;
 
 use git2::Repository;
+use tauri::ipc::Response;
 
 use super::git::{
     blocking, validate_pathspec, validate_repo_path, validate_sha, GitCmd, NO_EXT_DIFF, NO_TEXTCONV,
 };
+use crate::models::DiffStats;
 
 const SIZE_LIMIT: usize = 10 * 1024 * 1024;
 
@@ -118,16 +120,71 @@ pub(super) fn get_commit_diff_inner(path: &str, sha: &str) -> Result<String, Str
     }
 }
 
+/// Line counts of everything staged, from `--numstat -z` instead of the whole
+/// patch (up to 10 MB) the composer used to fetch only to count it.
+pub(super) fn staged_stats_inner(path: &str) -> Result<DiffStats, String> {
+    validate_repo_path(path)?;
+
+    let out = GitCmd::in_repo(path)
+        .args([
+            "diff",
+            NO_EXT_DIFF,
+            NO_TEXTCONV,
+            "--cached",
+            "--numstat",
+            "-z",
+        ])
+        .output()?;
+    if !matches!(out.status.code(), Some(0) | Some(1)) {
+        return Err(super::git::stderr_or(&out, "git diff failed"));
+    }
+
+    let payload = String::from_utf8_lossy(&out.stdout);
+    let mut stats = DiffStats {
+        additions: 0,
+        deletions: 0,
+    };
+    let mut tokens = payload.split('\0').filter(|token| !token.is_empty());
+    while let Some(record) = tokens.next() {
+        let mut fields = record.splitn(3, '\t');
+        // A binary file reports `-`, which counts as nothing, as it did in the patch.
+        stats.additions += fields.next().unwrap_or_default().parse().unwrap_or(0);
+        stats.deletions += fields.next().unwrap_or_default().parse().unwrap_or(0);
+        // A rename leaves the path field empty and sends both paths as tokens of
+        // their own; they must not be read as records.
+        if fields.next().unwrap_or_default().is_empty() {
+            tokens.next();
+            tokens.next();
+        }
+    }
+    Ok(stats)
+}
+
 /// Diff of one working-tree file (or the whole tree when `file` is `None`).
+///
+/// Patches are sent as raw UTF-8 rather than as a JSON string, which would
+/// escape every quote, tab and newline of up to 10 MB only for the UI to undo
+/// it; `tauri-git.service.ts` decodes them.
 #[tauri::command]
-pub async fn get_diff(path: String, file: Option<String>, staged: bool) -> Result<String, String> {
-    blocking(move || get_diff_inner(&path, file.as_deref(), staged)).await
+pub async fn get_diff(
+    path: String,
+    file: Option<String>,
+    staged: bool,
+) -> Result<Response, String> {
+    let diff = blocking(move || get_diff_inner(&path, file.as_deref(), staged)).await?;
+    Ok(Response::new(diff.into_bytes()))
+}
+
+#[tauri::command]
+pub async fn get_staged_stats(path: String) -> Result<DiffStats, String> {
+    blocking(move || staged_stats_inner(&path)).await
 }
 
 /// Diff introduced by `sha`; merges are compared against their first parent.
 #[tauri::command]
-pub async fn get_commit_diff(path: String, sha: String) -> Result<String, String> {
-    blocking(move || get_commit_diff_inner(&path, &sha)).await
+pub async fn get_commit_diff(path: String, sha: String) -> Result<Response, String> {
+    let diff = blocking(move || get_commit_diff_inner(&path, &sha)).await?;
+    Ok(Response::new(diff.into_bytes()))
 }
 
 #[cfg(test)]
@@ -309,6 +366,75 @@ mod tests {
         assert!(untracked.contains("+nuevo"), "got: {untracked}");
         assert!(commit.contains("+v1"), "got: {commit}");
         assert!(staged.contains("+v2"), "got: {staged}");
+    }
+
+    /// What the composer used to compute from the whole staged patch (the TS
+    /// `countDiffStats` this command replaced): `+`/`-` lines minus the
+    /// `+++`/`---` headers.
+    fn count_patch_lines(patch: &str) -> DiffStats {
+        let mut stats = DiffStats {
+            additions: 0,
+            deletions: 0,
+        };
+        for line in patch.split('\n') {
+            if line.starts_with('+') && !line.starts_with("+++") {
+                stats.additions += 1;
+            } else if line.starts_with('-') && !line.starts_with("---") {
+                stats.deletions += 1;
+            }
+        }
+        stats
+    }
+
+    #[test]
+    fn staged_stats_match_the_counted_staged_patch() {
+        let (_dir, path) = init_repo();
+        write_file(&path, "keep.txt", "uno\ndos\ntres\ncuatro\ncinco\nseis\n");
+        write_file(&path, "gone.txt", "a\nb\n");
+        git_ok(&path, &["add", "."]);
+        git_ok(&path, &["commit", "-m", "base"]);
+
+        write_file(&path, "a.txt", "v2\nv3\n");
+        write_file(&path, "año ñ/nuevo.txt", "x\ny\nz\n");
+        std::fs::remove_file(Path::new(&path).join("gone.txt")).unwrap();
+        std::fs::write(Path::new(&path).join("blob.bin"), [0u8, 1, 2, 0, 3]).unwrap();
+        git_ok(&path, &["mv", "keep.txt", "moved.txt"]);
+        write_file(
+            &path,
+            "moved.txt",
+            "uno\ndos\ntres\ncuatro\ncinco\nseis\nsiete\n",
+        );
+        git_ok(&path, &["add", "-A"]);
+        // Unstaged work must not count.
+        write_file(&path, "a.txt", "unstaged\n");
+
+        let patch = get_diff_inner(&path, None, true).unwrap();
+        assert!(patch.contains("rename from keep.txt"), "got: {patch}");
+        assert!(patch.contains("Binary files"), "got: {patch}");
+
+        let stats = staged_stats_inner(&path).unwrap();
+        assert_eq!(stats, count_patch_lines(&patch));
+        assert_eq!(
+            stats,
+            DiffStats {
+                additions: 2 + 3 + 1,
+                deletions: 1 + 2
+            }
+        );
+    }
+
+    #[test]
+    fn staged_stats_of_nothing_staged_are_zero() {
+        let (_dir, path) = init_repo();
+        write_file(&path, "a.txt", "unstaged\n");
+        assert_eq!(
+            staged_stats_inner(&path).unwrap(),
+            DiffStats {
+                additions: 0,
+                deletions: 0
+            }
+        );
+        assert!(staged_stats_inner("--exec=calc").is_err());
     }
 
     #[test]

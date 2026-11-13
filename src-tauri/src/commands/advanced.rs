@@ -7,7 +7,8 @@ use super::git::{
 };
 use super::merge::conflicted_files;
 use crate::models::{
-    BlameLine, CommitInfo, PatchApplyResult, RebaseResult, RebaseTodoEntry, ResetResult,
+    BlameCommit, BlameResult, BlameRow, CommitInfo, PatchApplyResult, RebaseResult,
+    RebaseTodoEntry, ResetResult,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -362,10 +363,14 @@ pub async fn apply_rebase(
 // ── blame ─────────────────────────────────────────────────────────────────────
 
 /// Parse `git blame --porcelain` into per-line annotations.
-fn parse_blame_porcelain(output: &str) -> Vec<BlameLine> {
+///
+/// Porcelain output gives a commit's metadata only the first time the commit
+/// appears, and the result keeps it that way: every line points at one shared
+/// entry instead of repeating sha, author and summary.
+fn parse_blame_porcelain(output: &str) -> BlameResult {
+    let mut commits: Vec<BlameCommit> = Vec::new();
+    let mut index: HashMap<String, usize> = HashMap::new();
     let mut result = Vec::new();
-    // Porcelain output repeats a commit's metadata only the first time.
-    let mut seen: HashMap<String, (String, i64, String)> = HashMap::new();
     let mut lines = output.lines();
 
     while let Some(header) = lines.next() {
@@ -377,62 +382,49 @@ fn parse_blame_porcelain(output: &str) -> Vec<BlameLine> {
         if sha.len() != 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
             continue;
         }
-        let sha = sha.to_string();
         let line_no: usize = parts[2].parse().unwrap_or(0);
+        let commit = *index.entry(sha.to_string()).or_insert_with(|| {
+            commits.push(BlameCommit {
+                sha: sha.to_string(),
+                author: String::new(),
+                time: 0,
+                message: String::new(),
+            });
+            commits.len() - 1
+        });
 
-        let mut author = String::new();
-        let mut time = 0i64;
-        let mut summary = String::new();
-        let mut content = String::new();
-        let mut found = false;
-
+        let mut content = None;
         for meta in &mut lines {
+            let entry = &mut commits[commit];
             if let Some(rest) = meta.strip_prefix('\t') {
-                content = rest.to_string();
-                found = true;
+                content = Some(rest.to_string());
                 break;
             } else if let Some(value) = meta.strip_prefix("author ") {
-                author = value.to_string();
+                entry.author = value.to_string();
             } else if let Some(value) = meta.strip_prefix("author-time ") {
-                time = value.parse().unwrap_or(0);
+                entry.time = value.parse().unwrap_or(0);
             } else if let Some(value) = meta.strip_prefix("summary ") {
-                summary = value.to_string();
+                entry.message = value.to_string();
             }
         }
-        if !found {
+        let Some(content) = content else {
             break;
-        }
+        };
 
-        if author.is_empty() || summary.is_empty() {
-            if let Some((a, t, s)) = seen.get(&sha) {
-                if author.is_empty() {
-                    author = a.clone();
-                }
-                if time == 0 {
-                    time = *t;
-                }
-                if summary.is_empty() {
-                    summary = s.clone();
-                }
-            }
-        } else {
-            seen.insert(sha.clone(), (author.clone(), time, summary.clone()));
-        }
-
-        result.push(BlameLine {
-            sha,
-            author,
-            time,
-            message: summary,
+        result.push(BlameRow {
+            commit,
             line_no,
             content,
         });
     }
 
-    result
+    BlameResult {
+        commits,
+        lines: result,
+    }
 }
 
-fn blame_file_inner(path: &str, file: &str, rev: Option<&str>) -> Result<Vec<BlameLine>, String> {
+fn blame_file_inner(path: &str, file: &str, rev: Option<&str>) -> Result<BlameResult, String> {
     validate_repo_path(path)?;
     validate_pathspec(file)?;
     if let Some(rev) = rev {
@@ -444,9 +436,9 @@ fn blame_file_inner(path: &str, file: &str, rev: Option<&str>) -> Result<Vec<Bla
         cmd = cmd.arg(rev);
     }
     let output = cmd.arg("--").arg(file).run()?;
-    let mut lines = parse_blame_porcelain(&output);
-    lines.sort_by_key(|l| l.line_no);
-    Ok(lines)
+    let mut blame = parse_blame_porcelain(&output);
+    blame.lines.sort_by_key(|l| l.line_no);
+    Ok(blame)
 }
 
 /// Per-line blame annotations for `file`, in the work tree or at `rev`.
@@ -455,27 +447,33 @@ pub async fn blame_file(
     path: String,
     file: String,
     rev: Option<String>,
-) -> Result<Vec<BlameLine>, String> {
+) -> Result<BlameResult, String> {
     blocking(move || blame_file_inner(&path, &file, rev.as_deref())).await
 }
 
 // ── file history ──────────────────────────────────────────────────────────────
 
-fn file_history_inner(path: &str, file: &str) -> Result<Vec<CommitInfo>, String> {
+fn file_history_inner(path: &str, file: &str, limit: usize) -> Result<Vec<CommitInfo>, String> {
     validate_repo_path(path)?;
     validate_pathspec(file)?;
 
     let stdout = GitCmd::in_repo(path)
-        .args(["log", "--follow", "--decorate=full", LOG_FORMAT, "--"])
+        .args(["log", "--follow", "--decorate=full", LOG_FORMAT])
+        .arg(format!("--max-count={}", limit.max(1)))
+        .arg("--")
         .arg(file)
         .run()?;
     Ok(parse_log_output(&stdout))
 }
 
-/// Commits touching `file`, following renames.
+/// The newest `limit` commits touching `file`, following renames.
 #[tauri::command]
-pub async fn file_history(path: String, file: String) -> Result<Vec<CommitInfo>, String> {
-    blocking(move || file_history_inner(&path, &file)).await
+pub async fn file_history(
+    path: String,
+    file: String,
+    limit: usize,
+) -> Result<Vec<CommitInfo>, String> {
+    blocking(move || file_history_inner(&path, &file, limit)).await
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -835,13 +833,36 @@ mod tests {
     #[test]
     fn blame_annotates_every_line() {
         let (_dir, path) = init_repo();
-        let lines = blame_file_inner(&path, "a.txt", None).unwrap();
+        let blame = blame_file_inner(&path, "a.txt", None).unwrap();
 
-        assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].line_no, 1);
-        assert_eq!(lines[0].content, "v1");
-        assert_eq!(lines[0].author, "Test User");
-        assert_eq!(lines[0].sha.len(), 40);
+        assert_eq!(blame.lines.len(), 1);
+        assert_eq!(blame.lines[0].line_no, 1);
+        assert_eq!(blame.lines[0].content, "v1");
+        let commit = &blame.commits[blame.lines[0].commit];
+        assert_eq!(commit.author, "Test User");
+        assert_eq!(commit.message, "init");
+        assert_eq!(commit.sha.len(), 40);
+    }
+
+    #[test]
+    fn blame_sends_each_commit_once() {
+        let (_dir, path) = init_repo();
+        commit_file(&path, "a.txt", "v1\nv2\nv3\n", "second");
+        commit_file(&path, "a.txt", "v1\nv2\nv3\nv4\n", "third");
+
+        let blame = blame_file_inner(&path, "a.txt", None).unwrap();
+
+        assert_eq!(blame.commits.len(), 3);
+        let messages: Vec<&str> = blame
+            .lines
+            .iter()
+            .map(|line| blame.commits[line.commit].message.as_str())
+            .collect();
+        assert_eq!(messages, ["init", "second", "second", "third"]);
+        assert!(blame
+            .commits
+            .iter()
+            .all(|c| c.author == "Test User" && c.time > 0));
     }
 
     #[test]
@@ -851,12 +872,12 @@ mod tests {
         commit_file(&path, "a.txt", "v1\nv2\n", "second");
 
         let old = blame_file_inner(&path, "a.txt", Some(&first)).unwrap();
-        assert_eq!(old.len(), 1);
-        assert_eq!(old[0].content, "v1");
+        assert_eq!(old.lines.len(), 1);
+        assert_eq!(old.lines[0].content, "v1");
 
         let current = blame_file_inner(&path, "a.txt", None).unwrap();
-        assert_eq!(current.len(), 2);
-        assert_eq!(current[1].content, "v2");
+        assert_eq!(current.lines.len(), 2);
+        assert_eq!(current.lines[1].content, "v2");
 
         assert!(blame_file_inner(&path, "a.txt", Some("--exec=calc")).is_err());
     }
@@ -873,17 +894,21 @@ mod tests {
         git_ok(&path, &["mv", "a.txt", "señal ñ.txt"]);
         git_ok(&path, &["commit", "-m", "rename a"]);
 
-        let history = file_history_inner(&path, "señal ñ.txt").unwrap();
+        let history = file_history_inner(&path, "señal ñ.txt", 1000).unwrap();
 
         assert!(history.len() >= 3, "got {} entries", history.len());
         assert_eq!(history[0].message, "rename a");
         assert!(history.iter().any(|c| c.message == "init"));
+
+        let newest = file_history_inner(&path, "señal ñ.txt", 2).unwrap();
+        assert_eq!(newest.len(), 2);
+        assert_eq!(newest[0].message, "rename a");
     }
 
     #[test]
     fn history_and_blame_reject_traversal() {
         let (_dir, path) = init_repo();
-        assert!(file_history_inner(&path, "../escape").is_err());
+        assert!(file_history_inner(&path, "../escape", 10).is_err());
         assert!(blame_file_inner(&path, "../escape", None).is_err());
     }
 }

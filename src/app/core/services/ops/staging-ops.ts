@@ -34,8 +34,10 @@ export class StagingOps {
     await this.ops.run(
       async () => {
         await this.ops.git.stageFiles(repo.path, [...files]);
-        await this.repoOps.refreshChanges(state);
-        await this.repoOps.refreshActiveDiff(state);
+        await Promise.all([
+          this.repoOps.refreshChanges(state),
+          this.repoOps.refreshActiveDiff(state),
+        ]);
       },
       undefined,
       { busy: [state.stagingBusy], failure: 'Could not stage' },
@@ -48,8 +50,10 @@ export class StagingOps {
     await this.ops.run(
       async () => {
         await this.ops.git.unstageFiles(repo.path, [...files]);
-        await this.repoOps.refreshChanges(state);
-        await this.repoOps.refreshActiveDiff(state);
+        await Promise.all([
+          this.repoOps.refreshChanges(state),
+          this.repoOps.refreshActiveDiff(state),
+        ]);
       },
       undefined,
       { busy: [state.stagingBusy], failure: 'Could not unstage' },
@@ -86,8 +90,10 @@ export class StagingOps {
     return this.ops.run(
       async () => {
         await this.ops.git.applyPatch(repo.path, patch, flags.reverse, flags.cached);
-        await this.repoOps.refreshChanges(state);
-        await this.repoOps.refreshActiveDiff(state);
+        await Promise.all([
+          this.repoOps.refreshChanges(state),
+          this.repoOps.refreshActiveDiff(state),
+        ]);
         return true;
       },
       false,
@@ -206,8 +212,10 @@ export class StagingOps {
         } else {
           await this.ops.git.stageHunks(repo.path, file, selection);
         }
-        await this.repoOps.refreshChanges(state);
-        await this.repoOps.refreshActiveDiff(state);
+        await Promise.all([
+          this.repoOps.refreshChanges(state),
+          this.repoOps.refreshActiveDiff(state),
+        ]);
       },
       undefined,
       {

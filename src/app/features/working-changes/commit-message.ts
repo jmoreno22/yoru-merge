@@ -114,20 +114,6 @@ export function recentScopes(messages: readonly string[], limit = 12): string[] 
   return scopes;
 }
 
-/** Insertions / deletions of a unified diff, ignoring its file headers. */
-export function countDiffStats(diff: string): {
-  additions: number;
-  deletions: number;
-} {
-  let additions = 0;
-  let deletions = 0;
-  for (const line of diff.split('\n')) {
-    if (line.startsWith('+') && !line.startsWith('+++')) additions++;
-    else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
-  }
-  return { additions, deletions };
-}
-
 export interface CommitReadinessInput {
   readonly hasRepo: boolean;
   readonly busy: boolean;

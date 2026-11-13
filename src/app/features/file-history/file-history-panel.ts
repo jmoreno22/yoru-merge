@@ -15,6 +15,7 @@ import { AppearanceService } from '../../core/services/appearance.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { EscapeRank } from '../../core/services/escape-layers';
 import { EscapeLayersService } from '../../core/services/escape-layers.service';
+import { FILE_HISTORY_LIMIT } from '../../core/services/tauri-git.service';
 import { absoluteTime, relativeTime } from '../../core/utils';
 import type { MenuItem } from '../../shared/ui';
 import {
@@ -79,12 +80,22 @@ export class FileHistoryPanel {
   protected readonly loading = signal(false);
   protected readonly selectedSha = signal<string | null>(null);
 
+  protected readonly historyLimit = FILE_HISTORY_LIMIT;
+
+  /** The backend sends one commit past the limit when older ones exist. */
+  protected readonly truncated = computed(
+    () => this.service.fileHistoryEntries().length > FILE_HISTORY_LIMIT,
+  );
+
   protected readonly rows = computed<readonly HistoryRow[]>(() =>
-    this.service.fileHistoryEntries().map((commit) => ({
-      commit,
-      when: relativeTime(commit.date),
-      exact: absoluteTime(commit.date),
-    })),
+    this.service
+      .fileHistoryEntries()
+      .slice(0, FILE_HISTORY_LIMIT)
+      .map((commit) => ({
+        commit,
+        when: relativeTime(commit.date),
+        exact: absoluteTime(commit.date),
+      })),
   );
 
   protected readonly isEmpty = computed(

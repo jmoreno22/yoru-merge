@@ -30,6 +30,7 @@ pub fn run() {
             commands::branches::list_tags,
             commands::diff::get_diff,
             commands::diff::get_commit_diff,
+            commands::diff::get_staged_stats,
             commands::graph::get_graph_data,
             commands::hunks::stage_hunks,
             commands::hunks::unstage_hunks,

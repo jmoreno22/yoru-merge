@@ -36,7 +36,6 @@ import {
   type CommitDraft,
   commitMenuItems,
   commitReadiness,
-  countDiffStats,
   draftFromMessage,
   headerLength,
   headerPrefix,
@@ -54,8 +53,9 @@ const RECENT_LIMIT = 10;
 const FIXUP_CHOICES = 15;
 
 /**
- * Fetching the whole staged diff just to count lines is only reasonable while
- * the change set is small; past this the summary drops the +/− figures.
+ * Counting lines still makes git diff every staged file, which is only
+ * reasonable while the change set is small; past this the summary drops the
+ * +/− figures.
  */
 const MAX_STATS_FILES = 400;
 
@@ -328,8 +328,7 @@ export class CommitComposer {
       }
       const timer = setTimeout(async () => {
         try {
-          const diff = await this.git.getDiff(repo.path, null, true);
-          this.stagedStats.set(countDiffStats(diff));
+          this.stagedStats.set(await this.git.getStagedStats(repo.path));
         } catch {
           // A failing diff must not take the composer down with it.
           this.stagedStats.set(null);

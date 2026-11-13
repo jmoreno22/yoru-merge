@@ -14,9 +14,9 @@ fn validate_files(files: &[String]) -> Result<(), String> {
 
 /// `true` when HEAD does not resolve yet (a repository with no commits).
 fn is_unborn(path: &str) -> bool {
-    !GitCmd::in_repo(path)
-        .args(["rev-parse", "--verify", "--quiet", "HEAD"])
-        .succeeds()
+    git2::Repository::open(path)
+        .and_then(|repo| repo.revparse_single("HEAD").map(|_| ()))
+        .is_err()
 }
 
 /// NUL-separated pathspec list for `--pathspec-from-file=-`.

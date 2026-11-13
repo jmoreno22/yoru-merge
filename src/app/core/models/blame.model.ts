@@ -1,7 +1,28 @@
 /**
- * One annotated line returned by `git blame --porcelain`.
- *
- * Field names mirror the Rust serde JSON output (snake_case).
+ * What `blame_file` sends: each commit's metadata once, and per line the
+ * index of its commit. `tauri-git.service.ts` expands it into {@link BlameLine}s.
+ */
+export interface BlameResult {
+  commits: BlameCommit[];
+  lines: BlameRow[];
+}
+
+export interface BlameCommit {
+  sha: string;
+  author: string;
+  time: number;
+  message: string;
+}
+
+export interface BlameRow {
+  /** Index into {@link BlameResult.commits}. */
+  commit: number;
+  line_no: number;
+  content: string;
+}
+
+/**
+ * One annotated line returned by `git blame --porcelain`, as the UI uses it.
  *
  *   - `sha`     — commit SHA that last touched this line
  *   - `author`  — committer display name

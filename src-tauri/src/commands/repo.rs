@@ -11,7 +11,7 @@ use tauri::ipc::Channel;
 use tauri::State;
 use tauri_plugin_store::StoreExt;
 
-use super::git::{blocking, validate_ref, validate_repo_path, validate_url, GitCmd};
+use super::git::{blocking, validate_ref, validate_repo_path, validate_url};
 use super::git_auth::{auth_error_message, is_auth_error};
 use super::remote::{done_event, parse_fetch_line};
 use crate::models::{FetchProgress, RepoInfo};
@@ -56,7 +56,10 @@ fn repo_name(root: &str) -> String {
 /// HEAD is read as a symbolic ref instead of being resolved, so a branch that
 /// has no commits yet is still reported — same as `branch --show-current`.
 pub(super) fn head_branch(root: &str) -> Option<String> {
-    let repo = git2::Repository::open(root).ok()?;
+    head_branch_of(&git2::Repository::open(root).ok()?)
+}
+
+fn head_branch_of(repo: &git2::Repository) -> Option<String> {
     let head = repo.find_reference("HEAD").ok()?;
     head.symbolic_target()
         .ok()
@@ -65,35 +68,51 @@ pub(super) fn head_branch(root: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Git for Windows resolves the root through `GetFinalPathNameByHandle`, which
+/// also fixes the case of every component; libgit2 keeps the caller's
+/// spelling, so a lowercased input would open a second tab for the same repo.
+#[cfg(windows)]
+fn spelled_like_git(dir: &Path) -> String {
+    let Ok(resolved) = std::fs::canonicalize(dir) else {
+        return dir.to_string_lossy().into_owned();
+    };
+    let resolved = resolved.to_string_lossy();
+    match resolved.strip_prefix(r"\\?\UNC\") {
+        Some(share) => format!(r"\\{share}"),
+        None => resolved
+            .strip_prefix(r"\\?\")
+            .unwrap_or(&resolved)
+            .to_string(),
+    }
+}
+
+#[cfg(not(windows))]
+fn spelled_like_git(dir: &Path) -> String {
+    dir.to_string_lossy().into_owned()
+}
+
+/// Discovered in process rather than with two `rev-parse` spawns.
 pub(super) fn open_repo_inner(path: &str) -> Result<RepoInfo, String> {
     validate_repo_path(path)?;
 
-    let probe = GitCmd::in_repo(path)
-        .args(["rev-parse", "--is-bare-repository"])
-        .output()?;
-    if !probe.status.success() {
-        return Err("not a git repository".to_string());
-    }
-    let is_bare = String::from_utf8_lossy(&probe.stdout).trim() == "true";
-
     // Any subdirectory of a work tree opens the repository it belongs to.
-    let root_arg = if is_bare {
-        "--absolute-git-dir"
-    } else {
-        "--show-toplevel"
+    let repo = git2::Repository::discover(path).map_err(|_| "not a git repository".to_string())?;
+    let is_bare = repo.is_bare();
+    let dir = match repo.workdir() {
+        Some(workdir) if !is_bare => workdir,
+        _ => repo.path(),
     };
-    let root = GitCmd::in_repo(path)
-        .args(["rev-parse", root_arg])
-        .run()?
-        .trim_end_matches(['\r', '\n'])
-        .to_string();
-    if root.is_empty() {
-        return Err("not a git repository".to_string());
-    }
+    // libgit2 ends directories with a slash; `rev-parse` never did, except
+    // for a filesystem root.
+    let dir = spelled_like_git(dir).replace('\\', "/");
+    let root = match dir.strip_suffix('/') {
+        Some(trimmed) if !trimmed.is_empty() && !trimmed.ends_with(':') => trimmed.to_string(),
+        _ => dir,
+    };
 
     Ok(RepoInfo {
         name: repo_name(&root),
-        current_branch: head_branch(&root),
+        current_branch: head_branch_of(&repo),
         path: root,
         is_bare,
     })
@@ -412,6 +431,57 @@ mod tests {
         assert!(info.is_bare);
         assert_eq!(info.name, "thing");
         assert_eq!(info.current_branch.as_deref(), Some("main"));
+    }
+
+    /// The root used to come from `rev-parse`; tabs, recents and the watcher
+    /// key on it, so the in-process discovery must spell it the same way.
+    #[test]
+    fn the_root_is_spelled_the_way_rev_parse_spelled_it() {
+        let (_dir, path) = init_repo();
+        std::fs::create_dir_all(Path::new(&path).join("sub dir/ñ")).unwrap();
+        let linked = tempfile::TempDir::new().unwrap();
+        let linked = linked.path().join("linked tree");
+        git_ok(
+            &path,
+            &["worktree", "add", "-b", "side", linked.to_str().unwrap()],
+        );
+        let bare_dir = tempfile::TempDir::new().unwrap();
+        let bare = bare_dir.path().join("thing.git");
+        git_ok(&path, &["clone", "--bare", ".", bare.to_str().unwrap()]);
+
+        let mut inputs = vec![
+            path.clone(),
+            format!("{path}/sub dir/ñ"),
+            linked.to_str().unwrap().to_string(),
+            bare.to_str().unwrap().to_string(),
+        ];
+        if cfg!(windows) {
+            inputs.push(format!("{path}\\sub dir\\ñ").replace('/', "\\"));
+            inputs.push(path.to_lowercase());
+        }
+
+        for input in inputs {
+            let bare = git_ok(&input, &["rev-parse", "--is-bare-repository"]) == "true";
+            let flag = if bare {
+                "--absolute-git-dir"
+            } else {
+                "--show-toplevel"
+            };
+            let info = open_repo_inner(&input).unwrap();
+            assert_eq!(
+                info.path,
+                git_ok(&input, &["rev-parse", flag]),
+                "input {input}"
+            );
+            assert_eq!(info.is_bare, bare, "input {input}");
+        }
+        assert_eq!(
+            open_repo_inner(linked.to_str().unwrap())
+                .unwrap()
+                .current_branch
+                .as_deref(),
+            Some("side")
+        );
     }
 
     #[test]
