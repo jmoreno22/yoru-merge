@@ -101,8 +101,8 @@ export class RepoOps {
 
   /**
    * Reloads what the watcher says changed. `refs` covers commits, branches
-   * and tags, `stash` the stashes, `config` the remotes; `index`/`worktree`
-   * cover the working tree. Every round refreshes the repo state so the
+   * and tags, `stash` the stashes, `config` the remotes and upstreams;
+   * `index`/`worktree` cover the working tree. Every round refreshes the repo state so the
    * sequencer banner keeps up.
    *
    * Takes a set rather than one kind because a single git command usually
@@ -143,7 +143,11 @@ export class RepoOps {
       );
     }
     if (kinds.has('stash')) tasks.push(this.loadStashes(state));
-    if (kinds.has('config')) tasks.push(this.loadRemotes(state));
+    if (kinds.has('config')) {
+      tasks.push(this.loadRemotes(state));
+      // Upstreams are config too: `git branch -u` writes nothing under refs/.
+      if (!kinds.has('refs')) tasks.push(this.loadBranches(state));
+    }
     if (kinds.has('worktree') || kinds.has('index')) {
       // The staging operations reload the shown diff themselves; this is the
       // path for every change they do not run, above all the watcher, which

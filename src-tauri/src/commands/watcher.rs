@@ -1,6 +1,6 @@
 //! Filesystem watching: one debounced watcher per open repository.
 
-use notify_debouncer_full::notify::event::EventKind;
+use notify_debouncer_full::notify::event::{EventKind, ModifyKind};
 use notify_debouncer_full::notify::{Config, RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     new_debouncer_opt, DebounceEventResult, DebouncedEvent, Debouncer, NoCache,
@@ -134,12 +134,21 @@ pub(super) fn classify(repo: &str, changed: &str) -> Option<ChangeKind> {
 ///
 /// Reads are dropped before classifying: inotify reports every `open()`, so a
 /// `git status` in a terminal or an editor reading a file would otherwise
-/// refresh the whole UI.
+/// refresh the whole UI. So is a directory that was only modified: NTFS
+/// reports the first listing of a directory each hour as a change to it (its
+/// last-access time), and a real change inside one always arrives as an event
+/// on the file itself.
 fn changed_kinds(repo: &str, events: &[DebouncedEvent]) -> HashSet<ChangeKind> {
     events
         .iter()
         .filter(|event| !matches!(event.kind, EventKind::Access(_)))
-        .flat_map(|event| event.paths.iter())
+        .flat_map(|event| {
+            let dir_touch = matches!(event.kind, EventKind::Modify(kind) if !matches!(kind, ModifyKind::Name(_)));
+            event
+                .paths
+                .iter()
+                .filter(move |p| !(dir_touch && p.is_dir()))
+        })
         .filter_map(|p| classify(repo, &p.to_string_lossy()))
         .collect()
 }
@@ -564,6 +573,35 @@ mod tests {
             ),
         ];
         assert!(changed_kinds(REPO, &events).is_empty());
+    }
+
+    #[test]
+    fn a_directory_whose_metadata_changed_is_not_a_change() {
+        let root = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(root.path().join(".git/refs/heads")).expect("refs");
+        std::fs::create_dir_all(root.path().join("src")).expect("src");
+        std::fs::write(root.path().join("src/a.ts"), "a").expect("file");
+        let repo = root.path().to_string_lossy().to_string();
+        let at = |relative: &str| root.path().join(relative).to_string_lossy().to_string();
+
+        let touched = [
+            debounced(EventKind::Modify(ModifyKind::Any), &at(".git/refs/heads")),
+            debounced(EventKind::Modify(ModifyKind::Any), &at("src")),
+        ];
+        assert!(changed_kinds(&repo, &touched).is_empty());
+
+        let real = [
+            debounced(EventKind::Modify(ModifyKind::Any), &at("src")),
+            debounced(EventKind::Modify(ModifyKind::Any), &at("src/a.ts")),
+            debounced(
+                EventKind::Create(CreateKind::Folder),
+                &at(".git/refs/heads"),
+            ),
+        ];
+        assert_eq!(
+            changed_kinds(&repo, &real),
+            HashSet::from([ChangeKind::Worktree, ChangeKind::Refs])
+        );
     }
 
     #[test]

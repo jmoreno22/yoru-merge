@@ -36,6 +36,9 @@ export class HistoryOps {
    */
   private readonly reads = new WeakMap<RepoState, Promise<unknown>>();
 
+  /** Blame and file-history reads in flight, by panel and target. */
+  private readonly panelReads = new WeakMap<RepoState, Map<string, Promise<void>>>();
+
   /**
    * Reloads the history, keeping the window that is already on screen.
    *
@@ -212,23 +215,42 @@ export class HistoryOps {
     state.reflog.set(entries);
   }
 
-  /** `rev = null` blames the work tree; a revision blames the file as of it. */
-  async loadBlame(
+  /**
+   * Opening a stacked panel loads it, and the panel then mounts for that file
+   * and asks again; the second ask joins the read already in flight.
+   */
+  private joinPanelRead(
     state: RepoState,
-    file: string,
-    rev: string | null = null,
+    key: string,
+    read: () => Promise<void>,
   ): Promise<void> {
-    const repo = state.repo();
-    if (!repo) return;
-    state.blameError.set(null);
-    state.blameLines.set([]);
-    state.blameFile.set(file);
-    state.blameRev.set(rev);
-    try {
-      state.blameLines.set(await this.ops.git.blameFile(repo.path, file, rev));
-    } catch (error: unknown) {
-      this.ops.reportError(error, 'Blame failed', state.blameError);
+    let reads = this.panelReads.get(state);
+    if (!reads) {
+      reads = new Map();
+      this.panelReads.set(state, reads);
     }
+    const inFlight = reads.get(key);
+    if (inFlight) return inFlight;
+    const run = read().finally(() => reads.delete(key));
+    reads.set(key, run);
+    return run;
+  }
+
+  /** `rev = null` blames the work tree; a revision blames the file as of it. */
+  loadBlame(state: RepoState, file: string, rev: string | null = null): Promise<void> {
+    return this.joinPanelRead(state, `blame\0${file}\0${rev ?? ''}`, async () => {
+      const repo = state.repo();
+      if (!repo) return;
+      state.blameError.set(null);
+      state.blameLines.set([]);
+      state.blameFile.set(file);
+      state.blameRev.set(rev);
+      try {
+        state.blameLines.set(await this.ops.git.blameFile(repo.path, file, rev));
+      } catch (error: unknown) {
+        this.ops.reportError(error, 'Blame failed', state.blameError);
+      }
+    });
   }
 
   clearBlame(state: RepoState): void {
@@ -238,17 +260,19 @@ export class HistoryOps {
     state.blameError.set(null);
   }
 
-  async loadFileHistory(state: RepoState, file: string): Promise<void> {
-    const repo = state.repo();
-    if (!repo) return;
-    state.fileHistoryError.set(null);
-    state.fileHistoryEntries.set([]);
-    state.fileHistoryFile.set(file);
-    try {
-      state.fileHistoryEntries.set(await this.ops.git.fileHistory(repo.path, file));
-    } catch (error: unknown) {
-      this.ops.reportError(error, 'File history failed', state.fileHistoryError);
-    }
+  loadFileHistory(state: RepoState, file: string): Promise<void> {
+    return this.joinPanelRead(state, `history\0${file}`, async () => {
+      const repo = state.repo();
+      if (!repo) return;
+      state.fileHistoryError.set(null);
+      state.fileHistoryEntries.set([]);
+      state.fileHistoryFile.set(file);
+      try {
+        state.fileHistoryEntries.set(await this.ops.git.fileHistory(repo.path, file));
+      } catch (error: unknown) {
+        this.ops.reportError(error, 'File history failed', state.fileHistoryError);
+      }
+    });
   }
 
   clearFileHistory(state: RepoState): void {

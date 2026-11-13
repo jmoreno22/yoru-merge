@@ -96,4 +96,12 @@ describe('RepoOps refresh rounds', () => {
     await refresh('config');
     expect(called('list_remotes')).toBe(1);
   });
+
+  it('reloads the branches on a config change, where upstreams live', async () => {
+    await refresh('config');
+    expect(called('list_branches')).toBe(1);
+
+    await refresh('refs', 'config');
+    expect(called('list_branches')).toBe(2);
+  });
 });
