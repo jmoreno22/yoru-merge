@@ -39,6 +39,9 @@ Thumbs.db
 .agents/
 .claude/
 skills-lock.json
+.codegraph/
+graphify-out/
+.worktrees/
 **/.sisyphus/
 **/.agents/
 **/.claude/
