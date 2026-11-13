@@ -604,6 +604,16 @@ behind it, like light on a wall.
   script animations over the CSS loop, which resumes where it was.
 - **Cost.** Only opacity and transform animate; the glow itself is painted
   once. The idle motion pauses while the window is not focused.
+
+**The welcome sign.** With no repository open, the welcome screen carries the
+same sign at full size and built like a real one: the letters in the accent,
+a rounded frame tube around them in a second colour that complements the accent
+(sakura around cyan, cyan around violet, sakura and crimson, violet around
+mint), ヨル・マージ as a small tube under the name, light spilling on the wall
+behind, and its light pooling on the wet asphalt below. The letters strike as in the
+titlebar, the frame and the katakana buzz on after them, and the same two tired
+tubes flicker at rest. Reduced motion shows it lit and still. In light mode it
+is the ink of each tube with a soft halo, and the pool of light all but goes.
 - **Motion off.** Reduced motion and the animations preference show the sign
   lit and still.
 
@@ -649,7 +659,8 @@ may carry a sakura glow while it is unresolved.
 
 The titlebar wordmark is not part of a view: it is the brand's neon sign
 (Layout › Neon wordmark), small, in the accent, and the only glow that is
-always on.
+always on. The welcome screen's sign is the same sign at full size, on the one
+screen with no repository and so no HEAD or action to compete with.
 
 ### Sakura is not red
 

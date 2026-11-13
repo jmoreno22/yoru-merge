@@ -41,6 +41,7 @@ export class RepoManager implements OnInit {
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
 
+  protected readonly wordmark = [...'YoruMerge'];
   protected readonly loading = this.currentRepo.loading;
   protected readonly error = this.currentRepo.error;
 

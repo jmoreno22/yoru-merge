@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   between flickers nothing moves, and it holds still while the window is not
   focused or when motion is off. A fetch, pull or push you start surges
   through it when it goes through and browns it out when it fails.
+- **The welcome screen hangs a real sign.** With no repository open, the name
+  is a full-size neon sign: accent letters inside a frame tube of a second
+  colour, ヨル・マージ under them and light pooling on wet asphalt below. It
+  strikes when the screen appears and flickers like the titlebar's.
 - **Empty states ink in.** The kanji watermark behind an empty panel spreads
   from its centre like ink on paper and settles out of a slight blur, once,
   when the state appears.

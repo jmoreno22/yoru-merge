@@ -1,11 +1,16 @@
 <div class="neon-scroll flex h-full w-full justify-center overflow-y-auto p-[var(--panel-pad)]">
   <div class="flex w-full max-w-2xl flex-col gap-8 py-10">
-    <header class="flex flex-col gap-2">
-      <h1
-        class="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-pink bg-clip-text font-display text-2xl tracking-widest text-transparent"
-      >
-        YoruMerge
-      </h1>
+    <header class="flex flex-col items-center gap-14 pt-4 text-center">
+      <div class="yoru-sign" data-testid="welcome-sign">
+        <span class="yoru-sign-plate" aria-hidden="true"></span>
+        <h1 class="yoru-sign-word font-display">
+          @for (letter of wordmark; track $index) {
+            <span class="yoru-neon-letter" [style.--i]="$index">{{ letter }}</span>
+          }
+        </h1>
+        <span class="yoru-sign-kana" aria-hidden="true">ヨル・マージ</span>
+        <span class="yoru-sign-puddle" aria-hidden="true"></span>
+      </div>
       <p class="text-y-base text-[var(--app-text-muted)]">
         Open a repository to start, or bring a new one in.
       </p>

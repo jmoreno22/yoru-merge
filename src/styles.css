@@ -758,6 +758,182 @@ html {
   }
 }
 
+/* ── `.yoru-sign` — the welcome screen's full-size neon sign ──────────
+ *
+ * DESIGN.md › Neon wordmark › The welcome sign. The letters are
+ * `.yoru-neon-letter`, so they strike and flicker exactly as the titlebar's;
+ * the frame tube, the katakana and the wall light are this block's own. The
+ * frame takes a second colour that complements the accent.
+ */
+.yoru-sign {
+  --sign-frame: var(--color-neon-pink);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 40px 18px;
+}
+
+:root[data-accent="violet"] .yoru-sign,
+:root[data-accent="sakura"] .yoru-sign,
+:root[data-accent="crimson"] .yoru-sign {
+  --sign-frame: var(--color-neon-cyan);
+}
+
+:root[data-accent="mint"] .yoru-sign {
+  --sign-frame: var(--color-neon-violet);
+}
+
+.yoru-sign-word {
+  margin: 0;
+  padding-left: 0.08em;
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--app-accent-text);
+  text-shadow:
+    0 0 6px color-mix(in srgb, var(--app-accent) 50%, transparent),
+    0 0 18px color-mix(in srgb, var(--app-accent) 25%, transparent);
+}
+
+.dark .yoru-sign-word {
+  color: color-mix(in srgb, var(--app-accent) 30%, #ffffff);
+  text-shadow:
+    0 0 2px var(--app-accent),
+    0 0 8px color-mix(in srgb, var(--app-accent) 90%, transparent),
+    0 0 20px color-mix(in srgb, var(--app-accent) 60%, transparent),
+    0 0 44px color-mix(in srgb, var(--app-accent) 35%, transparent);
+}
+
+.yoru-sign::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid color-mix(in srgb, var(--sign-frame) 75%, #101426);
+  border-radius: 20px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--sign-frame) 30%, transparent);
+  pointer-events: none;
+  animation: yoru-neon-ignite 900ms linear 650ms both;
+}
+
+.dark .yoru-sign::before {
+  border-color: color-mix(in srgb, var(--sign-frame) 45%, #ffffff);
+  box-shadow:
+    0 0 6px var(--sign-frame),
+    0 0 20px color-mix(in srgb, var(--sign-frame) 55%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--sign-frame) 60%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--sign-frame) 22%, transparent);
+}
+
+.yoru-sign-kana {
+  padding-left: 0.7em;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.7em;
+  color: color-mix(in srgb, var(--sign-frame) 75%, #101426);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--sign-frame) 35%, transparent);
+  animation: yoru-neon-ignite 900ms linear 850ms both;
+}
+
+.dark .yoru-sign-kana {
+  color: color-mix(in srgb, var(--sign-frame) 40%, #ffffff);
+  text-shadow:
+    0 0 2px var(--sign-frame),
+    0 0 8px color-mix(in srgb, var(--sign-frame) 70%, transparent);
+}
+
+.yoru-sign-plate {
+  position: absolute;
+  inset: -50px -90px;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--app-accent) 10%, transparent),
+    transparent
+  );
+  pointer-events: none;
+  animation: yoru-sign-light 1200ms ease-out 200ms both;
+}
+
+.dark .yoru-sign-plate {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--app-accent) 20%, transparent),
+    color-mix(in srgb, var(--sign-frame) 6%, transparent) 70%,
+    transparent
+  );
+}
+
+/* Light on wet asphalt rather than a mirror image: -webkit-box-reflect cuts the
+ * glow off at the box edge and leaves a hard-edged slab. */
+.yoru-sign-puddle {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 4%;
+  left: 4%;
+  z-index: -1;
+  height: 48px;
+  background: radial-gradient(
+    ellipse 50% 100% at 50% 0,
+    color-mix(in srgb, var(--app-accent) 12%, transparent),
+    color-mix(in srgb, var(--sign-frame) 5%, transparent) 55%,
+    transparent
+  );
+  -webkit-mask-image: repeating-linear-gradient(
+    90deg,
+    #000 0 3px,
+    rgb(0 0 0 / 0.4) 3px 6px
+  );
+  mask-image: repeating-linear-gradient(90deg, #000 0 3px, rgb(0 0 0 / 0.4) 3px 6px);
+  pointer-events: none;
+  animation: yoru-sign-light 1200ms ease-out 900ms both;
+}
+
+.dark .yoru-sign-puddle {
+  background: radial-gradient(
+    ellipse 50% 100% at 50% 0,
+    color-mix(in srgb, var(--app-accent) 32%, transparent),
+    color-mix(in srgb, var(--sign-frame) 14%, transparent) 50%,
+    transparent
+  );
+}
+
+/* Same handoff as the titlebar: nothing strikes under the startup splash. */
+.ys:not(.is-leaving) ~ app-root .yoru-sign::before,
+.ys:not(.is-leaving) ~ app-root .yoru-sign-kana,
+.ys:not(.is-leaving) ~ app-root .yoru-sign-plate,
+.ys:not(.is-leaving) ~ app-root .yoru-sign-puddle {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yoru-sign::before,
+  .yoru-sign-kana,
+  .yoru-sign-plate,
+  .yoru-sign-puddle {
+    animation: none !important;
+  }
+}
+
+:root[data-animations="off"] .yoru-sign::before,
+:root[data-animations="off"] .yoru-sign-kana,
+:root[data-animations="off"] .yoru-sign-plate,
+:root[data-animations="off"] .yoru-sign-puddle {
+  animation: none !important;
+}
+
+@keyframes yoru-sign-light {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ── `.yoru-ink` — the kanji watermark spreading in like ink ──────────
  *
  * DESIGN.md › UI kit › yoru-empty-state. A soft radial mask grows from the
