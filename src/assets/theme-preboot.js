@@ -45,6 +45,11 @@
     if (density === 'compact' || density === 'comfortable' || density === 'relaxed') {
       document.documentElement.dataset.density = density;
     }
+    // The startup splash animates from the first paint, long before
+    // AppearanceService could write this.
+    if (stored.animations === false) {
+      document.documentElement.dataset.animations = 'off';
+    }
   } catch (error) {
     // No mirror yet, malformed JSON or storage unavailable: styles.css declares
     // the defaults and Angular writes the real values on its first tick.

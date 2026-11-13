@@ -275,7 +275,7 @@
 
 /* ── Z-index scale ────────────────────────────────────────────────────
  *
- * Four layers, in stacking order. Nothing in the app may invent a z-index
+ * Five layers, in stacking order. Nothing in the app may invent a z-index
  * outside this scale; use z-[var(--z-…)].
  *
  * --z-dropdown  anchored to something on the page and dismissed by clicking
@@ -286,12 +286,15 @@
  *               resolver, the command palette.
  * --z-toast     always visible, never blocks: notifications. Above modals so a
  *               failure raised by a dialog action is still readable.
+ * --z-splash    the startup splash in index.html, over everything until the
+ *               first view is final.
  */
 :root {
   --z-dropdown: 1000;
   --z-overlay: 1100;
   --z-modal: 1200;
   --z-toast: 1300;
+  --z-splash: 1400;
 }
 
 /* ── Layout metrics ───────────────────────────────────────────────────

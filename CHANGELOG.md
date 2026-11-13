@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A startup splash covers the first second.** The window used to open on
+  the welcome screen and then jump to the restored repository while its panels
+  sized themselves. It now opens on the drawn merge mark, which fades out once
+  that first view is final — at most 2.5 s, and without movement when reduced
+  motion or the animations preference asks for it.
 - **Context menus say what they act on.** A menu opened on a commit, a branch,
   a tag, a stash, a file, a tab or a remote starts with a header naming it —
   short sha and subject, ref name, file name and folder. The option in effect

@@ -411,7 +411,7 @@ above and is never overridden.
 
 ### Z-layers
 
-Four layers, declared in `styles.css`. Nothing may invent a z-index outside the
+Five layers, declared in `styles.css`. Nothing may invent a z-index outside the
 scale; use `z-[var(--z-…)]`.
 
 | Token | Value | Meaning |
@@ -420,6 +420,7 @@ scale; use `z-[var(--z-…)]`.
 | `--z-overlay` | 1100 | floats above a dropdown but takes no focus: tooltips, drag ghosts |
 | `--z-modal` | 1200 | takes focus and blocks the app behind it: dialogs, merge resolver, command palette |
 | `--z-toast` | 1300 | always visible, never blocks — above modals so a failure raised by a dialog action stays readable |
+| `--z-splash` | 1400 | the startup splash, over everything while the first view assembles; it leaves the DOM once that view is final |
 
 ### App shell
 
@@ -531,6 +532,37 @@ In light mode:
   <!-- app shell -->
 </main>
 ```
+
+### Startup splash
+
+A launch opens on the splash, not on the workbench. `index.html` paints it as
+static markup, before Angular boots, so everything that settles in the first
+second — the welcome screen giving way to the restored tab, panels sizing
+themselves from the stored preferences, the history arriving — happens under
+it instead of jumping in front of the developer.
+
+- **Mark.** The logo's merge glyph, drawn as strokes: the two branch rings pop
+  in, the violet and sakura branches draw into the junction, the cyan stem drops
+  and the merge ring lands last. Below it the wordmark in Zen Dots with the
+  welcome screen's cyan → violet → sakura gradient. These are the brand colours,
+  not the accent: the mark is the logo, and it paints before any preference has
+  been read. The halo behind it is outside the glow budget — no view is on
+  screen yet.
+- **While it waits.** A highlight runs down each branch into the stem, one
+  after the other, and the halo breathes. Only stroke offsets, opacity and
+  transforms move.
+- **Leaving.** One 220 ms fade of the whole layer while the mark grows 6 %;
+  then the element is removed. It leaves once the preferences have loaded and
+  the restored tab, if there is one, has opened and finished its first refresh
+  or failed. Never sooner than 450 ms after the shell boots, so the intro is
+  not cut off; never later than 2.5 s, so a slow repository shows its own
+  loading state.
+- **Motion off.** Reduced motion and the animations preference — which
+  `theme-preboot.js` applies before the first paint — show the finished mark
+  without movement and drop it without a fade.
+
+It sits on `--z-splash` and is `aria-hidden`: decoration over an interface
+that is still assembling.
 
 ## Elevation & Depth
 

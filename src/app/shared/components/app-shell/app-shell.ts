@@ -3,6 +3,7 @@ import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { DEFAULT_PREFERENCES } from '../../../core/services/preferences-schema';
+import { watchStartupSplash } from '../../../core/services/startup-splash';
 import { ThemeService } from '../../../core/services/theme.service';
 import { WorkspaceStore } from '../../../core/services/workspace.store';
 import { DialogHost } from '../../../features/dialogs/dialog-host';
@@ -50,6 +51,7 @@ export class AppShell {
   private readonly shortcuts = inject(KeyboardShortcutsService);
 
   constructor() {
+    watchStartupSplash();
     const manyTabs = () => this.workspace.workspaces().length > 1;
     const offs = [
       this.shortcuts.register({
