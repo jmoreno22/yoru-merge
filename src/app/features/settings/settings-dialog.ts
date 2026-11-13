@@ -420,11 +420,26 @@ export class SettingsDialog {
   }
 
   protected onNavKeydown(event: KeyboardEvent): void {
-    const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
-    if (step === 0) return;
-    event.preventDefault();
+    const count = this.sections.length;
     const index = this.sections.findIndex((s) => s.id === this.section());
-    const next = (index + step + this.sections.length) % this.sections.length;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowDown':
+        next = (index + 1) % count;
+        break;
+      case 'ArrowUp':
+        next = (index - 1 + count) % count;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = count - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
     const target = this.sections[next];
     if (!target) return;
     this.select(target.id);
