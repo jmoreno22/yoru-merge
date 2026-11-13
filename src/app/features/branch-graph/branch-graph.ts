@@ -17,6 +17,7 @@ import { CommitLandingService } from '../../core/services/commit-landing.service
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { CommitActions } from '../commit-list/commit-actions.service';
 import { CommitListLayout } from '../commit-list/commit-list-layout';
 import { buildEdgeIndex, edgesInRange, type IndexedEdge } from './graph-edges';
 
@@ -90,6 +91,7 @@ export class BranchGraph {
   private readonly appearance = inject(AppearanceService);
   private readonly landing = inject(CommitLandingService);
   private readonly prefs = inject(PreferencesService);
+  private readonly actions = inject(CommitActions);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -254,6 +256,17 @@ export class BranchGraph {
   protected onClick(event: MouseEvent): void {
     const hit = this.hitTest(event.offsetX, event.offsetY);
     if (hit) void this.repo.selectCommit(hit.sha);
+  }
+
+  /** A node is the same commit as its row, so it opens the row's menu. */
+  protected onContextMenu(event: MouseEvent): void {
+    const hit = this.hitTest(event.offsetX, event.offsetY);
+    if (!hit) return;
+    event.preventDefault();
+    if (hit.sha !== this.repo.selectedCommitSha()) void this.repo.selectCommit(hit.sha);
+    void this.actions.openMenu({ x: event.clientX, y: event.clientY }, hit.sha, [
+      hit.sha,
+    ]);
   }
 
   /** The commit node under a canvas-relative point, if the pointer is on one. */

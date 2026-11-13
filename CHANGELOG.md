@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Three more colour palettes:** Yugure (twilight plum), Matcha (deep green
   tea) and Sumi (neutral ink, washi in light mode), held to the same AA
   contrast as the other five.
+- **Branches work from the history.** Double-click a branch or tag pill on a
+  commit row to check it out, or right-click it for the menu the sidebar gives
+  that ref — so a branch you are not on can be pushed or fast-forwarded without
+  leaving the one you are on. The commit menu lists the refs on the commit
+  first, those hidden behind "+N" too, and right-clicking a node in the graph
+  opens it like right-clicking its row.
+- **Checking out a remote branch catches its local branch up.** When `develop`
+  tracks `origin/develop` and is only behind it, a double-click on
+  `origin/develop` (or *Checkout develop and fast-forward*) moves `develop` up
+  first and then switches to it, so the working tree changes once.
 - **Context menus say what they act on.** A menu opened on a commit, a branch,
   a tag, a stash, a file, a tab or a remote starts with a header naming it —
   short sha and subject, ref name, file name and folder. The option in effect

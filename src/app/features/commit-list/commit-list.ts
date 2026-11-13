@@ -23,6 +23,7 @@ import { commitRowKey, focusKeyOwner } from '../../core/services/diff-workspace-
 import type { DragPayload } from '../../core/services/drag-payload.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { absoluteTime, relativeTime } from '../../core/utils';
+import { RefsActions } from '../../shared/components/sidebar/refs-actions.service';
 import { DragDropDirective } from '../../shared/directives/drag-drop.directive';
 import {
   YoruAvatar,
@@ -103,6 +104,7 @@ interface CommitRow {
 export class CommitList {
   private readonly repo = inject(CurrentRepoService);
   private readonly actions = inject(CommitActions);
+  private readonly refs = inject(RefsActions);
   private readonly layout = inject(CommitListLayout);
   private readonly workspace = inject(DiffWorkspaceService);
   private readonly prefs = inject(PreferencesService);
@@ -331,6 +333,23 @@ export class CommitList {
       sha,
       this.selectedShas(),
     );
+  }
+
+  /** A pill is its ref: double-click checks it out, as in the sidebar. */
+  protected onRefActivate(event: MouseEvent, ref: RefInfo): void {
+    const node = this.refs.nodeFor(ref);
+    if (!node) return;
+    event.stopPropagation();
+    void this.refs.activate(node);
+  }
+
+  /** A ref the listings do not know, a detached HEAD, falls through to the row. */
+  protected onRefMenu(event: MouseEvent, ref: RefInfo): void {
+    const node = this.refs.nodeFor(ref);
+    if (!node) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void this.refs.openMenu(node, { x: event.clientX, y: event.clientY });
   }
 
   // ── keyboard ─────────────────────────────────────────────────────────────

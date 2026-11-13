@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BranchInfo, BranchList, StashEntry, TagInfo } from '../../../core/models';
 import {
   buildRefsTree,
+  nodeForRef,
   type RefsNode,
   type RefsTreeInput,
   remoteOf,
@@ -300,5 +301,50 @@ describe('stashLabel', () => {
 
   it('keeps a message that has no preamble', () => {
     expect(stashLabel('before refactor')).toBe('before refactor');
+  });
+});
+
+describe('nodeForRef', () => {
+  const branches: BranchList = {
+    local: [branch('main'), branch('develop')],
+    remote: [branch('origin/develop', true)],
+    current: 'main',
+  };
+  const tags = [tag('v1.0.0')];
+
+  it('gives HEAD the current local branch it names', () => {
+    const node = nodeForRef({ name: 'main', ref_type: 'head' }, branches, tags);
+    expect(node).toMatchObject({ kind: 'branch', remote: null, current: true });
+  });
+
+  it('gives a local branch its node, not current when HEAD is elsewhere', () => {
+    const node = nodeForRef({ name: 'develop', ref_type: 'branch' }, branches, tags);
+    expect(node).toMatchObject({ kind: 'branch', remote: null, current: false });
+    expect(node?.kind === 'branch' && node.branch.name).toBe('develop');
+  });
+
+  it('attributes a remote branch to its remote', () => {
+    const node = nodeForRef(
+      { name: 'origin/develop', ref_type: 'remote' },
+      branches,
+      tags,
+    );
+    expect(node).toMatchObject({ kind: 'branch', remote: 'origin', current: false });
+  });
+
+  it('finds a tag among the tags', () => {
+    const node = nodeForRef({ name: 'v1.0.0', ref_type: 'tag' }, branches, tags);
+    expect(node?.kind === 'tag' && node.tag.name).toBe('v1.0.0');
+  });
+
+  it('has no node for a detached HEAD', () => {
+    expect(nodeForRef({ name: 'HEAD', ref_type: 'head' }, branches, tags)).toBeNull();
+  });
+
+  it('has no node for a ref the listings do not hold yet', () => {
+    expect(
+      nodeForRef({ name: 'feat/new', ref_type: 'branch' }, branches, tags),
+    ).toBeNull();
+    expect(nodeForRef({ name: 'main', ref_type: 'branch' }, null, tags)).toBeNull();
   });
 });

@@ -3,6 +3,11 @@ import type { RefInfo, ResetMode } from '../../core/models';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { ToastService } from '../../core/services/toast.service';
 import { commitUrl, parseRemoteUrl, shortSha, validateRefName } from '../../core/utils';
+import { RefsActions } from '../../shared/components/sidebar/refs-actions.service';
+import type {
+  RefsBranchNode,
+  RefsTagNode,
+} from '../../shared/components/sidebar/refs-tree';
 import type { MenuAnchor } from '../../shared/ui';
 import {
   ClipboardService,
@@ -11,9 +16,15 @@ import {
 } from '../../shared/ui';
 import { InteractiveRebaseService } from '../commit-inspector/interactive-rebase.service';
 import { DialogsService } from '../dialogs/dialogs.service';
-import { buildCommitMenu, promoteMenuItems } from './commit-menu';
+import {
+  buildCommitMenu,
+  type CommitMenuRef,
+  promoteMenuItems,
+  refItemIndex,
+  withRefItems,
+} from './commit-menu';
 import { CommitPromptService } from './commit-prompt.service';
-import { isHeadCommit } from './commit-refs';
+import { isHeadCommit, splitRefs } from './commit-refs';
 
 /** What the actions need to know about the commit they act on. */
 interface CommitTarget {
@@ -41,6 +52,7 @@ export class CommitActions {
   private readonly clipboard = inject(ClipboardService);
   private readonly toast = inject(ToastService);
   private readonly rebase = inject(InteractiveRebaseService);
+  private readonly refs = inject(RefsActions);
 
   /** Names a new branch cannot take, so the dialog says no before git does. */
   private readonly takenNames = computed<string[]>(() => [
@@ -65,6 +77,9 @@ export class CommitActions {
       await this.repo.listRemotesAction();
     }
 
+    const refNodes = splitRefs(target.refs, Number.POSITIVE_INFINITY)
+      .shown.map((ref) => this.refs.nodeFor(ref))
+      .filter((node) => node !== null);
     const items = buildCommitMenu({
       shortSha: target.shortSha,
       isHead: isHeadCommit(target.refs),
@@ -76,11 +91,18 @@ export class CommitActions {
       hasRemoteUrl: this.webUrl(sha) !== null,
       sequencerActive: this.repo.sequencerActive(),
     });
-    const choice = await this.menu.open(promoteMenuItems(items, promote), anchor, {
+    const menu = withRefItems(refNodes.map(menuRef), items);
+    const choice = await this.menu.open(promoteMenuItems(menu, promote), anchor, {
       header: commitMenuHeader(target.shortSha, target.subject),
     });
     if (choice === null) return;
-    await this.run(choice, sha, selection);
+    const refIndex = refItemIndex(choice);
+    if (refIndex === null) {
+      await this.run(choice, sha, selection);
+      return;
+    }
+    const node = refNodes[refIndex];
+    if (node) await this.refs.openMenu(node, anchor);
   }
 
   /** Runs one menu id. Public so the inspector's buttons can reuse it. */
@@ -358,4 +380,12 @@ export class CommitActions {
       onCurrentBranch: false,
     };
   }
+}
+
+function menuRef(node: RefsBranchNode | RefsTagNode): CommitMenuRef {
+  if (node.kind === 'tag') return { name: node.tag.name, icon: 'lucideTag' };
+  return {
+    name: node.branch.name,
+    icon: node.remote === null ? 'lucideGitBranch' : 'lucideGlobe',
+  };
 }

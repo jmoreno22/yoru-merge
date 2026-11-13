@@ -10,6 +10,8 @@ export interface RefsMenuContext {
   readonly hasWebUrl: boolean;
   /** True when that remote is a host whose pull-request form we can address. */
   readonly canOpenPullRequest: boolean;
+  /** Local branches, where a remote branch looks for the one tracking it. */
+  readonly localBranches: readonly BranchInfo[];
 }
 
 const NO_REMOTES = 'This repository has no remotes';
@@ -19,6 +21,26 @@ function withoutRemote(fullName: string, remote: string): string {
   return fullName.startsWith(`${remote}/`)
     ? fullName.slice(remote.length + 1)
     : fullName;
+}
+
+/**
+ * Why checking out `remoteBranch` cannot also bring `localName` up to it, or
+ * `null` when it can: the local branch tracks it, is behind it and has no
+ * commit of its own, so moving it is a fast-forward that loses nothing.
+ */
+export function catchUpBlocker(
+  remoteBranch: BranchInfo,
+  localName: string,
+  localBranches: readonly BranchInfo[],
+): string | null {
+  const local = localBranches.find((branch) => branch.name === localName);
+  if (!local) return `There is no local ${localName} yet`;
+  if (local.upstream !== remoteBranch.name) {
+    return `${localName} does not track ${remoteBranch.name}`;
+  }
+  if (local.ahead > 0) return `${localName} has commits ${remoteBranch.name} lacks`;
+  if (local.behind === 0) return `${localName} is already up to date`;
+  return null;
 }
 
 export function localBranchMenu(
@@ -182,13 +204,23 @@ export function remoteBranchMenu(
   const detached = context.currentBranch === null;
   const detachedReason = 'HEAD is detached — check out a branch first';
   const short = withoutRemote(branch.name, remote);
+  const catchUp = catchUpBlocker(branch, short, context.localBranches);
 
   return [
     {
       id: 'checkout-tracking',
       label: `Checkout as ${short}`,
       icon: 'lucideGitBranch',
-      tone: 'primary',
+      // Primary is what a double-click does, and that catches up when it can.
+      tone: catchUp === null ? 'default' : 'primary',
+    },
+    {
+      id: 'checkout-fast-forward',
+      label: `Checkout ${short} and fast-forward`,
+      icon: 'lucideArrowUp',
+      tone: catchUp === null ? 'primary' : 'default',
+      disabled: catchUp !== null,
+      disabledReason: catchUp ?? undefined,
     },
     {
       id: 'merge',

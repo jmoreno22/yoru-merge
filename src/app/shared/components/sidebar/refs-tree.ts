@@ -1,4 +1,10 @@
-import type { BranchInfo, BranchList, StashEntry, TagInfo } from '../../../core/models';
+import type {
+  BranchInfo,
+  BranchList,
+  RefInfo,
+  StashEntry,
+  TagInfo,
+} from '../../../core/models';
 import type { DragPayload } from '../../../core/services/drag-payload.service';
 import { fuzzyMatch, groupByPrefix } from '../../../core/utils';
 
@@ -242,6 +248,34 @@ function folderExpanded(
   return key in input.collapsed ? !input.collapsed[key] : true;
 }
 
+function branchNode(
+  branch: BranchInfo,
+  label: string,
+  level: number,
+  current: boolean,
+  remote: string | null,
+  posInSet: number,
+  setSize: number,
+): RefsBranchNode {
+  return {
+    kind: 'branch',
+    id: `branch:${remote === null ? 'local' : 'remote'}:${branch.name}`,
+    level,
+    posInSet,
+    setSize,
+    expandable: false,
+    expanded: false,
+    indent: indentOf(level),
+    rowClass: current ? CURRENT_LEAF_CLASS : LEAF_CLASS,
+    title: branch.upstream ? `${branch.name} tracks ${branch.upstream}` : branch.name,
+    payload: branchPayload(branch, remote, current),
+    branch,
+    label,
+    current,
+    remote,
+  };
+}
+
 function branchDraft(
   branch: BranchInfo,
   label: string,
@@ -250,23 +284,8 @@ function branchDraft(
   remote: string | null,
 ): Draft {
   return {
-    build: (posInSet, setSize) => ({
-      kind: 'branch',
-      id: `branch:${remote === null ? 'local' : 'remote'}:${branch.name}`,
-      level,
-      posInSet,
-      setSize,
-      expandable: false,
-      expanded: false,
-      indent: indentOf(level),
-      rowClass: current ? CURRENT_LEAF_CLASS : LEAF_CLASS,
-      title: branch.upstream ? `${branch.name} tracks ${branch.upstream}` : branch.name,
-      payload: branchPayload(branch, remote, current),
-      branch,
-      label,
-      current,
-      remote,
-    }),
+    build: (posInSet, setSize) =>
+      branchNode(branch, label, level, current, remote, posInSet, setSize),
     expanded: false,
     children: [],
   };
@@ -394,26 +413,31 @@ function tagDrafts(input: RefsTreeInput, keep: (text: string) => boolean): Draft
   return input.tags
     .filter((tag) => keep(tag.name))
     .map((tag) => ({
-      build: (posInSet: number, setSize: number): RefsNode => ({
-        kind: 'tag',
-        id: `tag:${tag.name}`,
-        level: 1,
-        posInSet,
-        setSize,
-        expandable: false,
-        expanded: false,
-        indent: indentOf(1),
-        rowClass: LEAF_CLASS,
-        title: tag.is_annotated
-          ? `${tag.name} — annotated: ${tag.message ?? ''}`.trim()
-          : tag.name,
-        payload: null,
-        tag,
-        label: tag.name,
-      }),
+      build: (posInSet: number, setSize: number): RefsNode =>
+        tagNode(tag, posInSet, setSize),
       expanded: false,
       children: [],
     }));
+}
+
+function tagNode(tag: TagInfo, posInSet: number, setSize: number): RefsTagNode {
+  return {
+    kind: 'tag',
+    id: `tag:${tag.name}`,
+    level: 1,
+    posInSet,
+    setSize,
+    expandable: false,
+    expanded: false,
+    indent: indentOf(1),
+    rowClass: LEAF_CLASS,
+    title: tag.is_annotated
+      ? `${tag.name} — annotated: ${tag.message ?? ''}`.trim()
+      : tag.name,
+    payload: null,
+    tag,
+    label: tag.name,
+  };
 }
 
 function stashDrafts(input: RefsTreeInput, keep: (text: string) => boolean): Draft[] {
@@ -438,6 +462,36 @@ function stashDrafts(input: RefsTreeInput, keep: (text: string) => boolean): Dra
       expanded: false,
       children: [],
     }));
+}
+
+/**
+ * The sidebar node for a ref a commit row shows, so the history opens the very
+ * menu the sidebar does. `null` for a ref the listings do not hold: a detached
+ * `HEAD`, or a branch the last refresh has not listed yet.
+ */
+export function nodeForRef(
+  ref: RefInfo,
+  branches: BranchList | null,
+  tags: readonly TagInfo[],
+): RefsBranchNode | RefsTagNode | null {
+  switch (ref.ref_type) {
+    case 'head':
+    case 'branch': {
+      const branch = branches?.local.find((local) => local.name === ref.name);
+      if (!branch) return null;
+      const current = branch.name === branches?.current;
+      return branchNode(branch, branch.name, 1, current, null, 1, 1);
+    }
+    case 'remote': {
+      const branch = branches?.remote.find((remote) => remote.name === ref.name);
+      if (!branch) return null;
+      return branchNode(branch, branch.name, 1, false, remoteOf(branch.name), 1, 1);
+    }
+    case 'tag': {
+      const tag = tags.find((candidate) => candidate.name === ref.name);
+      return tag ? tagNode(tag, 1, 1) : null;
+    }
+  }
 }
 
 /** `origin/feat/x` → `origin`. */

@@ -5,6 +5,7 @@ import {
   Injectable,
   inject,
 } from '@angular/core';
+import type { RefInfo } from '../../../core/models';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
 import { ToastService } from '../../../core/services/toast.service';
 import {
@@ -26,6 +27,7 @@ import { CheckoutFlow } from './checkout-flow.service';
 import { CompareDialog } from './compare-dialog';
 import { openOverlay } from './overlay';
 import {
+  catchUpBlocker,
   localBranchMenu,
   type RefsMenuContext,
   remoteBranchMenu,
@@ -33,6 +35,7 @@ import {
   tagMenu,
 } from './refs-menus';
 import {
+  nodeForRef,
   type RefsBranchNode,
   type RefsNode,
   type RefsStashNode,
@@ -91,11 +94,18 @@ export class RefsActions {
     if (choice !== null) await this.run(node, choice);
   }
 
+  /** The node a ref pill in the history stands for; see `nodeForRef`. */
+  nodeFor(ref: RefInfo): RefsBranchNode | RefsTagNode | null {
+    return nodeForRef(ref, this.repo.branches(), this.repo.tags());
+  }
+
   /** Space and double-click: check the ref out. */
   async activate(node: RefsNode): Promise<void> {
     switch (node.kind) {
       case 'branch':
-        await this.flow.checkout(node.branch.name, node.remote !== null);
+        await (node.remote === null
+          ? this.flow.checkout(node.branch.name)
+          : this.checkoutRemote(node, this.canCatchUp(node)));
         break;
       case 'tag':
         await this.repo.checkoutCommitAction(node.tag.name);
@@ -189,6 +199,7 @@ export class RefsActions {
       remotes: this.remoteNames(),
       hasWebUrl: this.webRemote() !== null,
       canOpenPullRequest: (this.webRemote()?.provider ?? 'unknown') !== 'unknown',
+      localBranches: this.repo.branches()?.local ?? [],
     };
   }
 
@@ -355,6 +366,9 @@ export class RefsActions {
       case 'checkout-tracking':
         await this.flow.checkout(full, true);
         break;
+      case 'checkout-fast-forward':
+        await this.checkoutRemote(node, true);
+        break;
       case 'merge':
         await this.repo.mergeBranchAction(full);
         break;
@@ -379,6 +393,23 @@ export class RefsActions {
       default:
         break;
     }
+  }
+
+  private canCatchUp(node: RefsBranchNode): boolean {
+    const local = shortRemoteName(node.branch.name);
+    const locals = this.repo.branches()?.local ?? [];
+    return catchUpBlocker(node.branch, local, locals) === null;
+  }
+
+  /**
+   * Lands on the local side of a remote branch. Catching up moves the local
+   * branch before the checkout, so the working tree changes once; a failed
+   * fast-forward has toasted why and the checkout still happens.
+   */
+  private async checkoutRemote(node: RefsBranchNode, catchUp: boolean): Promise<void> {
+    const full = node.branch.name;
+    if (catchUp) await this.repo.fastForwardAction(shortRemoteName(full));
+    await this.flow.checkout(full, true);
   }
 
   private async deleteOnRemote(node: RefsBranchNode): Promise<void> {

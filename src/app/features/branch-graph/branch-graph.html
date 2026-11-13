@@ -7,6 +7,7 @@
     (pointermove)="onPointerMove($event)"
     (pointerleave)="onPointerLeave()"
     (click)="onClick($event)"
+    (contextmenu)="onContextMenu($event)"
   ></canvas>
 
   @if (landingPoint(); as point) {

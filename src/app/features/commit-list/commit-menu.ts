@@ -1,3 +1,4 @@
+import type { YoruIconName } from '../../shared/icons';
 import type { MenuItem } from '../../shared/ui';
 
 /** Everything the commit menu needs to decide labels and disabled reasons. */
@@ -183,6 +184,43 @@ export function buildCommitMenu(ctx: CommitMenuContext): MenuItem[] {
       disabledReason: ctx.hasRemoteUrl ? undefined : NO_REMOTE_URL_HINT,
     },
   ];
+}
+
+/** A branch or tag pointing at the commit, as the commit menu lists it. */
+export interface CommitMenuRef {
+  readonly name: string;
+  readonly icon: YoruIconName;
+}
+
+const REF_ITEM_PREFIX = 'ref:';
+
+/**
+ * Lists the refs pointing at the commit above its own actions. Each item opens
+ * that ref's full menu, the sidebar's, instead of a submenu: ref menus carry
+ * submenus of their own, and a menu nests one level deep.
+ */
+export function withRefItems(
+  refs: readonly CommitMenuRef[],
+  items: readonly MenuItem[],
+): MenuItem[] {
+  if (refs.length === 0) return [...items];
+  return [
+    ...refs.map((ref, index) => ({
+      id: `${REF_ITEM_PREFIX}${index}`,
+      label: `${ref.name}…`,
+      icon: ref.icon,
+    })),
+    ...items.map((item, index) =>
+      index === 0 ? { ...item, separatorBefore: true } : item,
+    ),
+  ];
+}
+
+/** Which of the `withRefItems` refs a chosen id stands for, if any. */
+export function refItemIndex(id: string): number | null {
+  if (!id.startsWith(REF_ITEM_PREFIX)) return null;
+  const index = Number(id.slice(REF_ITEM_PREFIX.length));
+  return Number.isInteger(index) && index >= 0 ? index : null;
 }
 
 /**

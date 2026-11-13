@@ -130,8 +130,9 @@ repository that arrived as a folder or a zip the way you would before running
 
 ## What it does
 
-- **History** — commit list with a canvas branch graph, ref pills, author
-  avatars, infinite scroll over large repositories, and a commit inspector with
+- **History** — commit list with a canvas branch graph, ref pills that check
+  out on double-click and open the ref's menu on right-click, author avatars,
+  infinite scroll over large repositories, and a commit inspector with
   the full message and file list — a file's diff opens at full centre width in
   the diff workspace, on a single click or, with that turned off, on
   double-click, the open-large control or `Ctrl+D`.

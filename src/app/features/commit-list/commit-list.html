@@ -78,6 +78,8 @@
               [type]="ref.ref_type"
               [label]="ref.name"
               [solid]="ref.ref_type === 'head'"
+              (dblclick)="onRefActivate($event, ref)"
+              (contextmenu)="onRefMenu($event, ref)"
             />
           }
           @if (row.hiddenRefs > 0) {
