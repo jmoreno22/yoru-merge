@@ -705,7 +705,7 @@ density and focus behaviour identical across features. Full API and examples:
 | `yoru-button` | `primary / secondary / ghost / danger`, sizes `sm` (`--control-h-sm`) and `md` (`--control-h`), icon and loading states |
 | `yoru-badge` | ref pills for branch / remote / tag / HEAD |
 | `yoru-avatar` | author initials with a deterministic gradient from the email |
-| `yoru-empty-state` | zero-state copy with optional kanji watermark |
+| `yoru-empty-state` | zero-state copy with optional kanji watermark, which spreads in like ink on washi when the state appears: a soft-edged reveal from its centre that settles from a slight blur, about a second, once. Still when motion is off |
 | `yoru-section-header` | 34 px panel header: caps label, count, actions slot |
 | `yoru-diff-source` | diff strip head: source chip, optional detail, path with faint directory and strong file name |
 | `yoru-field`, `yoru-switch`, `yoru-segmented` | settings and dialog form controls |

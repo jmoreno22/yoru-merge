@@ -758,6 +758,45 @@ html {
   }
 }
 
+/* ── `.yoru-ink` — the kanji watermark spreading in like ink ──────────
+ *
+ * DESIGN.md › UI kit › yoru-empty-state. A soft radial mask grows from the
+ * centre while the glyph settles out of a slight blur. Registering the reach
+ * is what makes it interpolate; an engine without @property reveals it in one
+ * step. The initial value is the fully revealed one, so motion off — or no
+ * animation at all — is simply the finished watermark.
+ */
+@property --ink-reach {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 200%;
+}
+
+.yoru-ink {
+  -webkit-mask-image: radial-gradient(
+    circle,
+    #000 calc(var(--ink-reach) - 35%),
+    transparent var(--ink-reach)
+  );
+  mask-image: radial-gradient(
+    circle,
+    #000 calc(var(--ink-reach) - 35%),
+    transparent var(--ink-reach)
+  );
+  animation: yoru-ink-spread 1200ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@keyframes yoru-ink-spread {
+  from {
+    --ink-reach: 0%;
+    filter: blur(4px);
+  }
+  to {
+    --ink-reach: 140%;
+    filter: blur(0);
+  }
+}
+
 /* ── `.neon-scroll` — Yoru Night subtle-neon scrollbar utility ────────
  *
  * Shared scrollbar chrome for any scrollable surface inside the app
