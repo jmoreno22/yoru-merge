@@ -10,7 +10,9 @@ import {
   computed,
   inject,
   input,
+  linkedSignal,
   output,
+  resource,
   signal,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
@@ -72,18 +74,29 @@ export class InteractiveRebaseDialog {
   readonly closed = output<void>();
 
   protected readonly actions = ACTIONS;
-  protected readonly entries = signal<readonly RebaseTodoEntry[]>([]);
-  protected readonly loading = signal<boolean>(true);
-  protected readonly applying = signal<boolean>(false);
-  protected readonly outcome = signal<Outcome>({ kind: 'idle' });
-
   protected readonly base = computed(() => `${this.fromSha()}^`);
+
+  private readonly todo = resource({
+    params: () => this.base(),
+    loader: ({ params }) => this.repo.rebaseTodoAction(params),
+  });
+
+  protected readonly loading = this.todo.isLoading;
+  protected readonly entries = linkedSignal<readonly RebaseTodoEntry[]>(() =>
+    this.todo.hasValue() ? this.todo.value() : [],
+  );
+  protected readonly applying = signal<boolean>(false);
+  protected readonly outcome = linkedSignal<Outcome>(() =>
+    this.todo.status() === 'resolved' && this.todo.value()?.length === 0
+      ? {
+          kind: 'error',
+          message:
+            'There is nothing to rebase from this commit. It may not be on the current branch.',
+        }
+      : { kind: 'idle' },
+  );
   protected readonly preview = computed(() => previewTodo(this.entries()));
   protected readonly problem = computed(() => validateTodo(this.entries()));
-
-  constructor() {
-    void this.load();
-  }
 
   protected shortOf(sha: string): string {
     return shortSha(sha);
@@ -179,21 +192,5 @@ export class InteractiveRebaseDialog {
 
   protected close(): void {
     this.closed.emit();
-  }
-
-  private async load(): Promise<void> {
-    try {
-      const todo = await this.repo.rebaseTodoAction(this.base());
-      this.entries.set(todo);
-      if (todo.length === 0) {
-        this.outcome.set({
-          kind: 'error',
-          message:
-            'There is nothing to rebase from this commit. It may not be on the current branch.',
-        });
-      }
-    } finally {
-      this.loading.set(false);
-    }
   }
 }

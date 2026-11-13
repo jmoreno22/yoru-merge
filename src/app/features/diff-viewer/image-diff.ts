@@ -1,11 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   ElementRef,
-  effect,
   inject,
   input,
+  resource,
   signal,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
@@ -42,15 +43,39 @@ export class ImageDiff {
   readonly oldFile = input.required<string>();
   readonly sides = input.required<ImageSides>();
 
-  protected readonly beforeUrl = signal<string | null>(null);
-  protected readonly afterUrl = signal<string | null>(null);
-  protected readonly error = signal<string | null>(null);
-  protected readonly loading = signal(false);
-
   private readonly visible = signal(false);
 
-  /** Guards against a slower earlier load painting over a newer one. */
-  private attempt = 0;
+  /** Stays idle until the file is on screen; a newer load discards an older one. */
+  private readonly preview = resource({
+    params: () => {
+      if (!this.visible()) return undefined;
+      const file = this.file();
+      const mime = imageMimeType(file);
+      if (!mime || !this.repo.repo()?.path) return undefined;
+      return { file, oldFile: this.oldFile(), sides: this.sides(), mime };
+    },
+    loader: async ({ params: { file, oldFile, sides, mime } }) => {
+      const [before, after] = await Promise.all([
+        this.read(oldFile, sides.before, mime),
+        this.read(file, sides.after, mime),
+      ]);
+      return { before, after };
+    },
+  });
+
+  protected readonly beforeUrl = computed(() =>
+    this.preview.hasValue() ? this.preview.value().before : null,
+  );
+  protected readonly afterUrl = computed(() =>
+    this.preview.hasValue() ? this.preview.value().after : null,
+  );
+  protected readonly loading = this.preview.isLoading;
+
+  // resource() wraps a non-Error rejection, and Tauri rejects with strings.
+  protected readonly error = computed(() => {
+    const error = this.preview.error();
+    return error ? messageFromUnknown(error.cause ?? error) : null;
+  });
 
   constructor() {
     const observer = new IntersectionObserver((entries) => {
@@ -60,40 +85,6 @@ export class ImageDiff {
     });
     observer.observe(this.host.nativeElement);
     inject(DestroyRef).onDestroy(() => observer.disconnect());
-
-    effect(() => {
-      const file = this.file();
-      const oldFile = this.oldFile();
-      const sides = this.sides();
-      if (!this.visible()) return;
-      void this.load(file, oldFile, sides);
-    });
-  }
-
-  private async load(file: string, oldFile: string, sides: ImageSides): Promise<void> {
-    const attempt = ++this.attempt;
-    const mime = imageMimeType(file);
-    const repo = this.repo.repo()?.path;
-    if (!mime || !repo) return;
-
-    this.loading.set(true);
-    this.error.set(null);
-    try {
-      const [before, after] = await Promise.all([
-        this.read(oldFile, sides.before, mime),
-        this.read(file, sides.after, mime),
-      ]);
-      if (attempt !== this.attempt) return;
-      this.beforeUrl.set(before);
-      this.afterUrl.set(after);
-    } catch (error: unknown) {
-      if (attempt !== this.attempt) return;
-      this.beforeUrl.set(null);
-      this.afterUrl.set(null);
-      this.error.set(messageFromUnknown(error));
-    } finally {
-      if (attempt === this.attempt) this.loading.set(false);
-    }
   }
 
   private async read(
