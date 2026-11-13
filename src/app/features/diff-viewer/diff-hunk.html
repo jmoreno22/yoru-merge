@@ -1,0 +1,63 @@
+@for (row of hunk().rows; track row.id) {
+  @if (row.kind === 'gap') {
+    <button type="button" class="dv-gap" (click)="expandGap.emit(row.id)">
+      <ng-icon name="lucideArrowUpDown" size="14px" aria-hidden="true" />
+      Show {{ row.count }} unchanged lines
+    </button>
+  } @else if (row.kind === 'line') {
+    @let isSelected = selected().has(row.cell.id);
+    @let option = selecting() && row.cell.selectable;
+    <div
+      class="dv-row dv-unified"
+      [class.dv-add]="row.cell.line.kind === 'insert'"
+      [class.dv-del]="row.cell.line.kind === 'delete'"
+      [class.dv-sel]="isSelected"
+      [attr.role]="option ? 'option' : null"
+      [attr.aria-selected]="option ? isSelected : null"
+      [attr.tabindex]="selecting() && row.cell.id === activeLineId() ? 0 : -1"
+      (click)="lineClick.emit({ event: $event, cell: row.cell })"
+      (contextmenu)="cellMenu.emit({ event: $event, cell: row.cell })"
+    >
+      <span class="dv-num">{{ row.cell.line.oldNumber }}</span>
+      <span class="dv-num">{{ row.cell.line.newNumber }}</span>
+      <span class="dv-mark" aria-hidden="true">{{
+        row.cell.line.kind === 'insert'
+          ? '+'
+          : row.cell.line.kind === 'delete'
+            ? '-'
+            : ' '
+      }}</span>
+      <code class="dv-code" [innerHTML]="row.cell.html"></code>
+      @if (row.cell.line.noNewline) {
+        <span class="dv-nonewline">no newline at end of file</span>
+      }
+    </div>
+  } @else {
+    <div class="dv-row dv-pair">
+      @if (row.left; as left) {
+        <span class="dv-num">{{ left.line.oldNumber }}</span>
+        <code
+          class="dv-code dv-side"
+          [class.dv-del]="left.line.kind === 'delete'"
+          [innerHTML]="left.html"
+          (contextmenu)="cellMenu.emit({ event: $event, cell: left })"
+        ></code>
+      } @else {
+        <span class="dv-num"></span>
+        <code class="dv-code dv-side dv-void"></code>
+      }
+      @if (row.right; as right) {
+        <span class="dv-num">{{ right.line.newNumber }}</span>
+        <code
+          class="dv-code dv-side"
+          [class.dv-add]="right.line.kind === 'insert'"
+          [innerHTML]="right.html"
+          (contextmenu)="cellMenu.emit({ event: $event, cell: right })"
+        ></code>
+      } @else {
+        <span class="dv-num"></span>
+        <code class="dv-code dv-side dv-void"></code>
+      }
+    </div>
+  }
+}

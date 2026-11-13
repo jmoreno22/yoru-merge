@@ -214,8 +214,15 @@ app-diff-view .dv-hunk-range {
   font-size: var(--text-y-sm);
 }
 
+/* A hunk off screen skips layout and paint but stays in the DOM, so focus,
+ * selection, find-in-page and `moveHunk` still reach it. Per hunk, not per row:
+ * the property has its own cost. The fallback height is the hunk's row count;
+ * `auto` then keeps the measured height so the scrollbar does not jump back. */
 app-diff-view .dv-hunk-body {
+  display: block;
   outline: none;
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto calc(var(--dv-rows, 1) * var(--dv-line-h));
 }
 
 app-diff-view .dv-gap {

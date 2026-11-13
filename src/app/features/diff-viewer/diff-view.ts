@@ -30,6 +30,7 @@ import type {
   DiffLineAction,
   StageTarget,
 } from './diff-actions';
+import { DiffHunk } from './diff-hunk';
 import {
   type DiffFileModel,
   type DiffFileStatus,
@@ -91,7 +92,7 @@ function lineId(
  * built, so a patch only pays for the lines the template actually paints —
  * building the rows of a 50-file commit no longer highlights all of them.
  */
-class RenderedCell {
+export class RenderedCell {
   private cached: string | null = null;
 
   constructor(
@@ -108,7 +109,7 @@ class RenderedCell {
   }
 }
 
-type RenderedRow =
+export type RenderedRow =
   | { readonly kind: 'gap'; readonly id: string; readonly count: number }
   | { readonly kind: 'line'; readonly id: string; readonly cell: RenderedCell }
   | {
@@ -118,7 +119,7 @@ type RenderedRow =
       readonly right: RenderedCell | null;
     };
 
-interface RenderedHunk {
+export interface RenderedHunk {
   readonly index: number;
   readonly header: string;
   readonly section: string;
@@ -212,7 +213,7 @@ const STATUS_CLASS: Readonly<Record<DiffFileStatus, string>> = {
  */
 @Component({
   selector: 'app-diff-view',
-  imports: [ImageDiff, NgIcon, YoruButton, YoruEmptyState, YoruSkeleton],
+  imports: [DiffHunk, ImageDiff, NgIcon, YoruButton, YoruEmptyState, YoruSkeleton],
   templateUrl: './diff-view.html',
   styleUrl: './diff-view.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -297,6 +298,12 @@ export class DiffView {
 
   protected readonly activeLineId = signal<string | null>(null);
 
+  /** `domId` of the hunk the roving line sits in, so only that hunk is handed it. */
+  protected readonly activeHunk = computed(() => {
+    const parts = this.activeLineId()?.split('-');
+    return parts ? `hunk-${parts[1]}-${parts[2]}` : null;
+  });
+
   private readonly hunkCursor = signal(-1);
 
   protected readonly oversized = computed(
@@ -317,6 +324,14 @@ export class DiffView {
   protected readonly canSelectLines = computed(
     () => this.interactive() && this.layout() === 'unified',
   );
+
+  protected readonly noSelection = NO_SELECTION;
+
+  /** `domId` of the hunk holding the selection: the only one handed `selectedIds()`. */
+  protected readonly selectionHunk = computed(() => {
+    const selection = this.selection();
+    return selection ? `hunk-${selection.fileIndex}-${selection.hunkIndex}` : null;
+  });
 
   protected readonly selectedCount = computed(
     () => this.selection()?.indexes.length ?? 0,
