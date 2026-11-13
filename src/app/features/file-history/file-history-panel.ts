@@ -1,4 +1,4 @@
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,6 +8,7 @@ import {
   input,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import type { CommitInfo } from '../../core/models';
@@ -62,6 +63,7 @@ export class FileHistoryPanel {
   private readonly clipboard = inject(ClipboardService);
   private readonly menu = inject(ContextMenuService);
   private readonly escapeLayers = inject(EscapeLayersService);
+  private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   /** File whose history to show; `null` keeps the panel closed. */
   readonly file = input.required<string | null>();
@@ -87,6 +89,14 @@ export class FileHistoryPanel {
     })),
   );
 
+  /** Row the keyboard is on; `aria-activedescendant` points at it. */
+  protected readonly activeIndex = signal(-1);
+
+  protected readonly activeRowId = computed<string | null>(() => {
+    const row = this.rows()[this.activeIndex()];
+    return row === undefined ? null : this.rowId(row.commit.sha);
+  });
+
   protected readonly isEmpty = computed(
     () => !this.loading() && this.error() === null && this.rows().length === 0,
   );
@@ -101,6 +111,7 @@ export class FileHistoryPanel {
     effect(() => {
       const target = this.file();
       this.selectedSha.set(null);
+      this.activeIndex.set(-1);
       if (!target) {
         this.loading.set(false);
         this.service.clearFileHistory();
@@ -112,6 +123,63 @@ export class FileHistoryPanel {
   }
 
   protected readonly trackRow = (_: number, row: HistoryRow): string => row.commit.sha;
+
+  protected rowId(sha: string): string {
+    return `file-history-row-${sha}`;
+  }
+
+  protected onRowClick(index: number): void {
+    const row = this.rows()[index];
+    if (row === undefined) return;
+    this.activeIndex.set(index);
+    void this.onSelect(row.commit.sha);
+  }
+
+  protected onKeydown(event: KeyboardEvent): void {
+    const count = this.rows().length;
+    if (count === 0) return;
+    const active = this.activeIndex();
+    const current = Math.max(0, active);
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveTo(active < 0 ? 0 : Math.min(count - 1, current + 1));
+        return;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveTo(Math.max(0, current - 1));
+        return;
+      case 'Home':
+        event.preventDefault();
+        this.moveTo(0);
+        return;
+      case 'End':
+        event.preventDefault();
+        this.moveTo(count - 1);
+        return;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        this.onRowClick(current);
+        return;
+      default:
+        return;
+    }
+  }
+
+  /** Scrolls only as far as needed to bring the row into view. */
+  private moveTo(index: number): void {
+    this.activeIndex.set(index);
+    const viewport = this.viewport();
+    if (!viewport) return;
+    const height = this.rowHeight();
+    const top = index * height;
+    const offset = viewport.measureScrollOffset('top');
+    const size = viewport.getViewportSize();
+    if (top < offset) viewport.scrollToOffset(top);
+    else if (top + height > offset + size) viewport.scrollToOffset(top + height - size);
+  }
 
   protected onClose(): void {
     this.close.emit();
@@ -128,6 +196,8 @@ export class FileHistoryPanel {
     if (!file) return;
     this.selectedSha.set(sha);
     const patch = await this.service.commitFileDiff(sha, file);
+    // A quicker answer for a later row may already be on screen.
+    if (this.selectedSha() !== sha || this.file() !== file) return;
     this.service.diffSource.set({ kind: 'commit', sha });
     this.service.diffText.set(patch);
   }

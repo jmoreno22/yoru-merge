@@ -84,24 +84,26 @@
       </div>
     } @else {
       <cdk-virtual-scroll-viewport
-        class="neon-scroll min-h-0 flex-1"
+        class="neon-scroll group min-h-0 flex-1"
         data-testid="file-history-list"
         [itemSize]="rowHeight()"
+        tabindex="0"
         role="listbox"
         [attr.aria-label]="'Commits touching ' + currentFile"
+        [attr.aria-activedescendant]="activeRowId()"
+        (keydown)="onKeydown($event)"
       >
         <div
-          *cdkVirtualFor="let row of rows(); trackBy: trackRow"
+          *cdkVirtualFor="let row of rows(); trackBy: trackRow; let i = index"
+          [id]="rowId(row.commit.sha)"
           role="option"
-          tabindex="0"
-          class="yoru-row flex h-[var(--history-row-h)] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3"
+          class="yoru-row flex h-[var(--history-row-h)] cursor-pointer flex-col justify-center gap-0.5 border-b border-[var(--app-border)] px-3 group-focus-visible:data-active:outline-2 group-focus-visible:data-active:-outline-offset-2 group-focus-visible:data-active:outline-[var(--app-accent)]"
           [class.is-current]="row.commit.sha === selectedSha()"
+          [attr.data-active]="i === activeIndex() ? '' : null"
           [attr.aria-selected]="row.commit.sha === selectedSha()"
           [attr.data-testid]="'file-history-item-' + row.commit.sha"
           [title]="row.commit.message"
-          (click)="onSelect(row.commit.sha)"
-          (keydown.enter)="onSelect(row.commit.sha)"
-          (keydown.space)="onSelect(row.commit.sha)"
+          (click)="onRowClick(i)"
           data-menu-target
           (contextmenu)="onRowMenu($event, row)"
         >
