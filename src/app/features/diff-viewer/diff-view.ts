@@ -15,7 +15,7 @@ import { NgIcon } from '@ng-icons/core';
 import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
 import { EscapeRank } from '../../core/services/escape-layers';
 import { EscapeLayersService } from '../../core/services/escape-layers.service';
-import type { MenuItem } from '../../shared/ui';
+import type { DiffSourceFacts, MenuItem } from '../../shared/ui';
 import {
   ClipboardService,
   ContextMenuService,
@@ -234,7 +234,9 @@ export class DiffView {
 
   /**
    * The workspace holds this element only while it shows the one file the
-   * developer opened, so collapsing that file would empty the centre.
+   * developer opened, and names that file in its own strip. So the per-file
+   * head is withheld there: it would say the same thing twice, and its
+   * collapse control would empty the centre.
    */
   protected readonly inWorkspace = computed<boolean>(() => this.workspace.isOpen());
 
@@ -639,6 +641,23 @@ export class DiffView {
   }
 
   // ── template helpers ────────────────────────────────────────────────────
+
+  /** What the per-file head says about the one file on screen, for a host that withholds it. */
+  readonly soleFile = computed<DiffSourceFacts | null>(() => {
+    const files = this.files();
+    const file = files.length === 1 ? files[0] : undefined;
+    if (!file) return null;
+    return {
+      status: STATUS_LABEL[file.status],
+      statusIcon: STATUS_ICON[file.status],
+      statusClass: STATUS_CLASS[file.status],
+      oldPath: file.oldPath,
+      lfs: file.lfs,
+      stats: file.binary
+        ? null
+        : { additions: file.additions, deletions: file.deletions },
+    };
+  });
 
   protected statusLabel(status: DiffFileStatus): string {
     return STATUS_LABEL[status];

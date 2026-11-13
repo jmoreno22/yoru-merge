@@ -43,7 +43,7 @@
               @for (block of layout().centre; track block.id) {
                 @switch (block.id) {
                   @case ('diff-workspace') {
-                    <app-diff-workspace [portal]="viewerPortal()" />
+                    <app-diff-workspace [portal]="viewerPortal()" [file]="viewerFile()" />
                   }
 
                   @case ('changes') {

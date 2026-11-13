@@ -1,5 +1,9 @@
+<!-- The one header of the diff while it is open here: the viewer draws none of
+     its own and the diff withholds its per-file head, so what they said about
+     the file arrives as `file()` and is said once. -->
 <div
   class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
+  data-testid="diff-workspace-strip"
 >
   @if (head(); as source) {
     <yoru-diff-source
@@ -7,12 +11,26 @@
       [side]="source.side"
       [detail]="source.detail"
       [path]="source.path"
+      [facts]="file()"
       chipTestId="diff-workspace-source"
       pathTestId="diff-workspace-path"
     />
   }
 
   <span class="flex-1"></span>
+
+  @if (head(); as source) {
+    <button
+      type="button"
+      yoruIconButton="sm"
+      aria-label="File actions"
+      data-testid="diff-workspace-more"
+      [yoruTooltip]="'File actions'"
+      (click)="openFileMenu($event, source.path, source.side !== null)"
+    >
+      <ng-icon name="lucideEllipsisVertical" size="14px" aria-hidden="true" />
+    </button>
+  }
 
   <yoru-button
     class="shrink-0"

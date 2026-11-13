@@ -43,8 +43,8 @@
     <div class="neon-scroll min-h-0 flex-1 overflow-auto" data-testid="diff-content">
       @for (file of visibleFiles(); track file.path) {
         <section class="dv-file" [style.--dv-num-w]="file.numberWidth + 'ch'">
+          @if (!inWorkspace()) {
           <header class="dv-file-head">
-            @if (!inWorkspace()) {
               <button
                 type="button"
                 class="dv-icon-button"
@@ -60,7 +60,6 @@
                   aria-hidden="true"
                 />
               </button>
-            }
 
             <ng-icon
               [name]="statusIcon(file.status)"
@@ -128,6 +127,7 @@
               <ng-icon name="lucideFolderOpen" size="14px" aria-hidden="true" />
             </button>
           </header>
+          }
 
           @if (file.imageSides; as sides) {
             <app-image-diff

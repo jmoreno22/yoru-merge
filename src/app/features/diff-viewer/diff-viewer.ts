@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
+import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import {
   buildLinePatch,
@@ -90,6 +91,13 @@ export class DiffViewer {
   private readonly clipboard = inject(ClipboardService);
 
   /**
+   * The diff workspace is hosting this element. Its strip is the header there,
+   * so the viewer draws none of its own: two strips naming the same patch was
+   * the first thing a reader met.
+   */
+  protected readonly hosted = inject(DiffWorkspaceService).isOpen;
+
+  /**
    * Set while the workbench keeps this element in its zero-height home with
    * nothing showing it. It still holds a patch there, so without this its
    * controls stay in the Tab order and the hunk keys land focus on a hunk
@@ -163,6 +171,9 @@ export class DiffViewer {
   });
 
   protected readonly summary = computed(() => this.view()?.summary() ?? null);
+
+  /** The one file on screen, for the host that names it in its own strip. */
+  readonly fileFacts = computed(() => this.view()?.soleFile() ?? null);
   protected readonly hunkTotal = computed(() => this.view()?.hunkTotal() ?? 0);
   protected readonly hunkPosition = computed(() => this.view()?.hunkPosition() ?? 0);
 

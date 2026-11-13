@@ -7,11 +7,25 @@
 </span>
 
 @if (detail() !== "") {
+  <!-- Gives way long before the path does: the detail is context, the path is
+       what the strip is for. It never drops below the short sha. -->
   <span
-    class="min-w-0 truncate font-mono text-y-md text-[var(--app-text-muted)]"
+    class="min-w-[7ch] shrink-[8] truncate font-mono text-y-md text-[var(--app-text-muted)]"
     [title]="detail()"
   >
     {{ detail() }}
+  </span>
+}
+
+@if (facts(); as file) {
+  <span
+    class="inline-flex shrink-0 items-center gap-1 font-mono text-y-xs uppercase tracking-[0.12em] {{
+      file.statusClass
+    }}"
+    data-testid="diff-source-status"
+  >
+    <ng-icon [name]="file.statusIcon" size="14px" aria-hidden="true" />
+    {{ file.status }}
   </span>
 }
 
@@ -23,3 +37,31 @@
   <span class="text-[var(--app-text-faint)]">{{ parts().dirname }}</span
   ><span class="text-[var(--app-text)]">{{ parts().basename }}</span>
 </span>
+
+@if (facts(); as file) {
+  @if (file.oldPath; as oldPath) {
+    <span
+      class="min-w-0 truncate font-mono text-y-sm text-[var(--app-text-faint)]"
+      [title]="oldPath"
+    >
+      from {{ oldPath }}
+    </span>
+  }
+  @if (file.lfs) {
+    <span
+      class="shrink-0 font-mono text-y-xs uppercase tracking-[0.12em] text-neon-violet"
+      title="This patch changes a git-lfs pointer, not the file it stands for."
+    >
+      Git LFS pointer
+    </span>
+  }
+  @if (file.stats; as stats) {
+    <span
+      class="flex shrink-0 gap-2 font-mono text-y-sm tabular-nums"
+      data-testid="diff-source-stats"
+    >
+      <span class="text-git-added-ink">+{{ stats.additions }}</span>
+      <span class="text-git-deleted-ink">-{{ stats.deletions }}</span>
+    </span>
+  }
+}

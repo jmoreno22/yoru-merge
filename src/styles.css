@@ -480,6 +480,13 @@ html {
   outline-offset: var(--focus-offset, 2px);
 }
 
+/* A menu panel takes the focus only to receive the keys; what is focused is
+ * its active item, which the menu highlights itself. A ring around the whole
+ * panel would frame the menu instead of pointing at anything in it. */
+[role="menu"]:focus-visible {
+  outline: none;
+}
+
 /* The ring's default corner, for an element that has no radius of its own. In
  * `base` on purpose: unlayered, it would outrank every radius utility and
  * reshape a pill or a button the moment the keyboard lands on it. */

@@ -141,6 +141,10 @@ export class MainContent {
   // ── diff viewer re-hosting ───────────────────────────────────────────────
 
   private readonly viewerHost = viewChild(DiffViewer, { read: ElementRef });
+  private readonly viewer = viewChild(DiffViewer);
+
+  /** What the viewer knows about its one file, for the workspace strip. */
+  protected readonly viewerFile = computed(() => this.viewer()?.fileFacts() ?? null);
 
   /**
    * The one diff viewer element as a portal, so the workspace can host it at

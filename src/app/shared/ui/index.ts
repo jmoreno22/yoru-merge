@@ -36,7 +36,7 @@ export { type BadgeType, YoruBadge } from './yoru-badge';
 export { type ButtonSize, type ButtonVariant, YoruButton } from './yoru-button';
 export { YoruContextMenu } from './yoru-context-menu';
 export { type DialogSize, type DialogTone, YoruDialog } from './yoru-dialog';
-export { YoruDiffSource } from './yoru-diff-source';
+export { type DiffSourceFacts, YoruDiffSource } from './yoru-diff-source';
 export { YoruEmptyState } from './yoru-empty-state';
 export { YoruField } from './yoru-field';
 export {

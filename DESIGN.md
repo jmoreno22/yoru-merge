@@ -473,9 +473,19 @@ the centre view already owns the file lists.
 **The diff workspace.** One file's diff at full width in the **centre view** —
 a state of that column, never a route, a window, a tab or an overlay, so it
 takes no z-index. It is opened from the commit file list or from a staged or
-unstaged row in Changes, carries a header strip with the source, the path,
-previous / next and Close, and hosts **the** diff viewer, borrowed from the
+unstaged row in Changes and hosts **the** diff viewer, borrowed from the
 inspector's diff slot (§Diff viewer).
+
+**Two strips, then the code.** The workspace strip is the diff's only header
+while it is open: source chip, short sha and subject (which give way before the
+path does), the file's status as a word, its path, a rename's old path, the LFS
+marker, the line counts, a file-actions menu, previous / next and Close. The
+viewer draws no heading of its own while it is hosted and the diff withholds
+its per-file head, so nothing is said twice; what they knew about the file
+reaches the strip as data (`DiffSourceFacts`), handed over by the workbench
+shell. Under it sits the options bar, which wraps onto a second line in a
+narrow column instead of scrolling sideways. Inline, in the Changes view, the
+viewer keeps its own heading and the per-file head with its collapse control.
 
 **Opening a file.** A single click on a commit file row opens the diff
 workspace when `commitFileClickOpensWorkspace` is on, which is the default;
@@ -724,6 +734,8 @@ One component, opened through `ContextMenuService.open(items, anchor, options)`.
   default pull mode. **A shortcut is shown by id** (`shortcutId`) and resolved
   against the registry when the menu opens, so a rebind never leaves a stale
   key; `shortcut` is only for a key the list itself handles (`F2`).
+- The panel shows no focus ring of its own: it takes the focus only to receive
+  the keys, and the active item is the highlight.
 - A destructive item is red and so is its highlight. A disabled item always
   carries its reason.
 

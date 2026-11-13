@@ -151,27 +151,51 @@ describe('Diff workspace on a commit file', () => {
     observer.restore();
   });
 
-  it('AC-06: the workspace withholds the per-file collapse chevron, and parking the viewer gives it back', async () => {
+  it('AC-06: the workspace withholds the per-file head with its collapse chevron, and parking the viewer gives both back', async () => {
     // The workspace shows the one file the developer asked to read at full
-    // width, so collapsing it would leave the centre empty — `diff-view.ts`
-    // gates the chevron on `workspace.isOpen()`. Both halves below are needed
-    // — the first alone passes with the chevron removed outright, the second
-    // alone passes with the gate always off.
+    // width: collapsing it would leave the centre empty, and its strip already
+    // names the file — so `diff-view.ts` gates the whole per-file head on
+    // `workspace.isOpen()`. Both halves below are needed: the first alone
+    // passes with the head removed outright, the second alone passes with the
+    // gate always off.
     const bench = await renderCommitWorkbench();
+    const head = (): Element | null => bench.host.querySelector('.dv-file-head');
     const chevron = (): Element | null =>
       bench.host.querySelector('.dv-file-head button[aria-expanded]');
 
     await openOn(bench, 0);
-    expect(strip(bench.host).querySelector('.dv-file-head')).not.toBeNull();
-    expect(chevron()).toBeNull();
+    expect(head()).toBeNull();
 
     press('Escape');
     await bench.settle();
 
     // Back in its parking slot the element is the Changes view's inline viewer
-    // again, and the control has to come back with it.
-    expect(bench.host.querySelector('.dv-file-head')).not.toBeNull();
+    // again, and the head has to come back with its control.
+    expect(head()).not.toBeNull();
     expect(chevron()).not.toBeNull();
+  });
+
+  it('the strip is the only header: it says once what the viewer heading and the per-file head said', async () => {
+    const bench = await renderCommitWorkbench();
+    await openOn(bench, 0);
+
+    const workspace = strip(bench.host);
+    const header = workspace.querySelector('[data-testid="diff-workspace-strip"]');
+
+    // One strip names the patch, then the options, then the code.
+    expect(workspace.querySelector('[data-testid="diff-source-chip"]')).toBeNull();
+    expect(workspace.querySelector('.dv-file-head')).toBeNull();
+    expect(workspace.querySelectorAll('[data-testid="diff-options"]')).toHaveLength(1);
+
+    // Nothing the withheld heads carried is lost: the status as a word, the
+    // line counts and the file actions.
+    expect(
+      header?.querySelector('[data-testid="diff-source-status"]')?.textContent ?? '',
+    ).toMatch(/\S/);
+    expect(
+      header?.querySelector('[data-testid="diff-source-stats"]')?.textContent ?? '',
+    ).toMatch(/\+\d+\s*-\d+/);
+    expect(header?.querySelector('[data-testid="diff-workspace-more"]')).not.toBeNull();
   });
 
   it('AC-06: the strip shows the path, the source commit, previous / next and Close', async () => {

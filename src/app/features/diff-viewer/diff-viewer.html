@@ -9,6 +9,7 @@
   </div>
 } @else {
   <div class="flex h-full min-h-0 w-full flex-col bg-[var(--app-bg)]">
+    @if (!hosted()) {
     @if (heading(); as head) {
       <header
         class="flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
@@ -83,9 +84,11 @@
         }
       </header>
     }
+    }
 
     <div
-      class="neon-scroll flex h-[var(--panel-head-h)] shrink-0 items-center gap-2 overflow-x-auto border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3"
+      class="flex min-h-[var(--panel-head-h)] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-0.5"
+      data-testid="diff-options"
     >
       <yoru-segmented
         [options]="layoutOptions"
