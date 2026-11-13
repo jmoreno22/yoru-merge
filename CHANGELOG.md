@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Context menus say what they act on.** A menu opened on a commit, a branch,
+  a tag, a stash, a file, a tab or a remote starts with a header naming it —
+  short sha and subject, ref name, file name and folder. The option in effect
+  is checked (the current branch, the default pull mode) and items show the
+  shortcut bound to them.
+
+### Changed
+
+- **The diff workspace has one header.** Four strips sat above the code and
+  three of them named the same patch. A single strip now carries the source,
+  the file's status, its path and line counts, a file-actions menu, previous /
+  next and Close, and the options bar wraps in a narrow column instead of
+  scrolling sideways.
+
+- **Menus behave like part of the list they came from.** Closing one returns
+  the focus to the row or button it was opened from, which stays highlighted
+  while the menu is open. Toolbar dropdowns open against their button, above it
+  when there is no room below; a submenu survives the pointer crossing other
+  items on its way to it; and items follow the density setting.
+
+- **One look for every list.** Commits, files, refs, reflog entries and file
+  history share the same hover, selection, "current" edge and keyboard focus.
+
+- **Said once.** The branch, its upstream and the ahead / behind counts live in
+  the toolbar and no longer repeat in the status bar, and Settings has one
+  button. With the toolbar hidden, the status bar and the rail take them over.
+
+- **The rail tells the view on screen from an open refs panel**; the two used
+  to look identical.
+
+- **A shorter commit composer.** Scope, subject and the length counter share a
+  line, and the switches share one with the Commit button, which leaves more
+  room for the file lists.
+
+- **Buttons and fields read as controls.** Secondary buttons and the toolbar
+  groups sit on a raised surface instead of matching what is behind them.
+
+### Fixed
+
+- **Compact density no longer clips the chrome.** Buttons, fields and rail
+  items kept a fixed height while the bars around them shrank; they now scale
+  with the density and the type size together.
+
+- **Git colours are readable in the light theme.** Added, modified, deleted and
+  renamed text was close to invisible on light surfaces (about 1.1:1); it now
+  clears WCAG AA on every palette.
+
+- **Every label follows the type-size setting**; some stayed at 12 px whatever
+  the preference.
+
+- **Glows follow the accent colour** instead of staying cyan under another
+  accent.
+
+- **Refs panel**: section labels line up with the panel header, and a long ref
+  name ends in an ellipsis instead of making the tree scroll sideways.
+
+- **Keyboard focus no longer reshapes a control**: the focus ring follows the
+  control's own corners.
+
+- **"Stage hunk" no longer wraps onto two lines** beside a long hunk header.
+
 ## [1.1.0] - 2026-11-09
 
 ### Added
