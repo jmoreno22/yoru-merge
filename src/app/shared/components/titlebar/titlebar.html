@@ -4,10 +4,14 @@
   data-testid="titlebar-brand"
 >
   <span
-    class="font-display text-y-sm tracking-[0.08em] text-[var(--app-text)]"
+    class="yoru-neon font-display text-y-sm tracking-[0.08em]"
+    [class.is-resting]="!focused()"
     data-tauri-drag-region
+    data-testid="titlebar-wordmark"
   >
-    YoruMerge
+    @for (letter of wordmark; track $index) {
+      <span class="yoru-neon-letter" [style.--i]="$index">{{ letter }}</span>
+    }
   </span>
   <span
     class="font-mono text-y-sm text-[var(--app-text-faint)]"

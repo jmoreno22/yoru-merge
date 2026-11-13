@@ -31,6 +31,8 @@ import { WorkspaceTabs } from '../workspace-tabs/workspace-tabs';
 })
 export class Titlebar {
   protected readonly maximized = signal(false);
+  protected readonly focused = signal(true);
+  protected readonly wordmark = [...'YoruMerge'];
 
   constructor() {
     void this.syncMaximized();
@@ -38,7 +40,13 @@ export class Titlebar {
     const unlisten = this.withWindow((w) =>
       w.onResized(() => void this.syncMaximized()),
     );
-    inject(DestroyRef).onDestroy(() => void unlisten.then((off) => off?.()));
+    const unlistenFocus = this.withWindow((w) =>
+      w.onFocusChanged(({ payload }) => this.focused.set(payload)),
+    );
+    inject(DestroyRef).onDestroy(() => {
+      void unlisten.then((off) => off?.());
+      void unlistenFocus.then((off) => off?.());
+    });
   }
 
   protected async onMinimize(): Promise<void> {

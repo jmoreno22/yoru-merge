@@ -52,8 +52,8 @@ const AA = 4.5;
 const AA_NON_TEXT = 3.0;
 
 describe('COLOR_PALETTES', () => {
-  it('ships five palettes with unique ids', () => {
-    expect(COLOR_PALETTES).toHaveLength(5);
+  it('ships eight palettes with unique ids', () => {
+    expect(COLOR_PALETTES).toHaveLength(8);
     const ids = COLOR_PALETTES.map((palette) => palette.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

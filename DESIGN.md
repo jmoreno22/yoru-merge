@@ -178,6 +178,21 @@ Light mode is cool, lunar, and technical. Avoid warm beige, pure white-only layo
 
 In light mode, neon cyan should be used mostly as border, icon, underline, glow, or small filled controls. Large cyan blocks can be too loud on pale backgrounds.
 
+### Surface palettes
+
+The two tables above are **Yoru Night**, the default. Settings › Colour palette
+swaps every surface and text tone for another set, in both modes, while the
+accent stays the user's: Yoru Night, Slate, Paper, Nord, Solarized, and three
+that stay inside the night-city identity —
+
+- **Yugure** — twilight plum: violet-tinted surfaces, the hour before Yoru.
+- **Matcha** — deep green tea, calm for long review sessions.
+- **Sumi** — ink: near-black neutral graphite (never pure black), washi paper
+  in light mode.
+
+Each one is data in `color-palettes.ts`, and `color-palettes.spec.ts` holds
+every text tone of every palette to 4.5:1 on all four of its surfaces.
+
 ### Three levels of text, never opacity
 
 `--app-text` › `--app-text-muted` › `--app-text-faint`. The faint token exists so
@@ -564,6 +579,26 @@ it instead of jumping in front of the developer.
 It sits on `--z-splash` and is `aria-hidden`: decoration over an interface
 that is still assembling.
 
+### Neon wordmark
+
+The titlebar wordmark is a neon sign in the accent: a hot, almost white core
+with tight accent glow in dark mode; the accent ink with a soft halo in light
+mode, where a glow alone would wash out. A faint plate of the same colour sits
+behind it, like light on a wall.
+
+- **Ignition.** The letters strike one after another, each with the uneven
+  flicker of a tube catching, and the sequence waits for the startup splash to
+  start leaving, so it is seen.
+- **At rest.** Two tired tubes: the r of Merge stutters every 9 s, and the
+  plate dims with it; the o blinks once every 13 s. Between those events
+  nothing moves. A continuously breathing glow was tried and dropped: it kept
+  the window painting about 100 frames a second for nothing, where the sign at
+  rest paints none.
+- **Cost.** Only opacity animates; the glow itself is painted once. The idle
+  motion pauses while the window is not focused.
+- **Motion off.** Reduced motion and the animations preference show the sign
+  lit and still.
+
 ## Elevation & Depth
 
 Depth should feel like dark glass and monitor glow.
@@ -603,6 +638,10 @@ Nothing else. No glowing rows, badges, borders, panels or icons. A glow is how
 the app says "you are here" and "this is the button"; spend it anywhere else and
 both meanings are gone. Conflict UI is the single exception: a blocking conflict
 may carry a sakura glow while it is unresolved.
+
+The titlebar wordmark is not part of a view: it is the brand's neon sign
+(Layout › Neon wordmark), small, in the accent, and the only glow that is
+always on.
 
 ### Sakura is not red
 

@@ -214,7 +214,7 @@ describe('buildPaletteCommands', () => {
     expect(context.prefs.setColorPalette).toHaveBeenCalledWith('slate');
 
     const last = contextWith();
-    (last.prefs.colorPalette as WritableSignal<string>).set('solarized');
+    (last.prefs.colorPalette as WritableSignal<string>).set('sumi');
     buildPaletteCommands(last)
       .find((command) => command.id === 'view.colorPalette')
       ?.run();

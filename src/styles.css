@@ -572,6 +572,193 @@ html {
   animation: yoru-pulse-glow 1.8s ease-in-out infinite;
 }
 
+/* ── `.yoru-neon` — the titlebar wordmark as a neon sign ──────────────
+ *
+ * DESIGN.md › Neon wordmark. Every animation below is opacity only: the glow is
+ * a text-shadow painted once, and the compositor fades it without repainting
+ * the text. Letters take `--i`, their index, to stagger the ignition.
+ */
+.yoru-neon {
+  position: relative;
+  isolation: isolate;
+  color: var(--app-accent-text);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--app-accent) 45%, transparent);
+}
+
+.dark .yoru-neon {
+  color: color-mix(in srgb, var(--app-accent) 35%, #ffffff);
+  text-shadow:
+    0 0 1px var(--app-accent),
+    0 0 4px color-mix(in srgb, var(--app-accent) 85%, transparent),
+    0 0 10px color-mix(in srgb, var(--app-accent) 55%, transparent);
+}
+
+.yoru-neon::before {
+  content: "";
+  position: absolute;
+  inset: -5px -12px;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--app-accent) 16%, transparent),
+    transparent
+  );
+  pointer-events: none;
+  opacity: 0.85;
+  animation: yoru-neon-plate 9s linear 5s infinite;
+}
+
+.dark .yoru-neon::before {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--app-accent) 26%, transparent),
+    transparent
+  );
+}
+
+/* Letters must not be the target of a mousedown: Tauri only drags from the
+ * element that carries data-tauri-drag-region, which is the wordmark. */
+.yoru-neon-letter {
+  pointer-events: none;
+  animation: yoru-neon-ignite 900ms linear calc(var(--i) * 60ms) both;
+}
+
+/* Motion at rest comes in short events, never continuously: between them
+ * nothing changes and the window paints no frames. The plate shares the r's
+ * cycle, so the wall light dips when that tube does. */
+.yoru-neon-letter:nth-child(7) {
+  animation:
+    yoru-neon-ignite 900ms linear calc(var(--i) * 60ms) both,
+    yoru-neon-stutter 9s linear 5s infinite;
+}
+
+.yoru-neon-letter:nth-child(2) {
+  animation:
+    yoru-neon-ignite 900ms linear calc(var(--i) * 60ms) both,
+    yoru-neon-blink 13s linear 8s infinite;
+}
+
+/* The sign strikes while the startup splash fades, not underneath it. */
+.ys:not(.is-leaving) ~ app-root .yoru-neon-letter,
+.ys:not(.is-leaving) ~ app-root .yoru-neon::before {
+  animation-play-state: paused;
+}
+
+/* An unfocused window keeps the sign lit but still. The ignition is left to
+ * run, or a launch that loses focus at once would leave the letters dark. */
+.yoru-neon.is-resting::before {
+  animation-play-state: paused;
+}
+
+.yoru-neon.is-resting .yoru-neon-letter:nth-child(7),
+.yoru-neon.is-resting .yoru-neon-letter:nth-child(2) {
+  animation-play-state: running, paused;
+}
+
+/* The global motion-off rules keep animation delays, which would light the
+ * letters one jump at a time. */
+@media (prefers-reduced-motion: reduce) {
+  .yoru-neon::before,
+  .yoru-neon-letter {
+    animation: none !important;
+  }
+}
+
+:root[data-animations="off"] .yoru-neon::before,
+:root[data-animations="off"] .yoru-neon-letter {
+  animation: none !important;
+}
+
+/* Close keyframe pairs make the jumps abrupt, as a tube catching is. */
+@keyframes yoru-neon-ignite {
+  0%,
+  8% {
+    opacity: 0.12;
+  }
+  9%,
+  15% {
+    opacity: 0.95;
+  }
+  16%,
+  26% {
+    opacity: 0.2;
+  }
+  27%,
+  36% {
+    opacity: 1;
+  }
+  37%,
+  44% {
+    opacity: 0.45;
+  }
+  45%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes yoru-neon-stutter {
+  0%,
+  90% {
+    opacity: 1;
+  }
+  90.6%,
+  91.4% {
+    opacity: 0.3;
+  }
+  92%,
+  93.4% {
+    opacity: 1;
+  }
+  94%,
+  94.6% {
+    opacity: 0.5;
+  }
+  95.2%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes yoru-neon-plate {
+  0%,
+  90% {
+    opacity: 0.85;
+  }
+  90.6%,
+  91.4% {
+    opacity: 0.5;
+  }
+  92%,
+  93.4% {
+    opacity: 0.85;
+  }
+  94%,
+  94.6% {
+    opacity: 0.6;
+  }
+  95.2%,
+  100% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes yoru-neon-blink {
+  0%,
+  96% {
+    opacity: 1;
+  }
+  96.4%,
+  97% {
+    opacity: 0.55;
+  }
+  97.4%,
+  100% {
+    opacity: 1;
+  }
+}
+
 /* ── `.neon-scroll` — Yoru Night subtle-neon scrollbar utility ────────
  *
  * Shared scrollbar chrome for any scrollable surface inside the app

@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sized themselves. It now opens on the drawn merge mark, which fades out once
   that first view is final — at most 2.5 s, and without movement when reduced
   motion or the animations preference asks for it.
+- **The titlebar wordmark is a neon sign in your accent.** It strikes letter
+  by letter as the splash leaves, then two tired tubes flicker now and then;
+  between flickers nothing moves, and it holds still while the window is not
+  focused or when motion is off.
+- **Three more colour palettes:** Yugure (twilight plum), Matcha (deep green
+  tea) and Sumi (neutral ink, washi in light mode), held to the same AA
+  contrast as the other five.
 - **Context menus say what they act on.** A menu opened on a commit, a branch,
   a tag, a stash, a file, a tab or a remote starts with a header naming it —
   short sha and subject, ref name, file name and folder. The option in effect
