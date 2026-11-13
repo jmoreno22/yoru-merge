@@ -729,8 +729,11 @@ yoru-button[data-menu-open] > button:not(.bg-accent) {
     background-color 80ms ease;
 }
 
-body.yoru-dragging,
-body.yoru-dragging * {
+/* Body only, never `body.yoru-dragging *`: a descendant rule makes the class
+ * toggle restyle every element of the document. Both properties reach the
+ * descendants anyway — `cursor` inherits and `user-select: auto` follows the
+ * parent — and during a native drag the WebView draws its own drag cursor. */
+body.yoru-dragging {
   user-select: none !important;
   -webkit-user-select: none !important;
   cursor: grabbing !important;
@@ -747,9 +750,6 @@ body.yoru-dragging * {
  * below would leave the theme sweep running on its own.
  */
 @media (prefers-reduced-motion: reduce) {
-  /* biome-ignore lint/style/noDescendingSpecificity: a universal accessibility
-     override is meant to follow the rules it neutralises, and every
-     declaration below carries !important. */
   *,
   *::before,
   *::after {

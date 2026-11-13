@@ -19,8 +19,9 @@ import { UpdateDialog } from './update-dialog';
  * `DialogsService`, `SettingsDialogService` and `CommandPaletteService`, so no
  * surface has to host a sibling's modal.
  *
- * The palette is always rendered — it registers its own shortcut — while the
- * rest are created on open so each one starts from a clean state.
+ * The palette is always rendered once the app is idle — it registers its own
+ * shortcut — while the rest are created on open so each one starts from a clean
+ * state. The larger ones load their code on first open (`@defer`).
  */
 @Component({
   selector: 'app-dialog-host',

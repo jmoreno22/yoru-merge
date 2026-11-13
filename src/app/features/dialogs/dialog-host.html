@@ -1,28 +1,40 @@
 <app-confirm-dialog />
 <app-prompt-dialog />
 
-@if (dialogs.cloneOpen()) {
-  <app-clone-repo-dialog [open]="true" (closed)="dialogs.closeClone()" />
+<!-- `when` fires once and the block stays: the inner `@if` is what unmounts the
+     dialog on close, so each open still starts from a clean state. -->
+@defer (when dialogs.cloneOpen()) {
+  @if (dialogs.cloneOpen()) {
+    <app-clone-repo-dialog [open]="true" (closed)="dialogs.closeClone()" />
+  }
 }
 
-@if (dialogs.remotesOpen()) {
-  <app-remotes-manager [open]="true" (closed)="dialogs.closeRemotes()" />
+@defer (when dialogs.remotesOpen()) {
+  @if (dialogs.remotesOpen()) {
+    <app-remotes-manager [open]="true" (closed)="dialogs.closeRemotes()" />
+  }
 }
 
-@if (dialogs.mergeOpen()) {
-  <app-merge-branch-dialog [open]="true" (closed)="dialogs.closeMerge()" />
+@defer (when dialogs.mergeOpen()) {
+  @if (dialogs.mergeOpen()) {
+    <app-merge-branch-dialog [open]="true" (closed)="dialogs.closeMerge()" />
+  }
 }
 
-@if (dialogs.resolverOpen()) {
-  <app-merge-resolver
-    [open]="true"
-    [initialFile]="dialogs.resolverFile()"
-    (closed)="dialogs.closeMergeResolver()"
-  />
+@defer (when dialogs.resolverOpen()) {
+  @if (dialogs.resolverOpen()) {
+    <app-merge-resolver
+      [open]="true"
+      [initialFile]="dialogs.resolverFile()"
+      (closed)="dialogs.closeMergeResolver()"
+    />
+  }
 }
 
-@if (dialogs.aboutOpen()) {
-  <app-about-dialog [open]="true" (closed)="dialogs.closeAbout()" />
+@defer (when dialogs.aboutOpen()) {
+  @if (dialogs.aboutOpen()) {
+    <app-about-dialog [open]="true" (closed)="dialogs.closeAbout()" />
+  }
 }
 
 @if (dialogs.stashOptionsOpen()) {
@@ -33,8 +45,13 @@
   <app-update-dialog [open]="true" (closed)="dialogs.closeUpdate()" />
 }
 
-@if (settings.isOpen()) {
-  <app-settings-dialog />
+@defer (when settings.isOpen()) {
+  @if (settings.isOpen()) {
+    <app-settings-dialog />
+  }
 }
 
-<app-command-palette />
+<!-- Mounted once idle rather than on first use: it registers its own shortcut. -->
+@defer (on idle) {
+  <app-command-palette />
+}

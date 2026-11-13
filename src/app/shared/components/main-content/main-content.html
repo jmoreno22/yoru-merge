@@ -127,35 +127,41 @@
                     </div>
                   }
 
+                  <!-- Code loaded on first open; `when` fires once, so the
+                       inner `@if` still unmounts the panel on close. -->
                   @case ('blame') {
-                    @if (blameFile(); as file) {
-                      <div
-                        class="flex min-h-0 flex-col border-t border-[var(--app-border)]"
-                        [style.flex]="block.size"
-                      >
-                        <app-blame-viewer
-                          class="block h-full min-h-0"
-                          [file]="file"
-                          [rev]="blameRev()"
-                          (close)="onCloseBlame()"
-                        />
-                      </div>
+                    @defer (when blameFile()) {
+                      @if (blameFile(); as file) {
+                        <div
+                          class="flex min-h-0 flex-col border-t border-[var(--app-border)]"
+                          [style.flex]="block.size"
+                        >
+                          <app-blame-viewer
+                            class="block h-full min-h-0"
+                            [file]="file"
+                            [rev]="blameRev()"
+                            (close)="onCloseBlame()"
+                          />
+                        </div>
+                      }
                     }
                   }
 
                   @case ('file-history') {
-                    @if (fileHistoryFile(); as file) {
-                      <div
-                        class="flex min-h-0 flex-col border-t border-[var(--app-border)]"
-                        [style.flex]="block.size"
-                      >
-                        <app-file-history-panel
-                          class="block h-full min-h-0"
-                          [file]="file"
-                          (close)="onCloseFileHistory()"
-                          (selectCommit)="onSelectHistoryCommit($event)"
-                        />
-                      </div>
+                    @defer (when fileHistoryFile()) {
+                      @if (fileHistoryFile(); as file) {
+                        <div
+                          class="flex min-h-0 flex-col border-t border-[var(--app-border)]"
+                          [style.flex]="block.size"
+                        >
+                          <app-file-history-panel
+                            class="block h-full min-h-0"
+                            [file]="file"
+                            (close)="onCloseFileHistory()"
+                            (selectCommit)="onSelectHistoryCommit($event)"
+                          />
+                        </div>
+                      }
                     }
                   }
                 }
