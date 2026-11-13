@@ -32,7 +32,7 @@
 /**
  * The appearance mirror is written by the app itself, so the only way it holds
  * a value outside the schema is a hand-edited store: the bounds below mirror
- * MIN_UI_FONT_SIZE / MAX_UI_FONT_SIZE and the UiDensity union.
+ * MIN_UI_FONT_SIZE / MAX_UI_FONT_SIZE and the UiDensity and AccentId unions.
  */
 (function applyStoredAppearance() {
   try {
@@ -45,10 +45,20 @@
     if (density === 'compact' || density === 'comfortable' || density === 'relaxed') {
       document.documentElement.dataset.density = density;
     }
-    // The startup splash animates from the first paint, long before
-    // AppearanceService could write this.
+    // The startup splash animates and takes the accent from the first paint,
+    // long before AppearanceService could write either.
     if (stored.animations === false) {
       document.documentElement.dataset.animations = 'off';
+    }
+    var accent = stored.accent;
+    if (
+      accent === 'cyan' ||
+      accent === 'violet' ||
+      accent === 'sakura' ||
+      accent === 'mint' ||
+      accent === 'crimson'
+    ) {
+      document.documentElement.dataset.accent = accent;
     }
   } catch (error) {
     // No mirror yet, malformed JSON or storage unavailable: styles.css declares

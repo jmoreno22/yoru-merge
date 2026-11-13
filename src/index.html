@@ -22,13 +22,18 @@
        * styles.css so it is complete in the very first frame. Class names only:
        * the CSP drops inline style attributes. The base styles are the
        * finished mark and every animation only leads up to them, so motion
-       * off is just removing the animations. */
+       * off is just removing the animations. The merge and the wordmark take
+       * the accent, which theme-preboot.js has set by the time this paints. */
       .ys {
-        --ys-cyan: #00b8d9;
+        --ys-accent: color-mix(
+          in srgb,
+          var(--app-accent, #00e5ff) 75%,
+          var(--app-accent-text, #00697a)
+        );
         --ys-violet: #8b4dff;
         --ys-pink: #f03ea8;
-        --ys-bead: #3b82ff;
-        --ys-glow: rgb(0 184 217 / 0.1);
+        --ys-bead: var(--app-accent-text, #00697a);
+        --ys-glow: color-mix(in srgb, var(--ys-accent) 12%, transparent);
         position: fixed;
         inset: 0;
         z-index: var(--z-splash, 1400);
@@ -42,11 +47,11 @@
         transition: opacity 220ms ease;
       }
       html.dark .ys {
-        --ys-cyan: #00e5ff;
+        --ys-accent: var(--app-accent, #00e5ff);
         --ys-violet: #9b5cff;
         --ys-pink: #ff4fb8;
         --ys-bead: #f4f8ff;
-        --ys-glow: rgb(0 229 255 / 0.14);
+        --ys-glow: color-mix(in srgb, var(--ys-accent) 15%, transparent);
         background: #050712;
       }
       .ys.is-leaving {
@@ -81,7 +86,7 @@
         stroke-linecap: round;
       }
       .ys-c {
-        stop-color: var(--ys-cyan);
+        stop-color: var(--ys-accent);
       }
       .ys-v {
         stop-color: var(--ys-violet);
@@ -95,7 +100,7 @@
         animation: ys-draw 340ms cubic-bezier(0.22, 1, 0.36, 1) 100ms both;
       }
       .ys-stem {
-        stroke: var(--ys-cyan);
+        stroke: var(--ys-accent);
         animation-delay: 380ms;
         animation-duration: 180ms;
       }
@@ -113,7 +118,7 @@
         animation-delay: 50ms;
       }
       .ys-node-c {
-        stroke: var(--ys-cyan);
+        stroke: var(--ys-accent);
         animation-delay: 480ms;
       }
       .ys-comet {
@@ -132,11 +137,18 @@
         font-size: 17px;
         line-height: 1;
         letter-spacing: 0.16em;
-        color: transparent;
-        background: linear-gradient(90deg, #00e5ff, #9b5cff, #ff4fb8);
-        -webkit-background-clip: text;
-        background-clip: text;
+        color: var(--app-accent-text, #00697a);
+        text-shadow: 0 0 8px color-mix(in srgb, var(--ys-accent) 45%, transparent);
         animation: ys-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
+      }
+      /* The same sign as the titlebar wordmark (.yoru-neon), so the handoff
+       * between the two is one colour. */
+      html.dark .ys-word {
+        color: color-mix(in srgb, var(--ys-accent) 35%, #ffffff);
+        text-shadow:
+          0 0 1px var(--ys-accent),
+          0 0 5px color-mix(in srgb, var(--ys-accent) 85%, transparent),
+          0 0 12px color-mix(in srgb, var(--ys-accent) 55%, transparent);
       }
       /* The global motion-off rules in styles.css shorten durations but keep
        * the delays, which would assemble the mark in jumps. */

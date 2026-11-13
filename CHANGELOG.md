@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A startup splash covers the first second.** The window used to open on
   the welcome screen and then jump to the restored repository while its panels
-  sized themselves. It now opens on the drawn merge mark, which fades out once
-  that first view is final — at most 2.5 s, and without movement when reduced
-  motion or the animations preference asks for it.
+  sized themselves. It now opens on the drawn merge mark, in your accent, which
+  fades out once that first view is final — at most 2.5 s, and without
+  movement when reduced motion or the animations preference asks for it.
 - **The titlebar wordmark is a neon sign in your accent.** It strikes letter
   by letter as the splash leaves, then two tired tubes flicker now and then;
   between flickers nothing moves, and it holds still while the window is not

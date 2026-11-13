@@ -557,12 +557,13 @@ themselves from the stored preferences, the history arriving — happens under
 it instead of jumping in front of the developer.
 
 - **Mark.** The logo's merge glyph, drawn as strokes: the two branch rings pop
-  in, the violet and sakura branches draw into the junction, the cyan stem drops
-  and the merge ring lands last. Below it the wordmark in Zen Dots with the
-  welcome screen's cyan → violet → sakura gradient. These are the brand colours,
-  not the accent: the mark is the logo, and it paints before any preference has
-  been read. The halo behind it is outside the glow budget — no view is on
-  screen yet.
+  in, the violet and sakura branches draw into the junction, the stem drops and
+  the merge ring lands last. The two branches keep the brand colours; what they
+  merge into — stem, merge ring, halo — is the accent, and so is the wordmark
+  below, lit as the same neon sign as the titlebar. `theme-preboot.js` reads the
+  accent from the appearance mirror before the first paint, so the splash hands
+  off to the titlebar in one colour. The halo is outside the glow budget — no
+  view is on screen yet.
 - **While it waits.** A highlight runs down each branch into the stem, one
   after the other, and the halo breathes. Only stroke offsets, opacity and
   transforms move.
