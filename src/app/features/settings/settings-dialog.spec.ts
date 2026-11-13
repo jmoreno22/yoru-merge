@@ -58,6 +58,59 @@ function keyboardRows(host: HTMLElement): Record<string, string> {
   return rows;
 }
 
+describe('Settings › git config', () => {
+  let stub: ReturnType<typeof createTauriGitStub>;
+  let host: HTMLElement;
+
+  beforeEach(async () => {
+    // What the backend answers for the global file alone: there is no local
+    // scope, so the identity arrives only in the `global_*` fields.
+    stub = createTauriGitStub({
+      get_repo_config: {
+        user_name: null,
+        user_email: null,
+        global_user_name: 'Ada',
+        global_user_email: 'ada@example.com',
+        pull_rebase: false,
+        gpg_sign: false,
+        signing_format: null,
+        default_branch: null,
+        autocrlf: null,
+        ai_enabled: null,
+      },
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        provideZonelessChangeDetection(),
+        ...provideTestIcons(),
+        { provide: TauriGitService, useValue: stub.service },
+      ],
+    });
+    TestBed.inject(SettingsDialogService).open('git');
+    const fixture = TestBed.createComponent(SettingsDialog);
+    host = fixture.nativeElement;
+
+    for (let tick = 0; tick < 10; tick++) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  });
+
+  it('reads the config once per opening, not again after every read', () => {
+    const reads = stub.calls.filter((call) => call.command === 'get_repo_config');
+    expect(reads).toHaveLength(1);
+  });
+
+  it('shows the global identity in the global scope', () => {
+    const value = (testId: string) =>
+      host.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)?.value;
+
+    expect(value('settings-user-name')).toBe('Ada');
+    expect(value('settings-user-email')).toBe('ada@example.com');
+  });
+});
+
 describe('Settings › Keyboard (AC-12)', () => {
   let host: HTMLElement;
   let workspace: DiffWorkspaceService;

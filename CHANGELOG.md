@@ -92,6 +92,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Settings › Git can be edited again.** With the dialog open the git config
+  was re-read some thirty times a second, which kept every git control
+  disabled; it is now read once per opening. The Global scope also shows your
+  global name and email instead of two empty fields.
 - **Compact density no longer clips the chrome.** Buttons, fields and rail
   items kept a fixed height while the bars around them shrank; they now scale
   with the density and the type size together.

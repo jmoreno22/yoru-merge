@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChildren,
 } from '@angular/core';
 import type { PullMode, WritableConfigKey } from '../../core/models';
@@ -241,8 +242,20 @@ export class SettingsDialog {
       : this.currentRepo.globalConfig(),
   );
 
-  protected readonly userName = computed(() => this.activeConfig()?.user_name ?? '');
-  protected readonly userEmail = computed(() => this.activeConfig()?.user_email ?? '');
+  // A read of the global file has no local scope, so its identity arrives only
+  // in the `global_*` fields.
+  protected readonly userName = computed(
+    () =>
+      (this.scope() === 'repo'
+        ? this.activeConfig()?.user_name
+        : this.activeConfig()?.global_user_name) ?? '',
+  );
+  protected readonly userEmail = computed(
+    () =>
+      (this.scope() === 'repo'
+        ? this.activeConfig()?.user_email
+        : this.activeConfig()?.global_user_email) ?? '',
+  );
   /** Placeholder for the repository scope: what git falls back to. */
   protected readonly globalUserName = computed(
     () => this.currentRepo.globalConfig()?.global_user_name ?? '',
@@ -402,7 +415,9 @@ export class SettingsDialog {
   constructor() {
     effect(() => {
       if (!this.open()) return;
-      void this.reloadConfig();
+      // The loaders read and flip their own busy flags; tracked, each read
+      // finishing would schedule the next one for as long as Settings is open.
+      untracked(() => void this.reloadConfig());
     });
 
     effect(() => {
