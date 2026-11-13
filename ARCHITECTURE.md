@@ -98,7 +98,7 @@ src/app/
               current-repo.service.ts + ops/ (actions per domain)
     models/   TypeScript mirrors of the Rust structs
   shared/
-    ui/       the UI kit — dialog, context menu, button, badge, …
+    ui/       the UI kit — dialog, context menu, button, icon button, input, badge, …
     icons/    the curated Lucide set
     components/ app chrome: shell, toolbar, rail, sidebar, status bar
   features/   one folder per screen or dialog
@@ -140,6 +140,32 @@ after an await.
   same numbers to `[itemSize]`; `--row-h` must match the virtual scroller's
   `itemSize` and the graph's row height, and it does because one function
   produces all three. Never override a row token in CSS.
+
+### Layout as data
+
+Three pure modules in `core/services/` decide geometry and placement. The
+templates paint what they return and own nothing but the pixels, and each
+module has a spec that pins its rules:
+
+- `appearance-metrics.ts` — the height of every bar, row and control, from the
+  type size and the density. A control takes its height from the same
+  arithmetic as the bar that hosts it (`--control-h`, `--control-h-sm`,
+  `--control-h-xs`, `--rail-item`) with a smaller padding budget, so a button
+  cannot outgrow its bar at compact density.
+- `workbench-layout.ts` — what is where in the workbench: the order of the
+  refs panel and the centre | inspector split, the axis of that split, the
+  blocks the centre column mounts and the blocks the inspector stacks, with
+  their sizes. `main-content.html` loops over that description, tracking each
+  block by id so it keeps its instance; moving or adding a panel is an edit to
+  this module and its spec, not to template bindings.
+- `chrome-layout.ts` — which piece of window chrome owns a fact that two of
+  them could show (the branch, the Settings button), and who takes it over
+  while the owner is hidden.
+
+The diff workspace follows the same idea for its header: the workspace strip
+is the only one, and what the viewer knows about the file on screen reaches it
+as data (`DiffSourceFacts`) handed over by the workbench shell, so the
+workspace still does not know the viewer.
 
 ## Repository layout
 

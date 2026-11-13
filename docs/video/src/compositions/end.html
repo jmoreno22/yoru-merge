@@ -1,0 +1,101 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Zen Dots";
+      font-weight: 400;
+      src: url("assets/fonts/zen-dots-latin.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Sans";
+      font-weight: 100 700;
+      src: url("assets/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+    }
+    #e-card,
+    #e-mask {
+      position: absolute;
+      inset: 0;
+    }
+    /* The night comes back with the app's own sweep, and brings the mark. */
+    #e-mask {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 34px;
+      background:
+        radial-gradient(circle at top right, rgb(0 229 255 / 0.16), transparent 32%),
+        radial-gradient(circle at bottom left, rgb(255 79 184 / 0.1), transparent 30%),
+        #050712;
+    }
+    #e-logo {
+      width: 230px;
+      height: 230px;
+    }
+    #e-word {
+      font-family: "Zen Dots", sans-serif;
+      font-size: 96px;
+      letter-spacing: 0.02em;
+      color: #f4f8ff;
+      white-space: nowrap;
+    }
+    #e-word span {
+      display: inline-block;
+    }
+    #e-tag {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 38px;
+      font-weight: 400;
+      color: #afc8f7;
+      white-space: nowrap;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="end"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"tagline","type":"string","label":"Tagline","default":"A fast, keyboard-friendly Git GUI"}]'
+  >
+    <div id="e-card" class="clip" data-start="0" data-duration="2.4" data-track-index="1">
+      <div id="e-mask">
+        <img id="e-logo" src="assets/logo.png" alt="" />
+        <div id="e-word" aria-label="YoruMerge">
+          <span class="e-letter">Y</span><span class="e-letter">o</span><span class="e-letter">r</span
+          ><span class="e-letter">u</span><span class="e-letter">M</span><span class="e-letter">e</span
+          ><span class="e-letter">r</span><span class="e-letter">g</span><span class="e-letter">e</span>
+        </div>
+        <div id="e-tag" data-var-text="tagline">A fast, keyboard-friendly Git GUI</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo(
+        "#e-mask",
+        { clipPath: "polygon(50% -71%, -50% 71%, -50% 71%, 50% -71%)" },
+        { clipPath: "polygon(50% -71%, -50% 71%, 50% 171%, 171% 50%)", duration: 0.5, ease: "expo.out" },
+        0,
+      );
+
+      tl.fromTo("#e-logo", { scale: 0.86, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.15);
+      tl.fromTo(
+        ".e-letter",
+        { opacity: 0, filter: "blur(6px)" },
+        { opacity: 1, filter: "blur(0px)", duration: 0.16, ease: "power4.out", stagger: 0.04 },
+        0.3,
+      );
+      tl.fromTo("#e-tag", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power4.out" }, 0.34);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["end"] = tl;
+    })();
+  </script>
+</template>

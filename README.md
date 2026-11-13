@@ -17,6 +17,9 @@
 
 ![History view, Yoru Night theme](docs/screenshots/history-dark.png)
 
+**[Watch the 11-second tour](docs/video/yoru-merge-demo.mp4)** — History and
+its context menus, the diff workspace, the commit composer and the theme sweep.
+
 <details>
 <summary>More screenshots</summary>
 

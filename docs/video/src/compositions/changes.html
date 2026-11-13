@@ -1,0 +1,165 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "IBM Plex Sans";
+      font-weight: 100 700;
+      src: url("assets/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+    }
+    #c-cam {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1080px;
+      transform-origin: 0 0;
+    }
+    #c-win {
+      position: absolute;
+      left: 0;
+      top: 24px;
+      width: 1920px;
+      height: 1032px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid #252d4a;
+      box-shadow: 0 40px 120px rgb(0 0 0 / 0.55);
+    }
+    #c-win img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1032px;
+    }
+    /* The light theme, revealed by the app's own diagonal sweep. */
+    #c-light,
+    #c-light-mask {
+      position: absolute;
+      inset: 0;
+    }
+    #c-light {
+      z-index: 2;
+    }
+    #c-cursor {
+      position: absolute;
+      left: 0;
+      top: 24px;
+      width: 40px;
+      height: 40px;
+      z-index: 5;
+    }
+    .c-cap {
+      position: absolute;
+      left: 330px;
+      top: 300px;
+      z-index: 6;
+    }
+    .c-cap-box {
+      display: inline-block;
+      padding: 16px 26px;
+      border-radius: 14px;
+      border: 1px solid rgb(0 229 255 / 0.35);
+      background: rgb(5 7 18 / 0.9);
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 46px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #f4f8ff;
+      white-space: nowrap;
+    }
+    .c-cap-accent {
+      color: #00e5ff;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="changes"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"lead","type":"string","label":"Caption","default":"Stage, write,"},{"id":"accent","type":"string","label":"Caption accent","default":"commit"}]'
+  >
+    <div id="c-cam" data-layout-allow-overflow>
+      <div id="c-win">
+        <img
+          id="c-shot"
+          class="clip"
+          data-start="0"
+          data-duration="3.3"
+          data-track-index="1"
+          src="assets/shots/04-changes.png"
+          alt=""
+        />
+        <div id="c-light" class="clip" data-start="2.25" data-duration="1.05" data-track-index="2">
+          <div id="c-light-mask">
+            <img id="c-light-shot" src="assets/shots/05-changes-light.png" alt="" />
+          </div>
+        </div>
+      </div>
+      <svg id="c-cursor" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M4 2.5 L4 19.5 L8.6 15.4 L11.6 22 L14.4 20.8 L11.5 14.3 L17.6 14.1 Z"
+          fill="#f4f8ff"
+          stroke="#050712"
+          stroke-width="1.4"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </div>
+
+    <div id="c-cap" class="clip c-cap" data-start="0.6" data-duration="1.6" data-track-index="3">
+      <div id="c-cap-box" class="c-cap-box">
+        <span data-var-text="lead">Stage, write,</span>
+        <span class="c-cap-accent" data-var-text="accent">commit</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const W = 1920;
+      const H = 1080;
+      const TOP = 24;
+      const BOTTOM = 1056;
+      const cam = (s, fx, fy, cx = W / 2, cy = H / 2) => {
+        if (s <= 1) return { scale: s, x: (W - W * s) / 2, y: (H - H * s) / 2 };
+        const x = Math.min(0, Math.max(W - W * s, cx - fx * s));
+        const y = Math.min(-TOP * s, Math.max(H - BOTTOM * s, cy - fy * s));
+        return { scale: s, x, y };
+      };
+
+      const wide = cam(0.9);
+      const composer = cam(1.6, 660, 932, 960, 620);
+
+      const tl = gsap.timeline({ paused: true });
+
+      // In from the right, as the diff workspace leaves to the left.
+      tl.fromTo("#c-cam", { ...wide, x: wide.x + 2300 }, { ...wide, duration: 0.38, ease: "power3.out" }, 0);
+
+      tl.fromTo("#c-cam", { ...wide }, { ...composer, duration: 0.55, ease: "power2.inOut", immediateRender: false }, 0.6);
+      tl.fromTo("#c-cap-box", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.18, ease: "power4.out" }, 0.6);
+      tl.fromTo("#c-cap-box", { opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(8px)", duration: 0.16, ease: "power2.in", immediateRender: false }, 2.02);
+      tl.fromTo("#c-cam", { ...composer }, { ...wide, duration: 0.5, ease: "power2.inOut", immediateRender: false }, 1.7);
+
+      // The cursor goes to the theme button; its click starts the sweep.
+      tl.fromTo("#c-cursor", { x: 1560, y: 700, opacity: 0, scale: 1 }, { x: 1560, y: 700, opacity: 1, duration: 0.1 }, 1.7);
+      tl.fromTo("#c-cursor", { x: 1560, y: 700 }, { x: 1886, y: 56, duration: 0.4, ease: "power3.inOut", immediateRender: false }, 1.8);
+      tl.fromTo("#c-cursor", { scale: 1 }, { scale: 0.82, duration: 0.06, ease: "power2.in", immediateRender: false }, 2.2);
+      tl.fromTo("#c-cursor", { scale: 0.82 }, { scale: 1, duration: 0.14, ease: "power2.out", immediateRender: false }, 2.26);
+
+      tl.fromTo(
+        "#c-light-mask",
+        { clipPath: "polygon(171% 50%, 50% 171%, 50% 171%, 171% 50%)" },
+        { clipPath: "polygon(171% 50%, 50% 171%, -50% 71%, 50% -71%)", duration: 0.7, ease: "expo.out" },
+        2.25,
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["changes"] = tl;
+    })();
+  </script>
+</template>

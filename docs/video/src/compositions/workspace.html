@@ -1,0 +1,124 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "IBM Plex Sans";
+      font-weight: 100 700;
+      src: url("assets/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+    }
+    #w-cam {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1080px;
+      transform-origin: 0 0;
+    }
+    #w-win {
+      position: absolute;
+      left: 0;
+      top: 24px;
+      width: 1920px;
+      height: 1032px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid #252d4a;
+      box-shadow: 0 40px 120px rgb(0 0 0 / 0.55);
+    }
+    #w-win img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1032px;
+    }
+    #w-cap {
+      position: absolute;
+      left: 192px;
+      bottom: 128px;
+      z-index: 6;
+    }
+    #w-cap-box {
+      display: inline-block;
+      padding: 16px 26px;
+      border-radius: 14px;
+      border: 1px solid rgb(0 229 255 / 0.35);
+      background: rgb(5 7 18 / 0.9);
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 46px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #f4f8ff;
+      white-space: nowrap;
+    }
+    #w-cap-accent {
+      color: #00e5ff;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="workspace"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"accent","type":"string","label":"Caption accent","default":"One header,"},{"id":"lead","type":"string","label":"Caption","default":"then the code"}]'
+  >
+    <div id="w-cam" data-layout-allow-overflow>
+      <div id="w-win">
+        <img
+          id="w-shot"
+          class="clip"
+          data-start="0"
+          data-duration="2.6"
+          data-track-index="1"
+          src="assets/shots/03-workspace.png"
+          alt=""
+        />
+      </div>
+    </div>
+
+    <div id="w-cap" class="clip" data-start="0.4" data-duration="2.05" data-track-index="2">
+      <div id="w-cap-box">
+        <span id="w-cap-accent" data-var-text="accent">One header,</span>
+        <span data-var-text="lead">then the code</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const W = 1920;
+      const H = 1080;
+      const TOP = 24;
+      const BOTTOM = 1056;
+      const cam = (s, fx, fy, cx = W / 2, cy = H / 2) => {
+        if (s <= 1) return { scale: s, x: (W - W * s) / 2, y: (H - H * s) / 2 };
+        const x = Math.min(0, Math.max(W - W * s, cx - fx * s));
+        const y = Math.min(-TOP * s, Math.max(H - BOTTOM * s, cy - fy * s));
+        return { scale: s, x, y };
+      };
+
+      const wide = cam(0.9);
+      // The header strip and the options bar: the two strips above the code.
+      const strip = cam(1.9, 660, 144, 960, 300);
+
+      const tl = gsap.timeline({ paused: true });
+
+      // The click's rebound: the new screen comes in slightly large and settles.
+      tl.fromTo("#w-cam", { ...cam(0.96) }, { ...wide, duration: 0.45, ease: "expo.out" }, 0);
+      tl.fromTo("#w-cam", { ...wide }, { ...strip, duration: 0.55, ease: "power2.inOut", immediateRender: false }, 0.55);
+
+      tl.fromTo("#w-cap-box", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.18, ease: "power4.out" }, 0.4);
+      tl.fromTo("#w-cap-box", { opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(8px)", duration: 0.16, ease: "power2.in", immediateRender: false }, 2.26);
+
+      // Leave to the left as the next view comes in from the right.
+      tl.fromTo("#w-cam", { ...strip }, { ...strip, x: strip.x - 2300, duration: 0.3, ease: "power3.in", immediateRender: false }, 2.3);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["workspace"] = tl;
+    })();
+  </script>
+</template>
