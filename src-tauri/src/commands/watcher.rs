@@ -36,7 +36,7 @@ type FsWatcher = filtered::FilteredWatcher<RecommendedWatcher>;
 type FsWatcher = RecommendedWatcher;
 
 #[derive(Default)]
-pub struct WatcherState(pub Mutex<HashMap<String, RepoWatcher>>);
+pub struct WatcherState(Mutex<HashMap<String, RepoWatcher>>);
 
 /// What part of the repository a path belongs to, or `None` when the change is
 /// noise the UI must not react to.
