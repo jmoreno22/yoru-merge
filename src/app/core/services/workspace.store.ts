@@ -147,6 +147,12 @@ function repoStateDefaults() {
      * for the seconds a provider takes to answer.
      */
     aiBusy: false,
+
+    /**
+     * The commit made from the composer that History has not shown yet. Opening
+     * History spends it on the landing animation (`CommitLandingService`).
+     */
+    landedSha: null as string | null,
   };
 }
 
@@ -247,6 +253,7 @@ export class RepoState {
   readonly config = this.fields.config;
   readonly configBusy = this.fields.configBusy;
   readonly aiBusy = this.fields.aiBusy;
+  readonly landedSha = this.fields.landedSha;
 
   // ── derived ────────────────────────────────────────────────────────────
   readonly isOpen = computed(() => this.repo() !== null);

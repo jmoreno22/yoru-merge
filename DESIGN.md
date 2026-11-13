@@ -851,6 +851,18 @@ a narrow column — switches first, commit cluster second and right-aligned. A
 disabled switch explains itself in a tooltip on its wrapper, not in a line of
 text under it. Nothing new takes a row of its own: it joins one of the four.
 
+**A commit lands where you are.** The composer lives in Changes, where the
+history is not on screen, so the moment plays in three places, each once:
+
+1. A band of accent light sweeps across the composer as the commit is made.
+2. The History item on the rail sends out a ripple — that is where it went.
+3. The next time History opens, the new row slides in under an accent wash
+   and the graph node it sits on ripples twice. Opening History is what spends
+   the landing; it never replays.
+
+All three are one-shot and drawn with opacity and transform only; with motion
+off, none of them plays.
+
 ### Diff viewer
 
 Diffs must prioritize readability over atmosphere.

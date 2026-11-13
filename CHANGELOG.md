@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is a full-size neon sign: accent letters inside a frame tube of a second
   colour, ヨル・マージ under them and light pooling on wet asphalt below. It
   strikes when the screen appears and flickers like the titlebar's.
+- **A commit lands where you are.** A band of accent light sweeps the composer
+  as the commit is made and the History item on the rail ripples; the next time
+  History opens, the new row slides in and its graph node pulses, once.
 - **Empty states ink in.** The kanji watermark behind an empty panel spreads
   from its centre like ink on paper and settles out of a slight blur, once,
   when the state appears.

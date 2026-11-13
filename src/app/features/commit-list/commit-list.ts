@@ -16,6 +16,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { CommitInfo, RefInfo } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
+import { CommitLandingService } from '../../core/services/commit-landing.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
 import { commitRowKey, focusKeyOwner } from '../../core/services/diff-workspace-state';
@@ -108,6 +109,7 @@ export class CommitList {
   private readonly appearance = inject(AppearanceService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  protected readonly landing = inject(CommitLandingService);
 
   /** Set to false once the layout mounts `<app-commit-search>` in the header. */
   readonly showSearch = input<boolean>(true);
@@ -194,6 +196,9 @@ export class CommitList {
   });
 
   constructor() {
+    // History mounts only while it is on screen, so mounting is seeing it.
+    afterNextRender(() => this.landing.claim());
+
     effect(() => {
       // The header and the search bar are each one panel head tall, so the
       // graph's top offset follows the type size with them.

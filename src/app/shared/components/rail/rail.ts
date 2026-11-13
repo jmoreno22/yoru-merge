@@ -59,6 +59,11 @@ export class Rail {
 
   protected readonly items = RAIL_ITEMS;
   protected readonly view = this.prefs.railView;
+  /** A commit History has not shown yet: the History item ripples once for it. */
+  protected readonly landingPing = computed(() => {
+    const sha = this.repo.landedSha();
+    return sha !== null && this.view() !== 'history' ? [sha] : [];
+  });
   protected readonly refsPanelOpen = this.prefs.refsPanelOpen;
 
   /** Everything the working tree would show in the Changes view. */

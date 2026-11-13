@@ -141,6 +141,7 @@ export class StagingOps {
           options.noVerify ?? false,
         );
         await this.repoOps.refreshAll(state);
+        state.landedSha.set(sha);
         return sha;
       },
       null,

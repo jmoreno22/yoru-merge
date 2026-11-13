@@ -69,6 +69,7 @@
         class="yoru-row commit-row"
         [class.is-selected]="isSelected(row.sha)"
         [class.is-current]="row.sha === selectedSha()"
+        [class.is-landing]="row.sha === landing.playing()"
       >
         <div class="col-description">
           @for (ref of row.refs; track ref.ref_type + ':' + ref.name) {

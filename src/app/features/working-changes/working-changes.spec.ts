@@ -19,6 +19,7 @@ import {
   restoreTauriEventBridge,
 } from '../../../testing/tauri-events';
 import { createTauriGitStub, type TauriGitStub } from '../../../testing/tauri-git-stub';
+import { installWebAnimations } from '../../../testing/web-animations';
 import type { WorkingChanges } from '../../core/models';
 import {
   CurrentRepoService,
@@ -249,9 +250,11 @@ async function afterDebounce(bench: Workbench): Promise<void> {
 
 describe('Diff workspace on a working-tree file', () => {
   let observer: ReturnType<typeof installResizeObserver>;
+  let animations: ReturnType<typeof installWebAnimations>;
 
   beforeEach(() => {
     observer = installResizeObserver();
+    animations = installWebAnimations();
     Object.defineProperty(Element.prototype, 'scrollTo', {
       configurable: true,
       writable: true,
@@ -261,6 +264,7 @@ describe('Diff workspace on a working-tree file', () => {
 
   afterEach(() => {
     observer.restore();
+    animations.restore();
     restoreTauriEventBridge();
   });
 
@@ -542,6 +546,26 @@ describe('Diff workspace on a working-tree file', () => {
     expect(
       bench.stub.calls.filter((call) => call.command === 'create_commit'),
     ).toHaveLength(1);
+  });
+
+  it('sweeps the composer once a commit lands, and only then', async () => {
+    const bench = await renderChangesWorkbench();
+    const swept = () =>
+      animations.calls.filter((call) =>
+        call.target.classList.contains('yoru-sweep-bar'),
+      );
+    type(field(bench.host, 'Commit subject'), 'feat: land where you are');
+    await bench.settle();
+
+    // No canned answer: the commit fails, and nothing lands.
+    press('Enter', { ctrlKey: true });
+    await bench.settle();
+    expect(swept()).toHaveLength(0);
+
+    bench.stub.responses['create_commit'] = 'ab12cd34';
+    press('Enter', { ctrlKey: true });
+    await bench.settle();
+    expect(swept()).toHaveLength(1);
   });
 
   it('AC-13: the Stage control advances the workspace on its own refresh', async () => {

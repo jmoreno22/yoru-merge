@@ -211,6 +211,7 @@ export class CurrentRepoService {
   // ── AI ─────────────────────────────────────────────────────────────────
   /** True while a provider is drafting a commit message. */
   readonly aiBusy = this.proxyWritable((state) => state.aiBusy);
+  readonly landedSha = this.proxyWritable((state) => state.landedSha);
 
   /** Global git config; readable with no repository open. */
   readonly globalConfig = this.configOps.globalConfig;

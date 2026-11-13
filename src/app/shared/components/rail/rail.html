@@ -23,6 +23,12 @@
         ></span>
       }
       <ng-icon [name]="item.icon" size="18px" aria-hidden="true" />
+      @if (item.id === 'history') {
+        <!-- Keyed by sha so a second commit restarts the ripple. -->
+        @for (sha of landingPing(); track sha) {
+          <span class="yoru-ping" aria-hidden="true" data-testid="rail-history-ping"></span>
+        }
+      }
       @if (badgeFor(item); as count) {
         <span
           class="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-git-modified px-1 text-center font-mono text-y-xs font-bold leading-4 text-yoru-950"

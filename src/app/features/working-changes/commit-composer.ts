@@ -14,6 +14,7 @@ import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { DiffWorkspaceService } from '../../core/services/diff-workspace.service';
 import { TauriGitService } from '../../core/services/tauri-git.service';
 import { ToastService } from '../../core/services/toast.service';
+import { motionAllowed } from '../../core/services/view-transition';
 import { CONVENTIONAL_TYPES } from '../../core/utils/conventional-commit';
 import { shortSha } from '../../core/utils/short-sha';
 import {
@@ -83,7 +84,7 @@ type CommitMode = 'commit' | 'commit-push' | 'commit-tag' | 'commit-fixup';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class:
-      'flex shrink-0 flex-col gap-2 border-t border-[var(--app-border)] ' +
+      'relative flex shrink-0 flex-col gap-2 border-t border-[var(--app-border)] ' +
       'bg-[var(--app-surface-raised)] p-3',
   },
 })
@@ -99,6 +100,7 @@ export class CommitComposer {
 
   private readonly subjectInput =
     viewChild<ElementRef<HTMLInputElement>>('subjectInput');
+  private readonly sweep = viewChild<ElementRef<HTMLElement>>('sweep');
   /** The split button's caret, reused to anchor the fixup picker. */
   private menuAnchor: HTMLElement | null = null;
 
@@ -517,6 +519,19 @@ export class CommitComposer {
     await this.runCommit(`fixup! ${subject}`);
   }
 
+  /** DESIGN.md › Commit composer › A commit lands where you are, step 1. */
+  private playLanding(): void {
+    if (!motionAllowed()) return;
+    this.sweep()?.nativeElement.animate(
+      [
+        { transform: 'translateX(-100%)', opacity: 0 },
+        { opacity: 1, offset: 0.2 },
+        { transform: 'translateX(320%)', opacity: 0 },
+      ],
+      { duration: 800, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
+    );
+  }
+
   private async runCommit(message: string): Promise<string | null> {
     const sha = await this.service.createCommit(message, this.amend(), {
       signoff: this.signoff(),
@@ -535,6 +550,7 @@ export class CommitComposer {
     });
     this.amend.set(false);
     this.subjectInput()?.nativeElement.focus();
+    this.playLanding();
     return sha;
   }
 

@@ -934,6 +934,55 @@ html {
   }
 }
 
+/* ── `.yoru-sweep` / `.yoru-ping` — a commit landing ──────────────────
+ *
+ * DESIGN.md › Commit composer › A commit lands where you are. The sweep bar is
+ * driven by the composer with the Web Animations API; the ping plays on its own
+ * when it mounts. Both are invisible at rest, which is also what motion off
+ * leaves.
+ */
+.yoru-sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.yoru-sweep-bar {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--app-accent) 24%, transparent) 50%,
+    transparent
+  );
+  opacity: 0;
+}
+
+.yoru-ping {
+  position: absolute;
+  inset: 2px;
+  border: 2px solid var(--app-accent);
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  animation: yoru-ping 1000ms ease-out 2;
+}
+
+@keyframes yoru-ping {
+  from {
+    opacity: 0.9;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
 /* ── `.yoru-ink` — the kanji watermark spreading in like ink ──────────
  *
  * DESIGN.md › UI kit › yoru-empty-state. A soft radial mask grows from the

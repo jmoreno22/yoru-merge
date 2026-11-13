@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import type { CommitInfo, EdgeType, GraphData } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
+import { CommitLandingService } from '../../core/services/commit-landing.service';
 import { CurrentRepoService } from '../../core/services/current-repo.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -87,6 +88,7 @@ export class BranchGraph {
   private readonly theme = inject(ThemeService);
   private readonly layout = inject(CommitListLayout);
   private readonly appearance = inject(AppearanceService);
+  private readonly landing = inject(CommitLandingService);
   private readonly prefs = inject(PreferencesService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
@@ -155,6 +157,20 @@ export class BranchGraph {
     );
     if (row < 0) return null;
     return data.commits[row]?.lane ?? null;
+  });
+
+  /** Where the node of a landing commit sits on the canvas, while it is in view. */
+  protected readonly landingPoint = computed<{ x: number; y: number } | null>(() => {
+    const sha = this.landing.playing();
+    if (sha === null || this.isEmpty()) return null;
+    const row = this.rowMeta().findIndex((commit) => commit.sha === sha);
+    const node = row < 0 ? undefined : this.graphData()?.commits[row];
+    if (!node) return null;
+    const rowH = this.resolvedRowHeight();
+    const y = this.topOffset() + row * rowH - this.scrollTop() + rowH / 2;
+    if (y < this.topOffset() || y > this.cssSize().height - this.bottomOffset())
+      return null;
+    return { x: node.lane * LANE_WIDTH + LANE_WIDTH / 2, y };
   });
 
   private readonly cssSize = signal<{ width: number; height: number }>({

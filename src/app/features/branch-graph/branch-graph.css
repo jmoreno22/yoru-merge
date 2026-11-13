@@ -13,6 +13,37 @@ canvas {
   background: transparent;
 }
 
+/* A commit landing from the composer: two rings leave its node, once. At rest
+ * the ring is invisible, which is also what motion off leaves. Lifted like the
+ * tooltip, or the list beside the narrow lane column paints over most of it. */
+.graph-landing {
+  position: absolute;
+  z-index: var(--z-overlay);
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid var(--app-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--app-accent) 70%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  animation: graph-landing 1100ms ease-out 2;
+}
+
+@keyframes graph-landing {
+  from {
+    opacity: 1;
+    transform: scale(0.6);
+  }
+  55% {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.3);
+  }
+}
+
 /* Anchored at the hovered node and pushed clear of the lane column, which is
  * only a handful of pixels wide. */
 .graph-tooltip {

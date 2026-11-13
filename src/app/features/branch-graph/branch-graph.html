@@ -9,6 +9,16 @@
     (click)="onClick($event)"
   ></canvas>
 
+  @if (landingPoint(); as point) {
+    <span
+      class="graph-landing"
+      aria-hidden="true"
+      data-testid="branch-graph-landing"
+      [style.left.px]="point.x"
+      [style.top.px]="point.y"
+    ></span>
+  }
+
   @if (hover(); as target) {
     <div
       class="graph-tooltip"
