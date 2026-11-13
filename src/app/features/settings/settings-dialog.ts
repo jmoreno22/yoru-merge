@@ -9,6 +9,7 @@ import {
   untracked,
   viewChildren,
 } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 import type { PullMode, WritableConfigKey } from '../../core/models';
 import { AppearanceService } from '../../core/services/appearance.service';
 import type { ColorPalette } from '../../core/services/color-palettes';
@@ -45,6 +46,7 @@ import {
   YoruButton,
   YoruDialog,
   YoruField,
+  YoruInput,
   YoruKbd,
   YoruSegmented,
   YoruStepper,
@@ -87,9 +89,11 @@ const PROVIDER_LABELS: Readonly<Record<RemoteProvider, string>> = {
 @Component({
   selector: 'app-settings-dialog',
   imports: [
+    NgIcon,
     YoruButton,
     YoruDialog,
     YoruField,
+    YoruInput,
     YoruKbd,
     YoruSegmented,
     YoruStepper,
@@ -113,6 +117,10 @@ export class SettingsDialog {
   protected readonly sections = SETTINGS_SECTIONS;
   protected readonly open = this.settings.isOpen;
   protected readonly section = this.settings.section;
+  protected readonly current = computed(
+    () =>
+      SETTINGS_SECTIONS.find((s) => s.id === this.section()) ?? SETTINGS_SECTIONS[0],
+  );
 
   private readonly navButtons =
     viewChildren<ElementRef<HTMLButtonElement>>('navButton');
@@ -208,6 +216,14 @@ export class SettingsDialog {
       surfaces.text,
     ];
   }
+
+  /** The chosen palette's own description, since the tiles only carry names. */
+  protected readonly paletteHint = computed(() => {
+    const chosen =
+      COLOR_PALETTES.find((p) => p.id === this.prefs.colorPalette()) ??
+      COLOR_PALETTES[0];
+    return `${chosen?.description ?? ''} Swatches show the ${this.theme.resolved()} mode.`;
+  });
 
   protected readonly commitColumns = COMMIT_COLUMNS;
 

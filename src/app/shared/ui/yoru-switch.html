@@ -1,12 +1,4 @@
-<button
-  type="button"
-  role="switch"
-  [attr.aria-checked]="checked()"
-  [attr.aria-label]="label() ? null : 'Toggle'"
-  [disabled]="disabled()"
-  (click)="toggle()"
-  class="group flex items-center gap-2 rounded-sm text-left disabled:cursor-not-allowed disabled:opacity-45"
->
+<ng-template #track>
   <span
     class="relative h-[18px] w-8 shrink-0 rounded-full border transition-colors"
     [class]="
@@ -24,12 +16,30 @@
       "
     ></span>
   </span>
+</ng-template>
+
+<button
+  type="button"
+  role="switch"
+  [attr.aria-checked]="checked()"
+  [attr.aria-label]="label() ? null : 'Toggle'"
+  [disabled]="disabled()"
+  (click)="toggle()"
+  class="group flex items-center rounded-sm text-left disabled:cursor-not-allowed disabled:opacity-45"
+  [class]="row() ? 'w-full justify-between gap-4' : 'gap-2'"
+>
+  @if (!row()) {
+    <ng-container [ngTemplateOutlet]="track" />
+  }
   @if (label()) {
-    <span class="flex flex-col leading-tight">
+    <span class="flex flex-col leading-tight" [class.gap-0.5]="row()">
       <span class="text-y-base text-[var(--app-text)]">{{ label() }}</span>
       @if (hint()) {
         <span class="text-y-sm text-[var(--app-text-faint)]">{{ hint() }}</span>
       }
     </span>
+  }
+  @if (row()) {
+    <ng-container [ngTemplateOutlet]="track" />
   }
 </button>

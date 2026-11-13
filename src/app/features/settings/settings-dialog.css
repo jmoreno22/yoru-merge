@@ -1,11 +1,50 @@
-/* Settings has ~20 text and select controls; repeating the utility string on
- * each one buries the markup. Plain CSS on the design tokens, no @apply, so the
- * rule set survives without a Tailwind reference in component styles. */
+/* Settings repeats the same group, card and select frame some forty times;
+ * repeating the utility string on each one buries the markup. Plain CSS on the
+ * design tokens, no @apply, so the rule set survives without a Tailwind
+ * reference in component styles. */
 
-.s-input,
+/* A fixed height, so switching sections never resizes the dialog under the
+ * pointer; the slack under 100vh is the dialog's own header and padding. */
+.s-body {
+  height: min(38rem, calc(100vh - 12rem));
+}
+
+.s-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.s-group-title {
+  padding-inline: 2px;
+  font-family: var(--font-mono);
+  font-size: var(--text-y-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--app-text-muted);
+}
+
+.s-card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-md);
+  background: var(--app-surface);
+}
+
+.s-card > * {
+  padding: calc(var(--panel-pad) * 0.5) calc(var(--panel-pad) * 0.75);
+}
+
+.s-card > * + * {
+  border-top: 1px solid var(--app-border);
+}
+
+/* No select primitive in the kit yet: this mirrors `yoruInput` at `md`, focus
+ * included — the global ring, turned one pixel inward, and nothing else. */
 .s-select {
+  --focus-offset: -1px;
   height: var(--control-h);
-  width: 100%;
+  min-width: 0;
   border-radius: var(--radius-sm);
   border: 1px solid var(--app-border);
   background: var(--app-surface);
@@ -14,29 +53,7 @@
   color: var(--app-text);
 }
 
-.s-input {
-  font-family: var(--font-mono);
-  font-size: var(--text-y-md);
-}
-
-.s-input::placeholder {
-  color: var(--app-text-faint);
-}
-
-.s-input:focus,
-.s-select:focus {
-  border-color: var(--app-accent);
-  outline: none;
-}
-
-.s-input:disabled,
 .s-select:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
-}
-
-/* The section body is taller than most panels so switching sections does not
- * resize the dialog under the pointer. */
-.s-panel {
-  min-height: 22rem;
+  color: var(--app-text-faint);
 }

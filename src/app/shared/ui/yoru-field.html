@@ -1,10 +1,4 @@
-<ng-template #body>
-  <span
-    class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
-  >
-    {{ label() }}
-  </span>
-  <ng-content />
+<ng-template #message>
   @if (error()) {
     <span class="text-y-sm text-git-deleted-ink" role="alert">{{ error() }}</span>
   } @else if (hint()) {
@@ -12,12 +6,36 @@
   }
 </ng-template>
 
+<ng-template #body>
+  @if (row()) {
+    <span class="flex min-w-48 flex-1 basis-48 flex-col gap-0.5 leading-tight">
+      <span class="text-y-base text-[var(--app-text)]">{{ label() }}</span>
+      <ng-container [ngTemplateOutlet]="message" />
+    </span>
+    <span [class]="wide() ? 'w-full' : 'flex max-w-full shrink-0 items-center gap-2'">
+      <ng-container [ngTemplateOutlet]="projected" />
+    </span>
+  } @else {
+    <span
+      class="font-mono text-y-xs font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+    >
+      {{ label() }}
+    </span>
+    <ng-container [ngTemplateOutlet]="projected" />
+    <ng-container [ngTemplateOutlet]="message" />
+  }
+</ng-template>
+
+<!-- Projected content renders once, so both layouts take it through this one
+     outlet instead of each holding an `<ng-content>`. -->
+<ng-template #projected><ng-content /></ng-template>
+
 @if (group()) {
-  <div class="flex flex-col gap-1.5">
+  <div [class]="frameClass()">
     <ng-container [ngTemplateOutlet]="body" />
   </div>
 } @else {
-  <label class="flex flex-col gap-1.5">
+  <label [class]="frameClass()">
     <ng-container [ngTemplateOutlet]="body" />
   </label>
 }

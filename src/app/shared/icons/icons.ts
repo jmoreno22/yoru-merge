@@ -48,6 +48,7 @@ import {
   lucideGripVertical,
   lucideHistory,
   lucideInfo,
+  lucideKeyboard,
   lucideLayers,
   lucideLink,
   lucideList,
@@ -59,9 +60,12 @@ import {
   lucideMoon,
   lucideMoreHorizontal,
   lucidePackage,
+  lucidePalette,
   lucidePanelLeft,
+  lucidePanelsTopLeft,
   lucidePencil,
   lucidePlay,
+  lucidePlug,
   lucidePlus,
   lucideRefreshCw,
   lucideRotateCcw,
@@ -163,6 +167,12 @@ const ICONS = {
   lucideMinimize2,
   lucideSquare,
   lucideExternalLink,
+
+  // Settings sections
+  lucidePalette,
+  lucidePanelsTopLeft,
+  lucidePlug,
+  lucideKeyboard,
 
   // Arrows / ahead-behind
   lucideArrowUp,

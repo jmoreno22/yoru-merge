@@ -1,11 +1,11 @@
 <yoru-dialog [open]="open()" title="Settings" size="lg" (closed)="close()">
-  <div dialog-body class="flex min-h-0 gap-5">
+  <div dialog-body class="s-body flex min-h-0 gap-4">
     <nav
       role="tablist"
       aria-orientation="vertical"
       aria-label="Settings sections"
       (keydown)="onNavKeydown($event)"
-      class="flex w-36 shrink-0 flex-col gap-0.5"
+      class="flex w-40 shrink-0 flex-col gap-0.5 border-r border-[var(--app-border)] pr-3"
     >
       @for (item of sections; track item.id) {
         <button
@@ -18,14 +18,15 @@
           [tabindex]="section() === item.id ? 0 : -1"
           [attr.data-testid]="'settings-tab-' + item.id"
           (click)="select(item.id)"
-          class="flex h-[var(--control-h)] items-center rounded-sm px-2.5 text-left text-y-base transition-colors"
+          class="flex h-[var(--control-h)] shrink-0 items-center gap-2 rounded-sm px-2.5 text-left text-y-base transition-colors"
           [class]="
             section() === item.id
               ? 'bg-accent/12 text-accent-ink'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]'
           "
         >
-          {{ item.label }}
+          <ng-icon [name]="item.icon" size="14px" aria-hidden="true" />
+          <span class="truncate">{{ item.label }}</span>
         </button>
       }
     </nav>
@@ -34,787 +35,946 @@
       role="tabpanel"
       [id]="'settings-panel-' + section()"
       [attr.aria-labelledby]="'settings-tab-' + section()"
-      class="s-panel flex min-w-0 flex-1 flex-col gap-5"
+      class="flex min-w-0 flex-1 flex-col"
     >
-      @switch (section()) {
-        @case ('general') {
-          <yoru-switch
-            [checked]="prefs.confirmDangerous()"
-            (checkedChange)="prefs.setConfirmDangerous($event)"
-            label="Confirm dangerous actions"
-            hint="Ask before a force push, a hard reset or removing a remote"
-          />
+      <header class="shrink-0 pb-3">
+        <h3 class="text-y-lg font-semibold text-[var(--app-text)]">
+          {{ current().label }}
+        </h3>
+        <p class="text-y-sm text-[var(--app-text-faint)]">
+          {{ current().description }}
+        </p>
+      </header>
 
-          <yoru-field
-            label="Auto-fetch"
-            hint="Minutes between background fetches. 0 turns it off."
-          >
-            <input
-              type="number"
-              min="0"
-              max="180"
-              inputmode="numeric"
-              class="s-input"
-              data-testid="settings-auto-fetch"
-              [value]="prefs.autoFetchMinutes()"
-              (change)="onAutoFetch($event)"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group
-            label="Default pull mode"
-            hint="Used when Pull is run without picking a mode"
-          >
-            <yoru-segmented
-              [options]="pullModeOptions"
-              [value]="prefs.pullMode()"
-              (valueChange)="onPullMode($event)"
-              ariaLabel="Default pull mode"
-            />
-          </yoru-field>
-        }
-
-        @case ('git') {
-          <yoru-field
-            group
-            label="Scope"
-            [hint]="
-              hasRepo()
-                ? 'Repository values override the global ones.'
-                : 'Open a repository to edit its own values.'
-            "
-          >
-            <yoru-segmented
-              [options]="scopeOptions()"
-              [value]="hasRepo() ? scope() : 'global'"
-              (valueChange)="onScope($event)"
-              ariaLabel="Configuration scope"
-            />
-          </yoru-field>
-
-          <div class="grid grid-cols-2 gap-4">
-            <yoru-field
-              label="User name"
-              [hint]="
-                scope() === 'repo' && userName().length === 0 && globalUserName()
-                  ? 'Using global: ' + globalUserName()
-                  : ''
-              "
-            >
-              <input
-                type="text"
-                autocomplete="off"
-                class="s-input"
-                data-testid="settings-user-name"
-                [value]="userName()"
-                [disabled]="configBusy()"
-                [placeholder]="scope() === 'repo' ? globalUserName() : ''"
-                (change)="onConfigInput('user.name', $event)"
-              />
-            </yoru-field>
-
-            <yoru-field
-              label="User email"
-              [hint]="
-                scope() === 'repo' && userEmail().length === 0 && globalUserEmail()
-                  ? 'Using global: ' + globalUserEmail()
-                  : ''
-              "
-            >
-              <input
-                type="email"
-                autocomplete="off"
-                class="s-input"
-                data-testid="settings-user-email"
-                [value]="userEmail()"
-                [disabled]="configBusy()"
-                [placeholder]="scope() === 'repo' ? globalUserEmail() : ''"
-                (change)="onConfigInput('user.email', $event)"
-              />
-            </yoru-field>
-          </div>
-
-          <yoru-switch
-            [checked]="pullRebase()"
-            [disabled]="configBusy()"
-            (checkedChange)="onConfigFlag('pull.rebase', $event)"
-            label="Rebase on pull"
-            hint="pull.rebase"
-          />
-
-          <yoru-switch
-            [checked]="gpgSign()"
-            [disabled]="configBusy()"
-            (checkedChange)="onConfigFlag('commit.gpgsign', $event)"
-            label="Sign commits"
-            hint="commit.gpgsign"
-          />
-
-          <yoru-field
-            group label="Signing format" hint="gpg.format">
-            <yoru-segmented
-              [options]="signingFormatOptions"
-              [value]="signingFormat()"
-              (valueChange)="onConfigChoice('gpg.format', $event)"
-              ariaLabel="Signing format"
-            />
-          </yoru-field>
-
-          <yoru-field
-            label="Default branch for new repositories"
-            hint="init.defaultBranch"
-          >
-            <input
-              type="text"
-              autocomplete="off"
-              spellcheck="false"
-              class="s-input"
-              data-testid="settings-default-branch"
-              [value]="defaultBranch()"
-              [disabled]="configBusy()"
-              placeholder="main"
-              (change)="onConfigInput('init.defaultBranch', $event)"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group label="Line endings" hint="core.autocrlf">
-            <yoru-segmented
-              [options]="autocrlfOptions"
-              [value]="autocrlf()"
-              (valueChange)="onConfigChoice('core.autocrlf', $event)"
-              ariaLabel="Line endings"
-            />
-          </yoru-field>
-        }
-
-        @case ('appearance') {
-          <yoru-field
-            group
-            label="Theme"
-            [hint]="'System currently resolves to ' + osTheme() + '.'"
-          >
-            <yoru-segmented
-              [options]="themeOptions"
-              [value]="themeMode()"
-              (valueChange)="onTheme($event)"
-              ariaLabel="Theme"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group
-            label="Colour palette"
-            hint="Replaces every surface and text tone. Swatches preview the mode you are in."
-          >
-            <div
-              role="radiogroup"
-              aria-label="Colour palette"
-              class="flex flex-col gap-1.5"
-              data-testid="settings-palette"
-            >
-              @for (option of colorPalettes; track option.id) {
-                <button
-                  type="button"
-                  role="radio"
-                  [attr.aria-checked]="prefs.colorPalette() === option.id"
-                  [attr.data-testid]="'settings-palette-' + option.id"
-                  (click)="onColorPalette(option.id)"
-                  class="flex items-center gap-3 rounded-sm border px-2.5 py-2 text-left transition-colors"
-                  [class]="
-                    prefs.colorPalette() === option.id
-                      ? 'border-accent/60 bg-accent/10'
-                      : 'border-[var(--app-border)] hover:bg-[var(--app-panel)]'
-                  "
-                >
-                  <span class="flex shrink-0 gap-0.5" aria-hidden="true">
-                    @for (swatch of paletteSwatches(option); track $index) {
-                      <span
-                        class="block h-6 w-3 first:rounded-l-xs last:rounded-r-xs"
-                        [style.background]="swatch"
-                      ></span>
-                    }
-                  </span>
-                  <span class="flex min-w-0 flex-col leading-tight">
-                    <span class="text-y-base text-[var(--app-text)]">
-                      {{ option.label }}
-                    </span>
-                    <span class="text-y-sm text-[var(--app-text-faint)]">
-                      {{ option.description }}
-                    </span>
-                  </span>
-                </button>
-              }
-            </div>
-          </yoru-field>
-
-          <yoru-field
-            group
-            label="Accent"
-            hint="Used by the focus ring, active rows and selection."
-          >
-            <div
-              role="radiogroup"
-              aria-label="Accent"
-              class="flex items-center gap-2"
-              data-testid="settings-accent"
-            >
-              @for (option of accentOptions; track option.id) {
-                <button
-                  type="button"
-                  role="radio"
-                  [attr.aria-checked]="prefs.accent() === option.id"
-                  [attr.aria-label]="option.label"
-                  [attr.data-testid]="'settings-accent-' + option.id"
-                  [title]="option.label"
-                  (click)="onAccent(option.id)"
-                  class="flex size-[var(--control-h-sm)] items-center justify-center rounded-full border-2 transition-colors"
-                  [class]="
-                    prefs.accent() === option.id
-                      ? 'border-[var(--app-text)]'
-                      : 'border-transparent hover:border-[var(--app-border)]'
-                  "
-                >
-                  <span
-                    class="block h-4 w-4 rounded-full"
-                    [style.background]="option.swatch"
-                  ></span>
-                </button>
-              }
-            </div>
-          </yoru-field>
-
-          <div class="grid grid-cols-2 gap-4">
-            <yoru-field
-            group label="Interface text" hint="Rows, panels and chrome scale with it">
-              <yoru-stepper
-                [value]="prefs.uiFontSize()"
-                [min]="minUiFontSize"
-                [max]="maxUiFontSize"
-                suffix="px"
-                ariaLabel="interface text size"
-                (valueChange)="prefs.setUiFontSize($event)"
-              />
-            </yoru-field>
-
-            <yoru-field
-            group label="Code text" hint="Diff, blame and their line numbers">
-              <yoru-stepper
-                [value]="prefs.monoFontSize()"
-                [min]="minMonoFontSize"
-                [max]="maxMonoFontSize"
-                suffix="px"
-                ariaLabel="code text size"
-                (valueChange)="prefs.setMonoFontSize($event)"
-              />
-            </yoru-field>
-          </div>
-
-          <yoru-field
-            group label="Interface density" hint="Padding around rows and panels">
-            <yoru-segmented
-              [options]="densityOptions"
-              [value]="prefs.uiDensity()"
-              (valueChange)="onDensity($event)"
-              ariaLabel="Interface density"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group
-            label="Branch graph palette"
-            hint="Independent of the accent: the six lanes have to stay apart."
-          >
-            <yoru-segmented
-              [options]="graphPaletteOptions"
-              [value]="prefs.graphPalette()"
-              (valueChange)="onGraphPalette($event)"
-              ariaLabel="Branch graph palette"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group label="Inspector" hint="Where the commit and diff panels sit">
-            <yoru-segmented
-              [options]="inspectorOptions"
-              [value]="prefs.inspectorPlacement()"
-              (valueChange)="onInspectorPlacement($event)"
-              ariaLabel="Inspector placement"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group label="Refs panel side">
-            <yoru-segmented
-              [options]="sidebarSideOptions"
-              [value]="prefs.sidebarSide()"
-              (valueChange)="onSidebarSide($event)"
-              ariaLabel="Refs panel side"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group
-            label="Commit list columns"
-            hint="The subject column is always shown."
-          >
-            <div class="flex flex-col gap-2" data-testid="settings-columns">
-              @for (column of commitColumns; track column.id) {
+      <div
+        class="neon-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-2 pb-1"
+        data-testid="settings-scroll"
+      >
+        @switch (section()) {
+          @case ('general') {
+            <section class="s-group">
+              <h4 class="s-group-title">Safety</h4>
+              <div class="s-card">
                 <yoru-switch
-                  [checked]="isColumnVisible(column.id)"
-                  (checkedChange)="onColumnToggle(column.id)"
-                  [label]="column.label"
+                  row
+                  [checked]="prefs.confirmDangerous()"
+                  (checkedChange)="prefs.setConfirmDangerous($event)"
+                  label="Confirm dangerous actions"
+                  hint="Ask before a force push, a hard reset or removing a remote"
                 />
-              }
-            </div>
-          </yoru-field>
-
-          <yoru-field
-            group label="Visible chrome">
-            <div class="flex flex-col gap-2">
-              <yoru-switch
-                [checked]="prefs.showToolbar()"
-                (checkedChange)="prefs.setShowToolbar($event)"
-                label="Toolbar"
-              />
-              <yoru-switch
-                [checked]="prefs.showStatusBar()"
-                (checkedChange)="prefs.setShowStatusBar($event)"
-                label="Status bar"
-              />
-              <yoru-switch
-                [checked]="prefs.showGraph()"
-                (checkedChange)="prefs.setShowGraph($event)"
-                label="Branch graph"
-              />
-              <yoru-switch
-                [checked]="prefs.zenMode()"
-                (checkedChange)="onZen($event)"
-                label="Zen mode"
-                hint="Hides all of the above at once. Ctrl+Shift+Z toggles it, and leaving it restores what you had."
-              />
-            </div>
-          </yoru-field>
-
-          <yoru-switch
-            [checked]="prefs.animations()"
-            (checkedChange)="prefs.setAnimations($event)"
-            label="Animations"
-            hint="Off skips the theme sweep and every transition. Your system's reduced-motion setting is always honoured."
-          />
-
-          <yoru-field
-            group label="Diff layout" hint="Default for newly opened diffs">
-            <yoru-segmented
-              [options]="diffModeOptions"
-              [value]="prefs.diffViewMode()"
-              (valueChange)="onDiffMode($event)"
-              ariaLabel="Diff layout"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group label="Context lines">
-            <yoru-segmented
-              [options]="contextOptions"
-              [value]="prefs.diffContextLines().toString()"
-              (valueChange)="onContextLines($event)"
-              ariaLabel="Context lines"
-            />
-          </yoru-field>
-
-          <yoru-field
-            group label="Tab width" hint="How wide a tab renders in code">
-            <yoru-segmented
-              [options]="tabWidthOptions"
-              [value]="prefs.codeTabWidth().toString()"
-              (valueChange)="onTabWidth($event)"
-              ariaLabel="Tab width"
-            />
-          </yoru-field>
-
-          <yoru-switch
-            [checked]="prefs.codeLigatures()"
-            (checkedChange)="prefs.setCodeLigatures($event)"
-            label="Code ligatures"
-            hint="JetBrains Mono renders -> and != as single glyphs"
-          />
-
-          <yoru-switch
-            [checked]="prefs.diffIgnoreWhitespace()"
-            (checkedChange)="prefs.setDiffIgnoreWhitespace($event)"
-            label="Ignore whitespace"
-          />
-
-          <yoru-switch
-            [checked]="prefs.diffWordWrap()"
-            (checkedChange)="prefs.setDiffWordWrap($event)"
-            label="Wrap long lines"
-          />
-        }
-
-        @case ('integrations') {
-          <yoru-field
-            label="External editor"
-            hint="Command used by Open in editor. Blank falls back to VISUAL, EDITOR, then code."
-          >
-            <select
-              class="s-select"
-              data-testid="settings-editor-preset"
-              [value]="editorPresetId()"
-              (change)="onEditorPreset($event)"
-            >
-              @for (preset of editorPresets; track preset.id) {
-                <option [value]="preset.id">{{ preset.label }}</option>
-              }
-            </select>
-          </yoru-field>
-
-          @if (editorCustom() || editorPresetId() === 'custom') {
-            <yoru-field label="Editor command" [error]="editorError()">
-              <input
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                class="s-input"
-                data-testid="settings-editor-command"
-                [value]="prefs.externalEditor()"
-                placeholder="emacsclient -c"
-                (change)="onEditorCommand($event)"
-              />
-            </yoru-field>
-          }
-
-          <yoru-field
-            label="Terminal"
-            hint="A command you set wins outright: if it fails, nothing else is tried."
-          >
-            <select
-              class="s-select"
-              data-testid="settings-terminal-preset"
-              [value]="terminalPresetId()"
-              (change)="onTerminalPreset($event)"
-            >
-              @for (preset of terminalPresets; track preset.id) {
-                <option [value]="preset.id">{{ preset.label }}</option>
-              }
-            </select>
-          </yoru-field>
-
-          @if (terminalCustom() || terminalPresetId() === 'custom') {
-            <yoru-field
-              label="Terminal command"
-              [hint]="terminalHint()"
-              [error]="terminalError()"
-            >
-              <input
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                class="s-input"
-                data-testid="settings-terminal-command"
-                [value]="prefs.terminal()"
-                [attr.aria-invalid]="terminalError() ? 'true' : null"
-                placeholder="foot -D {dir}"
-                (change)="onTerminalCommand($event)"
-              />
-            </yoru-field>
-          }
-
-          <yoru-field
-            label="Open on remote"
-            hint="Detected from the origin URL. GitHub, GitLab and Bitbucket are supported."
-          >
-            <p
-              class="font-mono text-y-md text-[var(--app-text-muted)]"
-              data-testid="settings-remote-provider"
-            >
-              {{ remoteProvider() }}
-            </p>
-          </yoru-field>
-        }
-
-        @case ('ai') {
-          <p class="text-y-sm text-[var(--app-text-muted)]">
-            YoruMerge does not talk to any AI service. It runs the CLI you have
-            already installed and signed in to, on your own subscription, and
-            reads a commit message back. No key or account is stored here.
-          </p>
-
-          <yoru-switch
-            [checked]="prefs.aiEnabled()"
-            (checkedChange)="prefs.setAiEnabled($event)"
-            label="Draft commit messages with AI"
-            hint="Adds a button to the commit composer. Off by default."
-          />
-
-          @if (prefs.aiEnabled()) {
-            <p
-              class="rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 text-y-xs text-[var(--app-text-muted)]"
-              data-testid="settings-ai-privacy"
-            >
-              When you press the button, the staged diff, the current branch and
-              your last 10 commit subjects are sent to the CLI below — and from
-              there to whichever provider it uses. Nothing is sent until you
-              press it. Pick a local model to keep everything on this machine.
-            </p>
-
-            <yoru-field label="Provider" [hint]="aiHint()">
-              <select
-                class="s-select"
-                data-testid="settings-ai-preset"
-                [value]="aiPresetId()"
-                (change)="onAiPreset($event)"
-              >
-                @for (preset of aiPresets; track preset.id) {
-                  <option [value]="preset.id">{{ preset.label }}</option>
-                }
-              </select>
-            </yoru-field>
-
-            @if (aiModels().length > 0 || aiEfforts().length > 0) {
-              <div class="grid grid-cols-2 gap-4">
-                @if (aiModels().length > 0) {
-                  <yoru-field
-                    label="Model"
-                    hint="A commit message needs the small one."
-                  >
-                    <select
-                      class="s-select"
-                      data-testid="settings-ai-model"
-                      [value]="aiModel()"
-                      (change)="onAiModel($event)"
-                    >
-                      <option value="">Provider default</option>
-                      @for (model of aiModels(); track model.id) {
-                        <option [value]="model.id">{{ model.label }}</option>
-                      }
-                    </select>
-                  </yoru-field>
-                }
-
-                @if (aiEfforts().length > 0) {
-                  <yoru-field
-                    label="Thinking"
-                    hint="Reasoning spent before answering — the biggest lever on cost."
-                  >
-                    <select
-                      class="s-select"
-                      data-testid="settings-ai-effort"
-                      [value]="aiEffort()"
-                      (change)="onAiEffort($event)"
-                    >
-                      <option value="">Provider default</option>
-                      @for (effort of aiEfforts(); track effort.id) {
-                        <option [value]="effort.id">{{ effort.label }}</option>
-                      }
-                    </select>
-                  </yoru-field>
-                }
               </div>
-            }
+            </section>
 
-            <yoru-field
-              label="Command"
-              hint="Every choice above is written into this line; edit it freely."
-              [error]="aiError()"
-            >
-              <input
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                class="s-input"
-                data-testid="settings-ai-command"
-                [value]="prefs.aiProvider()"
-                [attr.aria-invalid]="aiError() ? 'true' : null"
-                placeholder="claude -p --model haiku"
-                (change)="onAiCommand($event)"
-              />
-            </yoru-field>
-
-            <yoru-field
-              label="House rules"
-              hint="Your own instructions, added on top of the built-in ones. They cannot break the format, so the composer can always read the answer back."
-            >
-              <div class="flex flex-col gap-1">
-                <textarea
-                  rows="4"
-                  spellcheck="false"
-                  class="s-input resize-y"
-                  data-testid="settings-ai-instructions"
-                  [attr.maxlength]="maxAiInstructions"
-                  [value]="prefs.aiInstructions()"
-                  placeholder="Write in Spanish.&#10;Never use a scope.&#10;If the branch name starts with a ticket id, put it at the end of the subject."
-                  (change)="onAiInstructions($event)"
-                ></textarea>
-                <div class="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    class="text-y-xs text-[var(--app-text-faint)] underline decoration-dotted transition-colors hover:text-accent-ink"
-                    data-testid="settings-ai-instructions-restore"
-                    (click)="restoreDefaultInstructions()"
-                  >
-                    Restore the defaults
-                  </button>
-                  <p class="font-mono text-y-xs text-[var(--app-text-faint)]">
-                    {{ aiInstructionsLeft() }} left
-                  </p>
-                </div>
-              </div>
-            </yoru-field>
-
-            <div class="grid grid-cols-2 gap-4">
-              <yoru-field
-                label="Diff sent"
-                hint="Kilobytes of the staged diff. Larger costs more; smaller loses context."
-              >
-                <input
-                  type="number"
-                  inputmode="numeric"
-                  class="s-input"
-                  data-testid="settings-ai-diff-kb"
-                  [min]="minAiDiffKb"
-                  [max]="maxAiDiffKb"
-                  [value]="prefs.aiMaxDiffKb()"
-                  (change)="onAiMaxDiffKb($event)"
-                />
-              </yoru-field>
-
-              <yoru-field
-                label="Timeout"
-                hint="Seconds before the CLI is given up on and killed."
-              >
-                <input
-                  type="number"
-                  inputmode="numeric"
-                  class="s-input"
-                  data-testid="settings-ai-timeout"
-                  [min]="minAiTimeout"
-                  [max]="maxAiTimeout"
-                  [value]="prefs.aiTimeoutSeconds()"
-                  (change)="onAiTimeout($event)"
-                />
-              </yoru-field>
-            </div>
-
-            <yoru-field
-              label="Test"
-              hint="Runs your command on an invented one-line diff. None of your code is sent."
-            >
-              <div class="flex flex-col gap-2">
-                <yoru-button
-                  class="self-start"
-                  size="sm"
-                  icon="lucideSparkles"
-                  data-testid="settings-ai-test"
-                  [loading]="aiTesting()"
-                  [disabled]="aiTestDisabled()"
-                  (click)="testAiProvider()"
+            <section class="s-group">
+              <h4 class="s-group-title">Sync</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  label="Auto-fetch"
+                  hint="Minutes between background fetches. 0 turns it off."
                 >
-                  {{ aiTesting() ? 'Testing…' : 'Test provider' }}
-                </yoru-button>
+                  <input
+                    yoruInput
+                    type="number"
+                    min="0"
+                    max="180"
+                    inputmode="numeric"
+                    class="w-16 font-mono tabular-nums"
+                    data-testid="settings-auto-fetch"
+                    [value]="prefs.autoFetchMinutes()"
+                    (change)="onAutoFetch($event)"
+                  />
+                  <span class="text-y-sm text-[var(--app-text-muted)]">min</span>
+                </yoru-field>
 
-                @if (aiTestResult(); as result) {
-                  <pre
-                    class="whitespace-pre-wrap rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 font-mono text-y-xs text-[var(--app-text)]"
-                    data-testid="settings-ai-test-result"
-                    >{{ result }}</pre
+                <yoru-field
+                  row
+                  group
+                  label="Default pull mode"
+                  hint="Used when Pull is run without picking a mode"
+                >
+                  <yoru-segmented
+                    [options]="pullModeOptions"
+                    [value]="prefs.pullMode()"
+                    (valueChange)="onPullMode($event)"
+                    ariaLabel="Default pull mode"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+          }
+
+          @case ('git') {
+            <section class="s-group">
+              <h4 class="s-group-title">Scope</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Editing"
+                  [hint]="
+                    hasRepo()
+                      ? 'Repository values override the global ones.'
+                      : 'Open a repository to edit its own values.'
+                  "
+                >
+                  <yoru-segmented
+                    [options]="scopeOptions()"
+                    [value]="hasRepo() ? scope() : 'global'"
+                    (valueChange)="onScope($event)"
+                    ariaLabel="Configuration scope"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">Identity</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  label="User name"
+                  [hint]="
+                    scope() === 'repo' && userName().length === 0 && globalUserName()
+                      ? 'Using global: ' + globalUserName()
+                      : 'user.name'
+                  "
+                >
+                  <input
+                    yoruInput
+                    type="text"
+                    autocomplete="off"
+                    class="w-64"
+                    data-testid="settings-user-name"
+                    [value]="userName()"
+                    [disabled]="configBusy()"
+                    [placeholder]="scope() === 'repo' ? globalUserName() : ''"
+                    (change)="onConfigInput('user.name', $event)"
+                  />
+                </yoru-field>
+
+                <yoru-field
+                  row
+                  label="User email"
+                  [hint]="
+                    scope() === 'repo' && userEmail().length === 0 && globalUserEmail()
+                      ? 'Using global: ' + globalUserEmail()
+                      : 'user.email'
+                  "
+                >
+                  <input
+                    yoruInput
+                    type="email"
+                    autocomplete="off"
+                    class="w-64"
+                    data-testid="settings-user-email"
+                    [value]="userEmail()"
+                    [disabled]="configBusy()"
+                    [placeholder]="scope() === 'repo' ? globalUserEmail() : ''"
+                    (change)="onConfigInput('user.email', $event)"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">Commits</h4>
+              <div class="s-card">
+                <yoru-switch
+                  row
+                  [checked]="pullRebase()"
+                  [disabled]="configBusy()"
+                  (checkedChange)="onConfigFlag('pull.rebase', $event)"
+                  label="Rebase on pull"
+                  hint="pull.rebase"
+                />
+
+                <yoru-switch
+                  row
+                  [checked]="gpgSign()"
+                  [disabled]="configBusy()"
+                  (checkedChange)="onConfigFlag('commit.gpgsign', $event)"
+                  label="Sign commits"
+                  hint="commit.gpgsign"
+                />
+
+                <yoru-field row group label="Signing format" hint="gpg.format">
+                  <yoru-segmented
+                    [options]="signingFormatOptions"
+                    [value]="signingFormat()"
+                    (valueChange)="onConfigChoice('gpg.format', $event)"
+                    ariaLabel="Signing format"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">New repositories</h4>
+              <div class="s-card">
+                <yoru-field row label="Default branch" hint="init.defaultBranch">
+                  <input
+                    yoruInput
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    class="w-40 font-mono"
+                    data-testid="settings-default-branch"
+                    [value]="defaultBranch()"
+                    [disabled]="configBusy()"
+                    placeholder="main"
+                    (change)="onConfigInput('init.defaultBranch', $event)"
+                  />
+                </yoru-field>
+
+                <yoru-field row group label="Line endings" hint="core.autocrlf">
+                  <yoru-segmented
+                    [options]="autocrlfOptions"
+                    [value]="autocrlf()"
+                    (valueChange)="onConfigChoice('core.autocrlf', $event)"
+                    ariaLabel="Line endings"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+          }
+
+          @case ('appearance') {
+            <section class="s-group">
+              <h4 class="s-group-title">Colour</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Theme"
+                  [hint]="'System currently resolves to ' + osTheme() + '.'"
+                >
+                  <yoru-segmented
+                    [options]="themeOptions"
+                    [value]="themeMode()"
+                    (valueChange)="onTheme($event)"
+                    ariaLabel="Theme"
+                  />
+                </yoru-field>
+
+                <yoru-field
+                  row
+                  group
+                  label="Accent"
+                  hint="Focus ring, active rows and selection."
+                >
+                  <div
+                    role="radiogroup"
+                    aria-label="Accent"
+                    class="flex items-center gap-1.5"
+                    data-testid="settings-accent"
                   >
+                    @for (option of accentOptions; track option.id) {
+                      <button
+                        type="button"
+                        role="radio"
+                        [attr.aria-checked]="prefs.accent() === option.id"
+                        [attr.aria-label]="option.label"
+                        [attr.data-testid]="'settings-accent-' + option.id"
+                        [title]="option.label"
+                        (click)="onAccent(option.id)"
+                        class="flex size-[var(--control-h-sm)] items-center justify-center rounded-full border-2 transition-colors"
+                        [class]="
+                          prefs.accent() === option.id
+                            ? 'border-[var(--app-text)]'
+                            : 'border-transparent hover:border-[var(--app-border)]'
+                        "
+                      >
+                        <span
+                          class="block h-4 w-4 rounded-full"
+                          [style.background]="option.swatch"
+                        ></span>
+                      </button>
+                    }
+                  </div>
+                </yoru-field>
+
+                <yoru-field row wide group label="Colour palette" [hint]="paletteHint()">
+                  <div
+                    role="radiogroup"
+                    aria-label="Colour palette"
+                    class="grid grid-cols-4 gap-1.5 pt-1"
+                    data-testid="settings-palette"
+                  >
+                    @for (option of colorPalettes; track option.id) {
+                      <button
+                        type="button"
+                        role="radio"
+                        [attr.aria-checked]="prefs.colorPalette() === option.id"
+                        [attr.data-testid]="'settings-palette-' + option.id"
+                        [title]="option.description"
+                        (click)="onColorPalette(option.id)"
+                        class="flex min-w-0 flex-col gap-1.5 rounded-sm border p-1.5 text-left transition-colors"
+                        [class]="
+                          prefs.colorPalette() === option.id
+                            ? 'border-accent/60 bg-accent/10'
+                            : 'border-[var(--app-border)] hover:bg-[var(--app-panel)]'
+                        "
+                      >
+                        <span
+                          class="flex h-4 overflow-hidden rounded-xs border border-[var(--app-border)]"
+                          aria-hidden="true"
+                        >
+                          @for (swatch of paletteSwatches(option); track $index) {
+                            <span class="flex-1" [style.background]="swatch"></span>
+                          }
+                        </span>
+                        <span class="truncate px-0.5 text-y-sm text-[var(--app-text)]">
+                          {{ option.label }}
+                        </span>
+                      </button>
+                    }
+                  </div>
+                </yoru-field>
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">Type and density</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Interface text"
+                  hint="Rows, panels and chrome scale with it"
+                >
+                  <yoru-stepper
+                    [value]="prefs.uiFontSize()"
+                    [min]="minUiFontSize"
+                    [max]="maxUiFontSize"
+                    suffix="px"
+                    ariaLabel="interface text size"
+                    (valueChange)="prefs.setUiFontSize($event)"
+                  />
+                </yoru-field>
+
+                <yoru-field
+                  row
+                  group
+                  label="Code text"
+                  hint="Diff, blame and their line numbers"
+                >
+                  <yoru-stepper
+                    [value]="prefs.monoFontSize()"
+                    [min]="minMonoFontSize"
+                    [max]="maxMonoFontSize"
+                    suffix="px"
+                    ariaLabel="code text size"
+                    (valueChange)="prefs.setMonoFontSize($event)"
+                  />
+                </yoru-field>
+
+                <yoru-field
+                  row
+                  group
+                  label="Density"
+                  hint="Padding around rows and panels"
+                >
+                  <yoru-segmented
+                    [options]="densityOptions"
+                    [value]="prefs.uiDensity()"
+                    (valueChange)="onDensity($event)"
+                    ariaLabel="Interface density"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">Graph and motion</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Branch graph palette"
+                  hint="Independent of the accent: the six lanes have to stay apart."
+                >
+                  <yoru-segmented
+                    [options]="graphPaletteOptions"
+                    [value]="prefs.graphPalette()"
+                    (valueChange)="onGraphPalette($event)"
+                    ariaLabel="Branch graph palette"
+                  />
+                </yoru-field>
+
+                <yoru-switch
+                  row
+                  [checked]="prefs.animations()"
+                  (checkedChange)="prefs.setAnimations($event)"
+                  label="Animations"
+                  hint="Off skips the theme sweep and every transition. Your system's reduced-motion setting is always honoured."
+                />
+              </div>
+            </section>
+          }
+
+          @case ('layout') {
+            <section class="s-group">
+              <h4 class="s-group-title">Panels</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Inspector"
+                  hint="Where the commit and diff panels sit"
+                >
+                  <yoru-segmented
+                    [options]="inspectorOptions"
+                    [value]="prefs.inspectorPlacement()"
+                    (valueChange)="onInspectorPlacement($event)"
+                    ariaLabel="Inspector placement"
+                  />
+                </yoru-field>
+
+                <yoru-field row group label="Refs panel side">
+                  <yoru-segmented
+                    [options]="sidebarSideOptions"
+                    [value]="prefs.sidebarSide()"
+                    (valueChange)="onSidebarSide($event)"
+                    ariaLabel="Refs panel side"
+                  />
+                </yoru-field>
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">Visible</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  wide
+                  group
+                  label="Commit list columns"
+                  hint="The subject column is always shown."
+                >
+                  <div class="grid grid-cols-3 gap-2 pt-1" data-testid="settings-columns">
+                    @for (column of commitColumns; track column.id) {
+                      <yoru-switch
+                        [checked]="isColumnVisible(column.id)"
+                        (checkedChange)="onColumnToggle(column.id)"
+                        [label]="column.label"
+                      />
+                    }
+                  </div>
+                </yoru-field>
+
+                <yoru-field row wide group label="Chrome">
+                  <div class="grid grid-cols-3 gap-2 pt-1">
+                    <yoru-switch
+                      [checked]="prefs.showToolbar()"
+                      (checkedChange)="prefs.setShowToolbar($event)"
+                      label="Toolbar"
+                    />
+                    <yoru-switch
+                      [checked]="prefs.showStatusBar()"
+                      (checkedChange)="prefs.setShowStatusBar($event)"
+                      label="Status bar"
+                    />
+                    <yoru-switch
+                      [checked]="prefs.showGraph()"
+                      (checkedChange)="prefs.setShowGraph($event)"
+                      label="Branch graph"
+                    />
+                  </div>
+                </yoru-field>
+
+                <yoru-switch
+                  row
+                  [checked]="prefs.zenMode()"
+                  (checkedChange)="onZen($event)"
+                  label="Zen mode"
+                  hint="Hides all of the above at once. Ctrl+Shift+Z toggles it, and leaving it restores what you had."
+                />
+              </div>
+            </section>
+          }
+
+          @case ('diff') {
+            <section class="s-group">
+              <h4 class="s-group-title">Diff</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Layout"
+                  hint="Default for newly opened diffs"
+                >
+                  <yoru-segmented
+                    [options]="diffModeOptions"
+                    [value]="prefs.diffViewMode()"
+                    (valueChange)="onDiffMode($event)"
+                    ariaLabel="Diff layout"
+                  />
+                </yoru-field>
+
+                <yoru-field
+                  row
+                  group
+                  label="Context lines"
+                  hint="Unchanged lines shown around each change"
+                >
+                  <yoru-segmented
+                    [options]="contextOptions"
+                    [value]="prefs.diffContextLines().toString()"
+                    (valueChange)="onContextLines($event)"
+                    ariaLabel="Context lines"
+                  />
+                </yoru-field>
+
+                <yoru-switch
+                  row
+                  [checked]="prefs.diffIgnoreWhitespace()"
+                  (checkedChange)="prefs.setDiffIgnoreWhitespace($event)"
+                  label="Ignore whitespace"
+                />
+
+                <yoru-switch
+                  row
+                  [checked]="prefs.diffWordWrap()"
+                  (checkedChange)="prefs.setDiffWordWrap($event)"
+                  label="Wrap long lines"
+                />
+              </div>
+            </section>
+
+            <section class="s-group">
+              <h4 class="s-group-title">Code</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Tab width"
+                  hint="How wide a tab renders in code"
+                >
+                  <yoru-segmented
+                    [options]="tabWidthOptions"
+                    [value]="prefs.codeTabWidth().toString()"
+                    (valueChange)="onTabWidth($event)"
+                    ariaLabel="Tab width"
+                  />
+                </yoru-field>
+
+                <yoru-switch
+                  row
+                  [checked]="prefs.codeLigatures()"
+                  (checkedChange)="prefs.setCodeLigatures($event)"
+                  label="Code ligatures"
+                  hint="JetBrains Mono renders -> and != as single glyphs"
+                />
+              </div>
+            </section>
+          }
+
+          @case ('integrations') {
+            <section class="s-group">
+              <h4 class="s-group-title">Open in</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  label="External editor"
+                  hint="Used by Open in editor. Blank falls back to VISUAL, EDITOR, then code."
+                >
+                  <select
+                    class="s-select w-56"
+                    data-testid="settings-editor-preset"
+                    [value]="editorPresetId()"
+                    (change)="onEditorPreset($event)"
+                  >
+                    @for (preset of editorPresets; track preset.id) {
+                      <option [value]="preset.id">{{ preset.label }}</option>
+                    }
+                  </select>
+                </yoru-field>
+
+                @if (editorCustom() || editorPresetId() === 'custom') {
+                  <yoru-field row label="Editor command" [error]="editorError()">
+                    <input
+                      yoruInput
+                      type="text"
+                      autocomplete="off"
+                      spellcheck="false"
+                      class="w-56 font-mono"
+                      data-testid="settings-editor-command"
+                      [value]="prefs.externalEditor()"
+                      placeholder="emacsclient -c"
+                      (change)="onEditorCommand($event)"
+                    />
+                  </yoru-field>
                 }
-                @if (aiTestError(); as error) {
-                  <p
-                    class="font-mono text-y-xs text-git-deleted-ink"
-                    data-testid="settings-ai-test-error"
+
+                <yoru-field
+                  row
+                  label="Terminal"
+                  hint="A command you set wins outright: if it fails, nothing else is tried."
+                >
+                  <select
+                    class="s-select w-56"
+                    data-testid="settings-terminal-preset"
+                    [value]="terminalPresetId()"
+                    (change)="onTerminalPreset($event)"
                   >
-                    {{ error }}
-                  </p>
+                    @for (preset of terminalPresets; track preset.id) {
+                      <option [value]="preset.id">{{ preset.label }}</option>
+                    }
+                  </select>
+                </yoru-field>
+
+                @if (terminalCustom() || terminalPresetId() === 'custom') {
+                  <yoru-field
+                    row
+                    label="Terminal command"
+                    [hint]="terminalHint()"
+                    [error]="terminalError()"
+                  >
+                    <input
+                      yoruInput
+                      type="text"
+                      autocomplete="off"
+                      spellcheck="false"
+                      class="w-56 font-mono"
+                      data-testid="settings-terminal-command"
+                      [value]="prefs.terminal()"
+                      [attr.aria-invalid]="terminalError() ? 'true' : null"
+                      placeholder="foot -D {dir}"
+                      (change)="onTerminalCommand($event)"
+                    />
+                  </yoru-field>
                 }
               </div>
-            </yoru-field>
+            </section>
 
-            @if (hasRepo()) {
-              <yoru-field
-                label="What gets sent"
-                hint="The exact text handed to the CLI for what is staged right now — our rules, your house rules, and your diff."
-              >
-                <div class="flex flex-col gap-2">
-                  <yoru-button
-                    class="self-start"
-                    size="sm"
-                    icon="lucideEye"
-                    data-testid="settings-ai-preview"
-                    (click)="previewAiPrompt()"
+            <section class="s-group">
+              <h4 class="s-group-title">Hosting</h4>
+              <div class="s-card">
+                <yoru-field
+                  row
+                  group
+                  label="Open on remote"
+                  hint="Read from the origin URL. GitHub, GitLab and Bitbucket are supported."
+                >
+                  <p
+                    class="font-mono text-y-md text-[var(--app-text-muted)]"
+                    data-testid="settings-remote-provider"
                   >
-                    Show the prompt
-                  </yoru-button>
+                    {{ remoteProvider() }}
+                  </p>
+                </yoru-field>
+              </div>
+            </section>
+          }
 
-                  @if (aiPromptPreview(); as preview) {
-                    <pre
-                      class="max-h-64 overflow-auto whitespace-pre-wrap rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 font-mono text-y-xs text-[var(--app-text-muted)]"
-                      data-testid="settings-ai-preview-text"
-                      >{{ preview }}</pre
+          @case ('ai') {
+            <section class="s-group">
+              <h4 class="s-group-title">Drafting</h4>
+              <div class="s-card">
+                <yoru-switch
+                  row
+                  [checked]="prefs.aiEnabled()"
+                  (checkedChange)="prefs.setAiEnabled($event)"
+                  label="Draft commit messages with AI"
+                  hint="Adds a button to the commit composer. Off by default."
+                />
+
+                @if (prefs.aiEnabled()) {
+                  <p
+                    class="text-y-sm text-[var(--app-text-muted)]"
+                    data-testid="settings-ai-privacy"
+                  >
+                    When you press the button, the staged diff, the current branch and
+                    your last 10 commit subjects are sent to the CLI below — and from
+                    there to whichever provider it uses. Nothing is sent until you
+                    press it. Pick a local model to keep everything on this machine.
+                  </p>
+                }
+
+                @if (hasRepo() && prefs.aiEnabled()) {
+                  <yoru-switch
+                    row
+                    [checked]="!aiBlockedByRepo()"
+                    [disabled]="configBusy()"
+                    (checkedChange)="onAiRepoOptOut($event)"
+                    label="Allow AI in this repository"
+                    hint="yoru.ai — turn it off for code that must never leave your machine."
+                  />
+                }
+              </div>
+            </section>
+
+            @if (prefs.aiEnabled()) {
+              <section class="s-group">
+                <h4 class="s-group-title">Provider</h4>
+                <div class="s-card">
+                  <yoru-field row label="Provider" [hint]="aiHint()">
+                    <select
+                      class="s-select w-56"
+                      data-testid="settings-ai-preset"
+                      [value]="aiPresetId()"
+                      (change)="onAiPreset($event)"
                     >
+                      @for (preset of aiPresets; track preset.id) {
+                        <option [value]="preset.id">{{ preset.label }}</option>
+                      }
+                    </select>
+                  </yoru-field>
+
+                  @if (aiModels().length > 0) {
+                    <yoru-field
+                      row
+                      label="Model"
+                      hint="A commit message needs the small one."
+                    >
+                      <select
+                        class="s-select w-56"
+                        data-testid="settings-ai-model"
+                        [value]="aiModel()"
+                        (change)="onAiModel($event)"
+                      >
+                        <option value="">Provider default</option>
+                        @for (model of aiModels(); track model.id) {
+                          <option [value]="model.id">{{ model.label }}</option>
+                        }
+                      </select>
+                    </yoru-field>
                   }
-                  @if (aiPreviewError(); as error) {
-                    <p
-                      class="font-mono text-y-xs text-git-deleted-ink"
-                      data-testid="settings-ai-preview-error"
+
+                  @if (aiEfforts().length > 0) {
+                    <yoru-field
+                      row
+                      label="Thinking"
+                      hint="Reasoning spent before answering — the biggest lever on cost."
                     >
-                      {{ error }}
-                    </p>
+                      <select
+                        class="s-select w-56"
+                        data-testid="settings-ai-effort"
+                        [value]="aiEffort()"
+                        (change)="onAiEffort($event)"
+                      >
+                        <option value="">Provider default</option>
+                        @for (effort of aiEfforts(); track effort.id) {
+                          <option [value]="effort.id">{{ effort.label }}</option>
+                        }
+                      </select>
+                    </yoru-field>
+                  }
+
+                  <yoru-field
+                    row
+                    wide
+                    label="Command"
+                    hint="Every choice above is written into this line; edit it freely."
+                    [error]="aiError()"
+                  >
+                    <input
+                      yoruInput
+                      type="text"
+                      autocomplete="off"
+                      spellcheck="false"
+                      class="mt-1 w-full font-mono"
+                      data-testid="settings-ai-command"
+                      [value]="prefs.aiProvider()"
+                      [attr.aria-invalid]="aiError() ? 'true' : null"
+                      placeholder="claude -p --model haiku"
+                      (change)="onAiCommand($event)"
+                    />
+                  </yoru-field>
+
+                  <div class="flex flex-col gap-2">
+                    <yoru-field
+                      row
+                      group
+                      label="Test"
+                      hint="Runs your command on an invented one-line diff. None of your code is sent."
+                    >
+                      <yoru-button
+                        size="sm"
+                        variant="secondary"
+                        icon="lucideSparkles"
+                        data-testid="settings-ai-test"
+                        [loading]="aiTesting()"
+                        [disabled]="aiTestDisabled()"
+                        (click)="testAiProvider()"
+                      >
+                        {{ aiTesting() ? 'Testing…' : 'Test provider' }}
+                      </yoru-button>
+                    </yoru-field>
+
+                    @if (aiTestResult(); as result) {
+                      <pre
+                        class="whitespace-pre-wrap rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 font-mono text-y-xs text-[var(--app-text)]"
+                        data-testid="settings-ai-test-result"
+                        >{{ result }}</pre
+                      >
+                    }
+                    @if (aiTestError(); as error) {
+                      <p
+                        class="font-mono text-y-xs text-git-deleted-ink"
+                        data-testid="settings-ai-test-error"
+                      >
+                        {{ error }}
+                      </p>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <section class="s-group">
+                <h4 class="s-group-title">Prompt</h4>
+                <div class="s-card">
+                  <yoru-field
+                    row
+                    wide
+                    label="House rules"
+                    hint="Your instructions, added on top of the built-in ones. They cannot break the format, so the composer can always read the answer back."
+                  >
+                    <div class="flex flex-col gap-1 pt-1">
+                      <textarea
+                        yoruInput
+                        rows="3"
+                        spellcheck="false"
+                        class="neon-scroll w-full resize-y py-1.5 font-mono"
+                        data-testid="settings-ai-instructions"
+                        [attr.maxlength]="maxAiInstructions"
+                        [value]="prefs.aiInstructions()"
+                        placeholder="Write in Spanish.&#10;Never use a scope.&#10;If the branch name starts with a ticket id, put it at the end of the subject."
+                        (change)="onAiInstructions($event)"
+                      ></textarea>
+                      <div class="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          class="text-y-xs text-[var(--app-text-faint)] underline decoration-dotted transition-colors hover:text-accent-ink"
+                          data-testid="settings-ai-instructions-restore"
+                          (click)="restoreDefaultInstructions()"
+                        >
+                          Restore the defaults
+                        </button>
+                        <p class="font-mono text-y-xs text-[var(--app-text-faint)]">
+                          {{ aiInstructionsLeft() }} left
+                        </p>
+                      </div>
+                    </div>
+                  </yoru-field>
+
+                  <yoru-field
+                    row
+                    group
+                    label="Limits"
+                    hint="Staged diff sent: larger costs more, smaller loses context. Then the seconds before the CLI is killed."
+                  >
+                    <input
+                      yoruInput
+                      type="number"
+                      inputmode="numeric"
+                      aria-label="Diff sent, in kilobytes"
+                      class="w-16 font-mono tabular-nums"
+                      data-testid="settings-ai-diff-kb"
+                      [min]="minAiDiffKb"
+                      [max]="maxAiDiffKb"
+                      [value]="prefs.aiMaxDiffKb()"
+                      (change)="onAiMaxDiffKb($event)"
+                    />
+                    <span class="text-y-sm text-[var(--app-text-muted)]">KB</span>
+                    <input
+                      yoruInput
+                      type="number"
+                      inputmode="numeric"
+                      aria-label="Timeout, in seconds"
+                      class="ml-2 w-16 font-mono tabular-nums"
+                      data-testid="settings-ai-timeout"
+                      [min]="minAiTimeout"
+                      [max]="maxAiTimeout"
+                      [value]="prefs.aiTimeoutSeconds()"
+                      (change)="onAiTimeout($event)"
+                    />
+                    <span class="text-y-sm text-[var(--app-text-muted)]">s</span>
+                  </yoru-field>
+
+                  @if (hasRepo()) {
+                    <div class="flex flex-col gap-2">
+                      <yoru-field
+                        row
+                        group
+                        label="What gets sent"
+                        hint="The exact text handed to the CLI for what is staged now — our rules, your house rules, and your diff."
+                      >
+                        <yoru-button
+                          size="sm"
+                          variant="secondary"
+                          icon="lucideEye"
+                          data-testid="settings-ai-preview"
+                          (click)="previewAiPrompt()"
+                        >
+                          Show the prompt
+                        </yoru-button>
+                      </yoru-field>
+
+                      @if (aiPromptPreview(); as preview) {
+                        <pre
+                          class="neon-scroll max-h-64 overflow-auto whitespace-pre-wrap rounded-xs border border-[var(--app-border)] bg-[var(--app-panel)] p-2 font-mono text-y-xs text-[var(--app-text-muted)]"
+                          data-testid="settings-ai-preview-text"
+                          >{{ preview }}</pre
+                        >
+                      }
+                      @if (aiPreviewError(); as error) {
+                        <p
+                          class="font-mono text-y-xs text-git-deleted-ink"
+                          data-testid="settings-ai-preview-error"
+                        >
+                          {{ error }}
+                        </p>
+                      }
+                    </div>
                   }
                 </div>
-              </yoru-field>
-            }
-
-            @if (hasRepo()) {
-              <yoru-switch
-                [checked]="!aiBlockedByRepo()"
-                [disabled]="configBusy()"
-                (checkedChange)="onAiRepoOptOut($event)"
-                label="Allow AI in this repository"
-                hint="yoru.ai — turn it off for code that must never leave your machine."
-              />
+              </section>
             }
           }
-        }
 
+          @case ('keyboard') {
+            <div
+              class="shrink-0 overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-surface)]"
+            >
+              <table class="w-full text-y-base" data-testid="settings-shortcuts">
+                <caption class="sr-only">Registered keyboard shortcuts</caption>
+                <thead>
+                  <tr
+                    class="text-left font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
+                  >
+                    <th scope="col" class="px-3 py-1.5 font-bold">Command</th>
+                    <th scope="col" class="px-3 py-1.5 text-right font-bold">Shortcut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (shortcut of shortcuts(); track shortcut.id) {
+                    <tr class="border-t border-[var(--app-border)]">
+                      <td class="px-3 py-1 text-[var(--app-text)]">{{ shortcut.label }}</td>
+                      <td class="px-3 py-1 text-right">
+                        <yoru-kbd [combo]="shortcut.combo" />
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr class="border-t border-[var(--app-border)]">
+                      <td colspan="2" class="px-3 py-4 text-[var(--app-text-faint)]">
+                        No shortcuts registered yet.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
 
-        @case ('keyboard') {
-          <table class="w-full text-y-base" data-testid="settings-shortcuts">
-            <caption class="sr-only">Registered keyboard shortcuts</caption>
-            <thead>
-              <tr
-                class="border-b border-[var(--app-border)] text-left font-mono text-y-xs uppercase tracking-[0.12em] text-[var(--app-text-muted)]"
-              >
-                <th scope="col" class="py-1.5 font-bold">Command</th>
-                <th scope="col" class="py-1.5 font-bold">Shortcut</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (shortcut of shortcuts(); track shortcut.id) {
-                <tr class="border-b border-[var(--app-border)]/50">
-                  <td class="py-1.5 text-[var(--app-text)]">{{ shortcut.label }}</td>
-                  <td class="py-1.5">
-                    <yoru-kbd [combo]="shortcut.combo" />
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="2" class="py-4 text-[var(--app-text-faint)]">
-                    No shortcuts registered yet.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+          @case ('about') {
+            <div class="s-card">
+              <app-about-panel />
+            </div>
+          }
         }
-
-        @case ('about') {
-          <app-about-panel />
-        }
-      }
+      </div>
     </div>
   </div>
 </yoru-dialog>

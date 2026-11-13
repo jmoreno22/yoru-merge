@@ -719,7 +719,7 @@ density and focus behaviour identical across features. Full API and examples:
 | `yoru-empty-state` | zero-state copy with optional kanji watermark, which spreads in like ink on washi when the state appears: a soft-edged reveal from its centre that settles from a slight blur, about a second, once. Still when motion is off |
 | `yoru-section-header` | 34 px panel header: caps label, count, actions slot |
 | `yoru-diff-source` | diff strip head: source chip, optional detail, path with faint directory and strong file name |
-| `yoru-field`, `yoru-switch`, `yoru-segmented` | settings and dialog form controls |
+| `yoru-field`, `yoru-switch`, `yoru-segmented` | settings and dialog form controls; `row` on a field or a switch lays it out as a settings row (§Settings) |
 | `yoru-kbd` | key caps rendered from the registered combo string |
 | `yoru-spinner`, `yoru-skeleton` | activity and loading placeholders |
 | `yoru-toast-host` | renders `ToastService` bottom-right |
@@ -862,6 +862,28 @@ history is not on screen, so the moment plays in three places, each once:
 
 All three are one-shot and drawn with opacity and transform only; with motion
 off, none of them plays.
+
+### Settings
+
+Settings is read in passing — open, change one thing, close — so it is built
+to be scanned, not scrolled.
+
+- **Rows, not stacks.** A setting is one row: its label and one-line hint on
+  the left, the control on the right (`<yoru-field row>`, `<yoru-switch row>`).
+  When the control does not fit beside the text at the current type size it
+  wraps under it rather than squeezing either. Only a control that needs the
+  width — a textarea, the palette grid, a grid of switches, a preview — stacks
+  under its label.
+- **Groups.** Rows sit in small titled cards: the caps label above, hairlines
+  between rows, padding from `--panel-pad`, so density reaches here too.
+- **One section, about one screen.** A section that outgrows roughly a screen
+  of rows is split, not lengthened: Appearance is colour, type and motion;
+  Layout is where panels sit and which chrome shows; Diff & code is how diffs
+  and code render.
+- **The navigation never scrolls away.** The dialog has a fixed height and
+  only the section panel scrolls, under a header with the section's name and
+  a one-line description, so switching sections never resizes the dialog under
+  the pointer. Each navigation item carries its icon and its word.
 
 ### Diff viewer
 

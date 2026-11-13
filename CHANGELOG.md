@@ -50,6 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Settings reads at a glance.** Every setting is one row — label and hint on
+  the left, control on the right — in small titled groups, and Appearance is
+  split into Appearance, Layout and Diff & code: the longest section went from
+  about three screens to one. The navigation carries icons and no longer
+  scrolls away, the dialog keeps one height across sections, and the palettes
+  are a grid of tiles.
 - **The diff workspace has one header.** Four strips sat above the code and
   three of them named the same patch. A single strip now carries the source,
   the file's status, its path and line counts, a file-actions menu, previous /

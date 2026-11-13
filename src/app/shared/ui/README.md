@@ -252,9 +252,21 @@ Label + projected control + hint/error. `label` (required), `hint?`, `error?`.
 </yoru-field>
 ```
 
+`group` renders a `<div>` instead of a `<label>`, for a field holding several
+controls. `row` is the settings row: label and hint on the left, the control
+on the right, wrapping under the text when they do not fit; add `wide` for a
+control that always takes the full width under the text.
+
+```html
+<yoru-field row label="Auto-fetch" hint="0 turns it off">
+  <input yoruInput type="number" class="w-16" />
+</yoru-field>
+```
+
 ## yoru-switch
 
 `role="switch"` toggle. `checked` is a `model()`; `label?`, `hint?`, `disabled?`.
+`row` puts the text on the left and the track on the right, across the width.
 
 ```html
 <yoru-switch [(checked)]="signOff" label="Add Signed-off-by" />

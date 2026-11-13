@@ -1,9 +1,12 @@
 import { Injectable, signal } from '@angular/core';
+import type { YoruIconName } from '../../shared/icons';
 
 export type SettingsSection =
   | 'general'
   | 'git'
   | 'appearance'
+  | 'layout'
+  | 'diff'
   | 'integrations'
   | 'ai'
   | 'keyboard'
@@ -12,14 +15,64 @@ export type SettingsSection =
 export const SETTINGS_SECTIONS: readonly {
   readonly id: SettingsSection;
   readonly label: string;
+  readonly icon: YoruIconName;
+  readonly description: string;
 }[] = [
-  { id: 'general', label: 'General' },
-  { id: 'git', label: 'Git' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'integrations', label: 'Integrations' },
-  { id: 'ai', label: 'AI' },
-  { id: 'keyboard', label: 'Keyboard' },
-  { id: 'about', label: 'About' },
+  {
+    id: 'general',
+    label: 'General',
+    icon: 'lucideSettings2',
+    description: 'Safety checks and background sync.',
+  },
+  {
+    id: 'git',
+    label: 'Git',
+    icon: 'lucideGitBranch',
+    description: 'Identity and defaults, written to git config.',
+  },
+  {
+    id: 'appearance',
+    label: 'Appearance',
+    icon: 'lucidePalette',
+    description: 'Colour, type and motion.',
+  },
+  {
+    id: 'layout',
+    label: 'Layout',
+    icon: 'lucidePanelsTopLeft',
+    description: 'Where panels sit and which chrome is shown.',
+  },
+  {
+    id: 'diff',
+    label: 'Diff & code',
+    icon: 'lucideFileDiff',
+    description: 'How diffs and code render.',
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: 'lucidePlug',
+    description: 'Editor, terminal and hosting provider.',
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    icon: 'lucideSparkles',
+    description:
+      'Commit drafts from a CLI you already use, on your own subscription. YoruMerge talks to no AI service and stores no key.',
+  },
+  {
+    id: 'keyboard',
+    label: 'Keyboard',
+    icon: 'lucideKeyboard',
+    description: 'Every registered shortcut.',
+  },
+  {
+    id: 'about',
+    label: 'About',
+    icon: 'lucideInfo',
+    description: 'Version, platform and updates.',
+  },
 ];
 
 /**
