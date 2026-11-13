@@ -595,8 +595,15 @@ behind it, like light on a wall.
   nothing moves. A continuously breathing glow was tried and dropped: it kept
   the window painting about 100 frames a second for nothing, where the sign at
   rest paints none.
-- **Cost.** Only opacity animates; the glow itself is painted once. The idle
-  motion pauses while the window is not focused.
+- **Reacting.** The sign answers the remote operations the developer starts.
+  A fetch, pull or push that goes through sends current down it — a dimming
+  wave runs letter by letter while the plate flares. One that fails, is
+  rejected or stops on conflicts browns the whole sign out at once. Nothing to
+  push or pull leaves it alone, and the background auto-fetch never touches
+  it. `NeonSignService` carries the cue; the titlebar plays it as one-shot
+  script animations over the CSS loop, which resumes where it was.
+- **Cost.** Only opacity and transform animate; the glow itself is painted
+  once. The idle motion pauses while the window is not focused.
 - **Motion off.** Reduced motion and the animations preference show the sign
   lit and still.
 

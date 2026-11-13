@@ -4,6 +4,7 @@
   data-testid="titlebar-brand"
 >
   <span
+    #sign
     class="yoru-neon font-display text-y-sm tracking-[0.08em]"
     [class.is-resting]="!focused()"
     data-tauri-drag-region
@@ -12,6 +13,7 @@
     @for (letter of wordmark; track $index) {
       <span class="yoru-neon-letter" [style.--i]="$index">{{ letter }}</span>
     }
+    <span class="yoru-neon-plate" aria-hidden="true"></span>
   </span>
   <span
     class="font-mono text-y-sm text-[var(--app-text-faint)]"

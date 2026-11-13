@@ -593,8 +593,7 @@ html {
     0 0 10px color-mix(in srgb, var(--app-accent) 55%, transparent);
 }
 
-.yoru-neon::before {
-  content: "";
+.yoru-neon-plate {
   position: absolute;
   inset: -5px -12px;
   z-index: -1;
@@ -609,7 +608,7 @@ html {
   animation: yoru-neon-plate 9s linear 5s infinite;
 }
 
-.dark .yoru-neon::before {
+.dark .yoru-neon-plate {
   background: radial-gradient(
     closest-side,
     color-mix(in srgb, var(--app-accent) 26%, transparent),
@@ -641,13 +640,13 @@ html {
 
 /* The sign strikes while the startup splash fades, not underneath it. */
 .ys:not(.is-leaving) ~ app-root .yoru-neon-letter,
-.ys:not(.is-leaving) ~ app-root .yoru-neon::before {
+.ys:not(.is-leaving) ~ app-root .yoru-neon-plate {
   animation-play-state: paused;
 }
 
 /* An unfocused window keeps the sign lit but still. The ignition is left to
  * run, or a launch that loses focus at once would leave the letters dark. */
-.yoru-neon.is-resting::before {
+.yoru-neon.is-resting .yoru-neon-plate {
   animation-play-state: paused;
 }
 
@@ -659,13 +658,13 @@ html {
 /* The global motion-off rules keep animation delays, which would light the
  * letters one jump at a time. */
 @media (prefers-reduced-motion: reduce) {
-  .yoru-neon::before,
+  .yoru-neon-plate,
   .yoru-neon-letter {
     animation: none !important;
   }
 }
 
-:root[data-animations="off"] .yoru-neon::before,
+:root[data-animations="off"] .yoru-neon-plate,
 :root[data-animations="off"] .yoru-neon-letter {
   animation: none !important;
 }

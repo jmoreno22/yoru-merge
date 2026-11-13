@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The titlebar wordmark is a neon sign in your accent.** It strikes letter
   by letter as the splash leaves, then two tired tubes flicker now and then;
   between flickers nothing moves, and it holds still while the window is not
-  focused or when motion is off.
+  focused or when motion is off. A fetch, pull or push you start surges
+  through it when it goes through and browns it out when it fails.
 - **Three more colour palettes:** Yugure (twilight plum), Matcha (deep green
   tea) and Sumi (neutral ink, washi in light mode), held to the same AA
   contrast as the other five.

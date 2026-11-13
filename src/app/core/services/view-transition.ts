@@ -28,7 +28,7 @@ export function runThemeTransition(apply: () => void): void {
   start(apply);
 }
 
-function motionAllowed(): boolean {
+export function motionAllowed(): boolean {
   if (document.documentElement.dataset['animations'] === 'off') return false;
   if (typeof window === 'undefined' || !window.matchMedia) return true;
   return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;

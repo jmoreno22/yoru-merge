@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import type { PullResult, PushResult, RepoChangeKind } from '../../models';
 import { AUTH_REQUIRED_TOAST } from '../git-auth-error';
+import { NeonSignService } from '../neon-sign.service';
 import { PreferencesService } from '../preferences.service';
 import type { PullMode } from '../tauri-git.service';
 import { type RepoState, WorkspaceStore } from '../workspace.store';
@@ -48,6 +49,7 @@ const REFS_ONLY: ReadonlySet<RepoChangeKind> = new Set<RepoChangeKind>(['refs'])
 @Injectable({ providedIn: 'root' })
 export class RemoteOps {
   private readonly ops = inject(OpsRunner);
+  private readonly sign = inject(NeonSignService);
   private readonly repoOps = inject(RepoOps);
   private readonly prefs = inject(PreferencesService);
   private readonly workspace = inject(WorkspaceStore);
@@ -79,10 +81,12 @@ export class RemoteOps {
         this.ops.toast.success(
           options.remote === null ? 'Fetched all remotes.' : 'Fetch complete.',
         );
+        this.sign.surge();
       }
       return true;
     } catch (error: unknown) {
       this.ops.reportError(error, 'Fetch failed');
+      if (!options.silent) this.sign.falter();
       return false;
     } finally {
       state.isFetching.set(false);
@@ -114,7 +118,10 @@ export class RemoteOps {
       null,
       { busy: [state.loading, state.remoteBusy], failure: 'Pull failed' },
     );
-    if (!result) return null;
+    if (!result) {
+      this.sign.falter();
+      return null;
+    }
     this.reportPull(result, branch);
     if (result.kind !== 'auth_required') await this.repoOps.refreshAll(state);
     return result;
@@ -142,7 +149,10 @@ export class RemoteOps {
       null,
       { busy: [state.loading, state.remoteBusy], failure: 'Push failed' },
     );
-    if (!result) return null;
+    if (!result) {
+      this.sign.falter();
+      return null;
+    }
     this.reportPush(result, branch, remote);
     if (result.kind !== 'auth_required')
       await this.repoOps.refreshFor(state, REFS_ONLY);
@@ -257,18 +267,22 @@ export class RemoteOps {
         break;
       case 'fast_forward':
         this.ops.toast.success(`Fast-forwarded ${branch}.`);
+        this.sign.surge();
         break;
       case 'merged':
         this.ops.toast.success(`Merged into ${branch}.`);
+        this.sign.surge();
         break;
       case 'rebased':
         this.ops.toast.success(`Rebased ${branch} onto its upstream.`);
+        this.sign.surge();
         break;
       case 'conflicts':
         this.ops.toast.warning(
           `Pull stopped with conflicts in ${describeFiles(result.files)}.`,
           8000,
         );
+        this.sign.falter();
         break;
       case 'auth_required':
         this.ops.toast.show({
@@ -277,6 +291,7 @@ export class RemoteOps {
           key: 'git-auth',
           timeoutMs: 10000,
         });
+        this.sign.falter();
         break;
     }
   }
@@ -285,12 +300,14 @@ export class RemoteOps {
     switch (result.kind) {
       case 'success':
         this.ops.toast.success(`Pushed ${branch} to ${remote}.`);
+        this.sign.surge();
         break;
       case 'up_to_date':
         this.ops.toast.info(`${remote}/${branch} is already up to date.`);
         break;
       case 'rejected':
         this.ops.toast.error(`Push rejected: ${result.reason}`, 8000);
+        this.sign.falter();
         break;
       case 'auth_required':
         this.ops.toast.show({
@@ -299,6 +316,7 @@ export class RemoteOps {
           key: 'git-auth',
           timeoutMs: 10000,
         });
+        this.sign.falter();
         break;
     }
   }
