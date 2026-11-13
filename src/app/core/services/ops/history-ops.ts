@@ -43,8 +43,11 @@ export class HistoryOps {
    * back to the top, with the viewport pointing at rows that no longer
    * existed. Asking for the whole window in one call costs what one page costs
    * — the backend slices a cached walk — so the position survives a refresh.
+   *
+   * Resolves `false` only when the backend confirmed the rows on screen are
+   * still current, which also means no ref moved.
    */
-  load(state: RepoState): Promise<void> {
+  load(state: RepoState): Promise<boolean> {
     const run = this.reload(state, this.reads.get(state));
     this.reads.set(state, run);
     return run;
@@ -61,25 +64,39 @@ export class HistoryOps {
     return run;
   }
 
-  private async reload(state: RepoState, previous?: Promise<unknown>): Promise<void> {
+  private async reload(
+    state: RepoState,
+    previous?: Promise<unknown>,
+  ): Promise<boolean> {
     // An append still in flight would add its page on top of the list this
     // read is about to replace, leaving rows from two different reads.
     await previous;
     const repo = state.repo();
-    if (!repo) return;
+    if (!repo) return true;
     const limit = Math.min(
       Math.max(state.commits().length, HISTORY_PAGE_SIZE),
       HISTORY_RELOAD_LIMIT,
     );
     state.historyLoading.set(true);
     try {
-      const page = await this.ops.git.getHistory(repo.path, limit, 0);
+      const page = await this.ops.git.getHistory(
+        repo.path,
+        limit,
+        0,
+        null,
+        true,
+        state.historyFingerprint(),
+      );
+      if (page.unchanged) return false;
       state.commits.set(page.commits);
       state.graphData.set(page.graph);
       state.historyHasMore.set(page.has_more);
       state.historyTotal.set(page.total);
+      state.historyFingerprint.set(page.fingerprint);
+      return true;
     } catch (error: unknown) {
       this.ops.reportError(error, 'Could not load history');
+      return true;
     } finally {
       state.historyLoading.set(false);
     }
@@ -98,6 +115,11 @@ export class HistoryOps {
       state.graphData.update((graph) => appendGraphPage(graph, page.graph));
       state.historyHasMore.set(page.has_more);
       state.historyTotal.set(page.total);
+      // A page read from a newer walk leaves the list mixed: the next reload
+      // must not be told it is current.
+      if (page.fingerprint !== state.historyFingerprint()) {
+        state.historyFingerprint.set(null);
+      }
       return true;
     } catch (error: unknown) {
       this.ops.reportError(error, 'Could not load more history');

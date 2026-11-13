@@ -20,6 +20,10 @@ export interface WorkingChanges {
   unstaged: FileChange[];
   untracked: string[];
   conflicted: string[];
+  /** Hash of the raw `git status` output these lists were parsed from. */
+  fingerprint: string;
+  /** The fingerprint sent along still matches; every list is empty. */
+  unchanged: boolean;
 }
 
 /** Which copy of a file to read — work tree, index, or a revision. */

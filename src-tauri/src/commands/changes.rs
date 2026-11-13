@@ -1,5 +1,8 @@
 //! Working-tree status.
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 use super::git::{blocking, validate_repo_path, GitCmd};
 use crate::models::{FileChange, FileChangeStatus, WorkingChanges};
 
@@ -125,10 +128,24 @@ pub(super) fn parse_porcelain_v2(data: &[u8]) -> WorkingChanges {
         unstaged,
         untracked,
         conflicted,
+        fingerprint: status_fingerprint(data),
+        unchanged: false,
     }
 }
 
-pub(super) fn working_changes_inner(path: &str) -> Result<WorkingChanges, String> {
+fn status_fingerprint(data: &[u8]) -> String {
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+/// The status of `path`, or an `unchanged` reply without lists when the
+/// output still hashes to `if_fingerprint`: saving a file that was already
+/// modified changes nothing git reports.
+pub(super) fn working_changes_inner(
+    path: &str,
+    if_fingerprint: Option<&str>,
+) -> Result<WorkingChanges, String> {
     validate_repo_path(path)?;
 
     let output = GitCmd::in_repo(path)
@@ -144,13 +161,27 @@ pub(super) fn working_changes_inner(path: &str) -> Result<WorkingChanges, String
     if !output.status.success() {
         return Err(super::git::stderr_or(&output, "git status failed"));
     }
+    let fingerprint = status_fingerprint(&output.stdout);
+    if if_fingerprint == Some(fingerprint.as_str()) {
+        return Ok(WorkingChanges {
+            staged: Vec::new(),
+            unstaged: Vec::new(),
+            untracked: Vec::new(),
+            conflicted: Vec::new(),
+            fingerprint,
+            unchanged: true,
+        });
+    }
     Ok(parse_porcelain_v2(&output.stdout))
 }
 
 /// Staged, unstaged, untracked and conflicted files of the work tree.
 #[tauri::command]
-pub async fn get_working_changes(path: String) -> Result<WorkingChanges, String> {
-    blocking(move || working_changes_inner(&path)).await
+pub async fn get_working_changes(
+    path: String,
+    if_fingerprint: Option<String>,
+) -> Result<WorkingChanges, String> {
+    blocking(move || working_changes_inner(&path, if_fingerprint.as_deref())).await
 }
 
 #[cfg(test)]
@@ -216,7 +247,7 @@ mod tests {
             ],
         );
 
-        let changes = working_changes_inner(&path).unwrap();
+        let changes = working_changes_inner(&path, None).unwrap();
         let vendor = changes
             .staged
             .iter()
@@ -248,7 +279,7 @@ mod tests {
         git_ok(&path, &["commit", "-m", "add"]);
         git_ok(&path, &["mv", "señal ñ.txt", "señal renombrada.txt"]);
 
-        let changes = working_changes_inner(&path).unwrap();
+        let changes = working_changes_inner(&path, None).unwrap();
         let renamed = changes
             .staged
             .iter()
@@ -263,13 +294,35 @@ mod tests {
         let (_dir, path) = init_repo();
         write_file(&path, "Tom & Jerry/señal ñ.txt", "x\n");
 
-        let changes = working_changes_inner(&path).unwrap();
+        let changes = working_changes_inner(&path, None).unwrap();
         assert_eq!(changes.untracked, vec!["Tom & Jerry/señal ñ.txt"]);
     }
 
     #[test]
+    fn an_identical_status_comes_back_unchanged_and_empty() {
+        let (_dir, path) = init_repo();
+        write_file(&path, "a.txt", "edited\n");
+        let first = working_changes_inner(&path, None).unwrap();
+        assert!(!first.unchanged);
+        assert_eq!(first.unstaged.len(), 1);
+
+        // Saving an already-modified file again leaves the status as it was.
+        write_file(&path, "a.txt", "edited again\n");
+        let again = working_changes_inner(&path, Some(&first.fingerprint)).unwrap();
+        assert!(again.unchanged);
+        assert_eq!(again.fingerprint, first.fingerprint);
+        assert!(again.unstaged.is_empty() && again.untracked.is_empty());
+
+        write_file(&path, "new.txt", "x\n");
+        let changed = working_changes_inner(&path, Some(&first.fingerprint)).unwrap();
+        assert!(!changed.unchanged);
+        assert_ne!(changed.fingerprint, first.fingerprint);
+        assert_eq!(changed.untracked, vec!["new.txt"]);
+    }
+
+    #[test]
     fn invalid_paths_are_rejected() {
-        assert!(working_changes_inner("").is_err());
-        assert!(working_changes_inner("--exec=calc").is_err());
+        assert!(working_changes_inner("", None).is_err());
+        assert!(working_changes_inner("--exec=calc", None).is_err());
     }
 }

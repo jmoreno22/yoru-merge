@@ -19,8 +19,10 @@ pub async fn get_graph_data(
 ) -> Result<GraphData, String> {
     validate_log_args(&path, None)?;
     let cache = cache.inner().clone();
-    blocking(move || history_page(&cache, &path, limit, skip, None, true).map(|page| page.graph))
-        .await
+    blocking(move || {
+        history_page(&cache, &path, limit, skip, None, true, None).map(|page| page.graph)
+    })
+    .await
 }
 
 #[cfg(test)]
@@ -29,9 +31,17 @@ mod tests {
     use crate::commands::git::test_support::{git_ok, init_repo, write_file};
 
     fn graph(path: &str, limit: u32, skip: u32) -> GraphData {
-        history_page(&HistoryCache::default(), path, limit, skip, None, true)
-            .expect("history page")
-            .graph
+        history_page(
+            &HistoryCache::default(),
+            path,
+            limit,
+            skip,
+            None,
+            true,
+            None,
+        )
+        .expect("history page")
+        .graph
     }
 
     #[test]
@@ -91,8 +101,9 @@ mod tests {
         git_ok(&path, &["merge", "--no-ff", "--no-edit", "feature"]);
 
         let cache = HistoryCache::default();
-        let whole = history_page(&cache, &path, 100, 0, None, true).expect("history page");
-        let second_page = history_page(&cache, &path, 3, 3, None, true).expect("history page");
+        let whole = history_page(&cache, &path, 100, 0, None, true, None).expect("history page");
+        let second_page =
+            history_page(&cache, &path, 3, 3, None, true, None).expect("history page");
 
         assert_eq!(second_page.graph.commits.len(), 3);
         assert_eq!(second_page.graph.max_lanes, whole.graph.max_lanes);

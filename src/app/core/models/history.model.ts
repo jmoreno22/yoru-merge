@@ -13,4 +13,8 @@ export interface HistoryPage {
   /** Total reachable commits when the backend could count them cheaply. */
   total: number | null;
   has_more: boolean;
+  /** Identifies the walk and refs this page was read from. */
+  fingerprint: string;
+  /** The fingerprint sent along still matches; `commits` and `graph` are empty. */
+  unchanged: boolean;
 }

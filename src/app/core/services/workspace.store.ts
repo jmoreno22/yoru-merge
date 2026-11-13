@@ -26,8 +26,10 @@ import {
   type WorkingChanges,
 } from '../models';
 import type { SetFilesOrigin } from './diff-workspace-state';
+import { messageFromUnknown } from './git-auth-error';
 import { PreferencesService } from './preferences.service';
 import { TauriGitService } from './tauri-git.service';
+import { ToastService } from './toast.service';
 
 export type WorkspaceTabId = string;
 
@@ -76,6 +78,8 @@ function repoStateDefaults() {
     historyLoading: false,
     historyHasMore: false,
     historyTotal: null as number | null,
+    /** Fingerprint of the rows in `commits`, so a reload can come back `unchanged`. */
+    historyFingerprint: null as string | null,
 
     // ── remote operations ─────────────────────────────────────────────
     fetchProgress: null as FetchProgress | null,
@@ -197,6 +201,7 @@ export class RepoState {
   readonly historyLoading = this.fields.historyLoading;
   readonly historyHasMore = this.fields.historyHasMore;
   readonly historyTotal = this.fields.historyTotal;
+  readonly historyFingerprint = this.fields.historyFingerprint;
 
   // ── remote operations ─────────────────────────────────────────────────
   readonly fetchProgress = this.fields.fetchProgress;
@@ -356,6 +361,7 @@ export class RepoState {
 export class WorkspaceStore {
   private readonly prefs = inject(PreferencesService);
   private readonly git = inject(TauriGitService);
+  private readonly toast = inject(ToastService);
   private readonly repoStates = signal(new Map<WorkspaceTabId, RepoState>());
   private nextTabNumber = 1;
 
@@ -460,10 +466,20 @@ export class WorkspaceStore {
     this.addWatched(path);
     try {
       await this.git.watchRepo(path);
-    } catch {
-      // Non-fatal: users can still inspect the repo without live refresh.
+    } catch (error: unknown) {
+      // Non-fatal: the repo stays usable, only without live refresh.
       this.removeWatched(path);
+      this.reportWatchError(path, messageFromUnknown(error));
     }
+  }
+
+  /** Live refresh failed or no longer covers the whole tree of `path`. */
+  reportWatchError(path: string, message: string): void {
+    this.toast.show({
+      kind: 'warning',
+      message: `Live refresh is off or incomplete for ${path}: ${message}`,
+      key: `watch-error:${path}`,
+    });
   }
 
   /**

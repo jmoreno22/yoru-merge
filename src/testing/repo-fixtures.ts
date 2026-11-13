@@ -44,6 +44,8 @@ export function workingChanges(
     unstaged: unstaged.map(modified),
     untracked: [],
     conflicted: [],
+    fingerprint: '',
+    unchanged: false,
   };
 }
 
@@ -142,6 +144,7 @@ export function gitResponses(
   return {
     open_repo: TEST_REPO,
     add_recent_repo: undefined,
+    watch_repo: undefined,
     get_working_changes: workingChanges(),
     get_conflicts: [],
     get_repo_state: CLEAN_REPO_STATE,
@@ -154,7 +157,14 @@ export function gitResponses(
     get_commit_details: commitDetails(),
     // A full refresh reloads every panel, so every loader it fans out to needs
     // an answer or its failure toast lands in the middle of an assertion.
-    get_history: { commits: [], graph: EMPTY_GRAPH, total: 0, has_more: false },
+    get_history: {
+      commits: [],
+      graph: EMPTY_GRAPH,
+      total: 0,
+      has_more: false,
+      fingerprint: '',
+      unchanged: false,
+    },
     get_graph_data: EMPTY_GRAPH,
     list_branches: { local: [], remote: [], current: 'main' },
     list_tags: [],

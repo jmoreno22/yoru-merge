@@ -11,4 +11,8 @@ pub struct HistoryPage {
     /// Total commits in the current scope; `None` when it could not be counted.
     pub total: Option<u32>,
     pub has_more: bool,
+    /// Identifies the walk and refs this page was read from.
+    pub fingerprint: String,
+    /// The caller's fingerprint still matches; `commits` and `graph` are empty.
+    pub unchanged: bool,
 }

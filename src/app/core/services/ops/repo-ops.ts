@@ -19,6 +19,8 @@ const ALL_KINDS: ReadonlySet<RepoChangeKind> = new Set<RepoChangeKind>([
   'refs',
   'worktree',
   'index',
+  'stash',
+  'config',
 ]);
 
 /** Who asked for a refresh; a staging action is told apart by `stagingBusy`. */
@@ -98,9 +100,10 @@ export class RepoOps {
   }
 
   /**
-   * Reloads what the watcher says changed. `refs` covers commits, branches,
-   * tags and stashes; `index`/`worktree` cover the working tree; both refresh
-   * the repo state so the sequencer banner keeps up.
+   * Reloads what the watcher says changed. `refs` covers commits, branches
+   * and tags, `stash` the stashes, `config` the remotes; `index`/`worktree`
+   * cover the working tree. Every round refreshes the repo state so the
+   * sequencer banner keeps up.
    *
    * Takes a set rather than one kind because a single git command usually
    * touches both sides — a checkout moves HEAD *and* rewrites the work tree —
@@ -132,12 +135,15 @@ export class RepoOps {
     const origin: RefreshOrigin = this.appRefreshes.delete(state) ? 'app' : 'external';
     const tasks: Promise<unknown>[] = [this.loadRepoState(state)];
     if (kinds.has('refs')) {
+      // Tags are refs the history fingerprint covers: an unchanged history
+      // means no tag moved either.
       tasks.push(
-        this.history.load(state),
-        this.loadRefs(state),
-        this.loadStashes(state),
+        this.history.load(state).then((moved) => (moved ? this.loadTags(state) : null)),
+        this.loadBranches(state),
       );
     }
+    if (kinds.has('stash')) tasks.push(this.loadStashes(state));
+    if (kinds.has('config')) tasks.push(this.loadRemotes(state));
     if (kinds.has('worktree') || kinds.has('index')) {
       // The staging operations reload the shown diff themselves; this is the
       // path for every change they do not run, above all the watcher, which
@@ -145,8 +151,7 @@ export class RepoOps {
       // working-tree diff is reloaded — `refreshActiveDiff` leaves a commit
       // diff, which no worktree event can invalidate, where it is.
       tasks.push(
-        this.loadChanges(state, origin),
-        this.loadConflicts(state),
+        this.loadChanges(state, origin).then(() => this.loadConflicts(state)),
         this.refreshActiveDiff(state),
       );
     }
@@ -317,7 +322,12 @@ export class RepoOps {
     // written beside `changes`: two loads in flight together would otherwise
     // publish under each other's origin.
     const origin = state.stagingBusy() ? 'own' : requested;
-    const changes = await this.ops.git.getWorkingChanges(repo.path);
+    const changes = await this.ops.git.getWorkingChanges(
+      repo.path,
+      state.changes()?.fingerprint ?? null,
+    );
+    // Nothing git reports moved, so neither did anything derived from it.
+    if (changes.unchanged) return;
     state.changesOrigin.set(origin);
     state.changes.set(changes);
   }
@@ -328,21 +338,43 @@ export class RepoOps {
    * or not anyone opened the remotes manager.
    */
   private async loadRefs(state: RepoState): Promise<void> {
-    const repo = state.repo();
-    if (!repo) return;
-    const [branches, tags, remotes] = await Promise.all([
-      this.ops.git.listBranches(repo.path),
-      this.ops.git.listTags(repo.path),
-      this.ops.git.listRemotes(repo.path),
+    await Promise.all([
+      this.loadBranches(state),
+      this.loadTags(state),
+      this.loadRemotes(state),
     ]);
-    state.branches.set(branches);
-    state.tags.set(tags);
-    state.remotes.set(remotes);
   }
 
+  private async loadBranches(state: RepoState): Promise<void> {
+    const repo = state.repo();
+    if (!repo) return;
+    state.branches.set(await this.ops.git.listBranches(repo.path));
+  }
+
+  private async loadTags(state: RepoState): Promise<void> {
+    const repo = state.repo();
+    if (!repo) return;
+    state.tags.set(await this.ops.git.listTags(repo.path));
+  }
+
+  private async loadRemotes(state: RepoState): Promise<void> {
+    const repo = state.repo();
+    if (!repo) return;
+    state.remotes.set(await this.ops.git.listRemotes(repo.path));
+  }
+
+  /**
+   * Only asks the backend while `git status` reports conflicts: the answer is
+   * otherwise known to be empty, and asking costs a repository open plus a
+   * parse of the whole index.
+   */
   private async loadConflicts(state: RepoState): Promise<void> {
     const repo = state.repo();
     if (!repo) return;
+    if (!state.changes()?.conflicted.length) {
+      if (state.conflicts().length) state.conflicts.set([]);
+      return;
+    }
     state.conflicts.set(await this.ops.git.getConflicts(repo.path));
   }
 

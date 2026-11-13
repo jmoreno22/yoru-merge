@@ -160,15 +160,23 @@ impl Scope {
     }
 }
 
+/// The revwalk and its lanes: what only moving a tip can invalidate.
+struct Walk {
+    oids: Vec<Oid>,
+    /// Kept so a change of decorations alone can recompute `head_set`.
+    parents: Vec<Vec<Oid>>,
+    /// Lanes for the FULL walk, so paging never reshuffles the graph.
+    graph: GraphData,
+}
+
 struct CachedHistory {
+    walk_key: u64,
     ref_fingerprint: u64,
     /// Ticket taken when `ref_fingerprint` was read; orders concurrent builds.
     built_at: u64,
-    oids: Vec<Oid>,
+    walk: Arc<Walk>,
     head_set: HashSet<Oid>,
     ref_map: HashMap<Oid, Vec<RefInfo>>,
-    /// Lanes for the FULL walk, so paging never reshuffles the graph.
-    graph: GraphData,
 }
 
 /// The walks cached for one repository, most recently used first.
@@ -203,12 +211,13 @@ impl HistoryCache {
         self.0.clock.fetch_add(1, Ordering::Relaxed)
     }
 
-    /// The cached walk for `path`/`scope_key`, if it still matches the refs.
+    /// The cached walk for `path`/`scope_key`, if it still starts from the same
+    /// tips. Its decorations may be stale; the caller compares fingerprints.
     fn get(
         &self,
         path: &str,
         scope_key: &str,
-        fingerprint: u64,
+        walk_key: u64,
     ) -> Result<Option<Arc<CachedHistory>>, String> {
         let mut scopes = self.scopes()?;
         let Some(entries) = scopes.get_mut(path) else {
@@ -217,7 +226,7 @@ impl HistoryCache {
         let Some(at) = entries.iter().position(|(key, _)| key == scope_key) else {
             return Ok(None);
         };
-        if entries[at].1.ref_fingerprint != fingerprint {
+        if entries[at].1.walk_key != walk_key {
             return Ok(None);
         }
         let hit = entries.remove(at);
@@ -270,14 +279,26 @@ impl HistoryCache {
             .map(|entries| entries.iter().map(|(key, _)| key.clone()).collect())
             .unwrap_or_default()
     }
+
+    /// The walk cached for `path`/`scope_key`, to tell a reuse from a rebuild.
+    #[cfg(test)]
+    fn cached_walk(&self, path: &str, scope_key: &str) -> Option<Arc<Walk>> {
+        self.scopes()
+            .expect("cache lock")
+            .get(path)?
+            .iter()
+            .find(|(key, _)| key == scope_key)
+            .map(|(_, entry)| Arc::clone(&entry.walk))
+    }
 }
 
-/// Cheap signature of every ref plus HEAD; any change invalidates the walk.
+/// Cheap signature of every ref plus HEAD: what the decorations (ref badges,
+/// "on the current branch") are derived from.
 ///
 /// `refs/stash` and `refs/notes/*` are left out: no scope walks them and
-/// `build_ref_map` drops them, so stashing or annotating would otherwise throw
-/// away the whole walk for something the UI never shows. Targets are hashed
-/// unpeeled, which is enough because retagging rewrites the tag object too.
+/// `build_ref_map` drops them, so stashing or annotating would otherwise
+/// rebuild decorations the UI never shows. Targets are hashed unpeeled, which
+/// is enough because retagging rewrites the tag object too.
 fn ref_fingerprint(repo: &Repository) -> u64 {
     let mut entries: Vec<(String, String)> = Vec::new();
     if let Ok(references) = repo.references() {
@@ -318,7 +339,42 @@ fn ref_fingerprint(repo: &Repository) -> u64 {
     hasher.finish()
 }
 
-fn push_branch(repo: &Repository, walk: &mut Revwalk<'_>, name: &str) -> Result<(), String> {
+/// Signature of the commits the walk of `scope` starts from. Names are left
+/// out, so a branch or tag created at a commit already walked, or a checkout
+/// to one, keeps the walk and only redoes the decorations.
+fn walk_key(repo: &Repository, scope: &Scope) -> u64 {
+    let head = || repo.head().ok().and_then(|head| head.target());
+    let mut tips: Vec<Oid> = match scope {
+        Scope::All => {
+            let mut tips: Vec<Oid> = repo
+                .references()
+                .map(|references| {
+                    references
+                        .flatten()
+                        .filter(|r| {
+                            r.name().is_ok_and(|name| {
+                                name.starts_with("refs/heads/") || name.starts_with("refs/remotes/")
+                            })
+                        })
+                        .filter_map(|r| r.target())
+                        .collect()
+                })
+                .unwrap_or_default();
+            tips.extend(head());
+            tips
+        }
+        Scope::Head => head().into_iter().collect(),
+        Scope::Branch(name) => branch_tip(repo, name).ok().into_iter().collect(),
+    };
+    tips.sort_unstable();
+    tips.dedup();
+
+    let mut hasher = DefaultHasher::new();
+    tips.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn branch_tip(repo: &Repository, name: &str) -> Result<Oid, String> {
     let candidates = if name.starts_with("refs/") {
         vec![name.to_string()]
     } else {
@@ -332,16 +388,15 @@ fn push_branch(repo: &Repository, walk: &mut Revwalk<'_>, name: &str) -> Result<
     for refname in candidates {
         if let Ok(reference) = repo.find_reference(&refname) {
             if let Some(oid) = reference_commit_oid(&reference) {
-                return walk.push(oid).map_err(|e| e.message().to_string());
+                return Ok(oid);
             }
         }
     }
 
-    let commit = repo
-        .revparse_single(name)
+    repo.revparse_single(name)
         .and_then(|object| object.peel_to_commit())
-        .map_err(|_| format!("unknown revision: {name}"))?;
-    walk.push(commit.id()).map_err(|e| e.message().to_string())
+        .map(|commit| commit.id())
+        .map_err(|_| format!("unknown revision: {name}"))
 }
 
 fn push_scope(repo: &Repository, walk: &mut Revwalk<'_>, scope: &Scope) -> Result<(), String> {
@@ -357,7 +412,9 @@ fn push_scope(repo: &Repository, walk: &mut Revwalk<'_>, scope: &Scope) -> Resul
             walk.push_head().ok();
             Ok(())
         }
-        Scope::Branch(name) => push_branch(repo, walk, name),
+        Scope::Branch(name) => walk
+            .push(branch_tip(repo, name)?)
+            .map_err(|e| e.message().to_string()),
     }
 }
 
@@ -402,12 +459,7 @@ fn head_set(repo: &Repository, scope: &Scope, oids: &[Oid], parents: &[Vec<Oid>]
     reachable
 }
 
-fn build_history(
-    repo: &Repository,
-    scope: &Scope,
-    ref_fingerprint: u64,
-    built_at: u64,
-) -> Result<CachedHistory, String> {
+fn build_walk(repo: &Repository, scope: &Scope) -> Result<Walk, String> {
     let mut walk = repo.revwalk().map_err(|e| e.message().to_string())?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
         .map_err(|e| e.message().to_string())?;
@@ -424,18 +476,41 @@ fn build_history(
         parents.push(commit.parent_ids().collect());
     }
 
-    Ok(CachedHistory {
-        ref_fingerprint,
-        built_at,
+    Ok(Walk {
         graph: assign_lanes(&oids, &parents),
-        head_set: head_set(repo, scope, &oids, &parents),
-        ref_map: build_ref_map(repo)?,
         oids,
+        parents,
     })
+}
+
+/// `walk` decorated with the refs as they are now.
+fn decorate(
+    repo: &Repository,
+    scope: &Scope,
+    walk: Arc<Walk>,
+    keys: (u64, u64),
+    built_at: u64,
+) -> Result<CachedHistory, String> {
+    Ok(CachedHistory {
+        walk_key: keys.0,
+        ref_fingerprint: keys.1,
+        built_at,
+        head_set: head_set(repo, scope, &walk.oids, &walk.parents),
+        ref_map: build_ref_map(repo)?,
+        walk,
+    })
+}
+
+/// What a client hands back to ask whether its rows are still current.
+fn page_fingerprint(scope_key: &str, walk_key: u64, ref_fingerprint: u64) -> String {
+    format!("{scope_key}:{walk_key:016x}:{ref_fingerprint:016x}")
 }
 
 /// Shared with the thin `git_log` / `get_graph_data` commands so all three read
 /// the same cached walk.
+///
+/// When `if_fingerprint` is the fingerprint of the current walk and refs, the
+/// page comes back `unchanged` and without rows: the caller already has them.
 pub(crate) fn history_page(
     cache: &HistoryCache,
     path: &str,
@@ -443,29 +518,51 @@ pub(crate) fn history_page(
     skip: u32,
     branch: Option<&str>,
     all: bool,
+    if_fingerprint: Option<&str>,
 ) -> Result<HistoryPage, String> {
     let repo = Repository::open(path).map_err(|e| e.message().to_string())?;
     let scope = Scope::new(branch, all);
     let scope_key = scope.key();
-    let fingerprint = ref_fingerprint(&repo);
+    let keys = (walk_key(&repo, &scope), ref_fingerprint(&repo));
     let built_at = cache.tick();
 
     // The walk happens outside the lock: it is seconds long on a big history,
     // and holding the cache for it stalls every other repository's pages.
-    let entry = match cache.get(path, &scope_key, fingerprint)? {
-        Some(hit) => hit,
+    let entry = match cache.get(path, &scope_key, keys.0)? {
+        Some(hit) if hit.ref_fingerprint == keys.1 => hit,
+        Some(hit) => {
+            let redecorated = decorate(&repo, &scope, Arc::clone(&hit.walk), keys, built_at)?;
+            cache.store(path, &scope_key, Arc::new(redecorated))?
+        }
         None => {
-            let built = build_history(&repo, &scope, fingerprint, built_at)?;
+            let walk = Arc::new(build_walk(&repo, &scope)?);
+            let built = decorate(&repo, &scope, walk, keys, built_at)?;
             cache.store(path, &scope_key, Arc::new(built))?
         }
     };
 
-    let total = entry.oids.len();
+    let walk = &entry.walk;
+    let total = walk.oids.len();
     let start = (skip as usize).min(total);
     let end = start.saturating_add(limit as usize).min(total);
+    let fingerprint = page_fingerprint(&scope_key, entry.walk_key, entry.ref_fingerprint);
+
+    if if_fingerprint == Some(fingerprint.as_str()) {
+        return Ok(HistoryPage {
+            commits: Vec::new(),
+            graph: GraphData {
+                commits: Vec::new(),
+                max_lanes: walk.graph.max_lanes,
+            },
+            total: Some(total as u32),
+            has_more: end < total,
+            fingerprint,
+            unchanged: true,
+        });
+    }
 
     let mut commits = Vec::with_capacity(end - start);
-    for oid in &entry.oids[start..end] {
+    for oid in &walk.oids[start..end] {
         let commit = repo
             .find_commit(*oid)
             .map_err(|e| e.message().to_string())?;
@@ -476,11 +573,13 @@ pub(crate) fn history_page(
     Ok(HistoryPage {
         commits,
         graph: GraphData {
-            commits: entry.graph.commits[start..end].to_vec(),
-            max_lanes: entry.graph.max_lanes,
+            commits: walk.graph.commits[start..end].to_vec(),
+            max_lanes: walk.graph.max_lanes,
         },
         total: Some(total as u32),
         has_more: end < total,
+        fingerprint,
+        unchanged: false,
     })
 }
 
@@ -491,6 +590,7 @@ pub async fn get_history(
     skip: u32,
     branch: Option<String>,
     all: bool,
+    if_fingerprint: Option<String>,
     cache: tauri::State<'_, HistoryCache>,
 ) -> Result<HistoryPage, String> {
     validate_repo_path(&path)?;
@@ -499,7 +599,15 @@ pub async fn get_history(
     }
     let cache = cache.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        history_page(&cache, &path, limit, skip, branch.as_deref(), all)
+        history_page(
+            &cache,
+            &path,
+            limit,
+            skip,
+            branch.as_deref(),
+            all,
+            if_fingerprint.as_deref(),
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -576,7 +684,7 @@ mod tests {
     use super::*;
 
     fn page(cache: &HistoryCache, repo: &str, limit: u32, skip: u32) -> HistoryPage {
-        history_page(cache, repo, limit, skip, None, true).expect("history page")
+        history_page(cache, repo, limit, skip, None, true, None).expect("history page")
     }
 
     fn fast_import(repo: &str, stream: &str) {
@@ -665,6 +773,85 @@ mod tests {
         let after = page(&cache, &repo, 10, 0);
         assert_eq!(after.total, Some(2));
         assert_eq!(after.commits[0].message, "second");
+    }
+
+    fn page_if(cache: &HistoryCache, repo: &str, fingerprint: &str) -> HistoryPage {
+        history_page(cache, repo, 10, 0, None, true, Some(fingerprint)).expect("history page")
+    }
+
+    #[test]
+    fn a_matching_fingerprint_gets_an_unchanged_page_without_rows() {
+        let (_dir, repo) = init_repo();
+        let cache = HistoryCache::default();
+        let first = page(&cache, &repo, 10, 0);
+        assert!(!first.unchanged);
+
+        let again = page_if(&cache, &repo, &first.fingerprint);
+        assert!(again.unchanged);
+        assert!(again.commits.is_empty() && again.graph.commits.is_empty());
+        assert_eq!(again.total, Some(1));
+
+        commit_file(&repo, "file.txt", "second\n", "second");
+        let after = page_if(&cache, &repo, &first.fingerprint);
+        assert!(!after.unchanged);
+        assert_ne!(after.fingerprint, first.fingerprint);
+        assert_eq!(after.commits[0].message, "second");
+    }
+
+    #[test]
+    fn a_new_tag_changes_the_fingerprint_but_keeps_the_walk() {
+        let (_dir, repo) = init_repo();
+        let cache = HistoryCache::default();
+        let first = page(&cache, &repo, 10, 0);
+        let walk = cache.cached_walk(&repo, "*all").expect("cached walk");
+
+        git_ok(&repo, &["tag", "v1"]);
+        let tagged = page_if(&cache, &repo, &first.fingerprint);
+
+        assert!(!tagged.unchanged, "decorations changed");
+        assert!(tagged.commits[0].refs.iter().any(|r| r.name == "v1"));
+        let after = cache.cached_walk(&repo, "*all").expect("cached walk");
+        assert!(Arc::ptr_eq(&walk, &after), "the walk was rebuilt");
+    }
+
+    #[test]
+    fn a_checkout_to_a_walked_tip_redecorates_without_walking() {
+        let (_dir, repo) = init_empty_repo();
+        commit_file(&repo, "file.txt", "base\n", "base");
+        git_ok(&repo, &["checkout", "-b", "feature"]);
+        commit_file(&repo, "feature.txt", "f\n", "feature work");
+        let cache = HistoryCache::default();
+        let on_feature = page(&cache, &repo, 10, 0);
+        assert!(on_feature.commits[0].on_current_branch);
+        let walk = cache.cached_walk(&repo, "*all").expect("cached walk");
+
+        git_ok(&repo, &["checkout", "main"]);
+        let on_main = page(&cache, &repo, 10, 0);
+
+        let feature_row = on_main
+            .commits
+            .iter()
+            .find(|c| c.message == "feature work")
+            .expect("feature commit");
+        assert!(!feature_row.on_current_branch);
+        let after = cache.cached_walk(&repo, "*all").expect("cached walk");
+        assert!(Arc::ptr_eq(&walk, &after), "the walk was rebuilt");
+    }
+
+    #[test]
+    fn the_walk_key_follows_tips_not_names() {
+        let (_dir, repo) = init_repo();
+        let handle = Repository::open(&repo).expect("open repository");
+        let key = || walk_key(&handle, &Scope::All);
+        let before = key();
+
+        git_ok(&repo, &["branch", "side"]);
+        git_ok(&repo, &["tag", "-a", "v1", "-m", "release"]);
+        git_ok(&repo, &["checkout", "side"]);
+        assert_eq!(key(), before);
+
+        commit_file(&repo, "file.txt", "second\n", "second");
+        assert_ne!(key(), before);
     }
 
     #[test]
@@ -772,10 +959,10 @@ mod tests {
         git_ok(&repo, &["checkout", "main"]);
 
         let cache = HistoryCache::default();
-        let main_only = history_page(&cache, &repo, 50, 0, None, false).unwrap();
+        let main_only = history_page(&cache, &repo, 50, 0, None, false, None).unwrap();
         assert_eq!(main_only.total, Some(1));
 
-        let feature = history_page(&cache, &repo, 50, 0, Some("feature"), false).unwrap();
+        let feature = history_page(&cache, &repo, 50, 0, Some("feature"), false, None).unwrap();
         assert_eq!(feature.total, Some(2));
         assert!(!feature.commits[0].on_current_branch);
     }
@@ -887,9 +1074,9 @@ mod tests {
         git_ok(&repo, &["branch", "side"]);
 
         let cache = HistoryCache::default();
-        history_page(&cache, &repo, 10, 0, None, true).expect("all scope");
-        history_page(&cache, &repo, 10, 0, None, false).expect("head scope");
-        history_page(&cache, &repo, 10, 0, Some("side"), false).expect("branch scope");
+        history_page(&cache, &repo, 10, 0, None, true, None).expect("all scope");
+        history_page(&cache, &repo, 10, 0, None, false, None).expect("head scope");
+        history_page(&cache, &repo, 10, 0, Some("side"), false, None).expect("branch scope");
 
         assert_eq!(
             cache.cached_scopes(&repo),
@@ -941,7 +1128,7 @@ mod tests {
         commit_file(&repo, "file.txt", "more\n", "on ñandú");
 
         let cache = HistoryCache::default();
-        let scoped = history_page(&cache, &repo, 50, 0, Some("rama/ñandú"), false).unwrap();
+        let scoped = history_page(&cache, &repo, 50, 0, Some("rama/ñandú"), false, None).unwrap();
         assert_eq!(scoped.total, Some(2));
         assert_eq!(scoped.commits[0].message, "on ñandú");
     }

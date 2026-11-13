@@ -172,7 +172,7 @@ pub async fn git_log(
     let cache = cache.inner().clone();
     blocking(move || {
         let all = branch.is_none();
-        match history_page(&cache, &path, limit, skip, branch.as_deref(), all) {
+        match history_page(&cache, &path, limit, skip, branch.as_deref(), all, None) {
             Ok(page) => Ok(page.commits),
             Err(_) => git_log_shell(&path, limit, skip, branch.as_deref()),
         }
@@ -194,6 +194,7 @@ mod tests {
             skip,
             branch,
             branch.is_none(),
+            None,
         )
         .expect("history page")
         .commits

@@ -145,7 +145,8 @@ export class TauriGitService {
   /**
    * Paged history plus the graph rows for the same page. Prefer this over
    * `gitLog` + `getGraphData`: it is one round-trip and the lane assignment
-   * stays stable across pages.
+   * stays stable across pages. With the fingerprint of the rows already held,
+   * an unchanged history answers `unchanged` with no rows.
    */
   getHistory(
     path: string,
@@ -153,6 +154,7 @@ export class TauriGitService {
     skip: number,
     branch: string | null = null,
     all = true,
+    ifFingerprint: string | null = null,
   ): Promise<HistoryPage> {
     return invoke<HistoryPage>('get_history', {
       path,
@@ -160,6 +162,7 @@ export class TauriGitService {
       skip,
       branch,
       all,
+      ifFingerprint,
     });
   }
 
@@ -238,8 +241,12 @@ export class TauriGitService {
 
   // ── Working tree ────────────────────────────────────────────────────────
 
-  getWorkingChanges(path: string): Promise<WorkingChanges> {
-    return invoke<WorkingChanges>('get_working_changes', { path });
+  /** With the fingerprint of the lists already held, an identical status answers `unchanged`. */
+  getWorkingChanges(
+    path: string,
+    ifFingerprint: string | null = null,
+  ): Promise<WorkingChanges> {
+    return invoke<WorkingChanges>('get_working_changes', { path, ifFingerprint });
   }
 
   getDiff(path: string, file: string | null, staged: boolean): Promise<string> {

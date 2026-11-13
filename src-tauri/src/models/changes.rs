@@ -6,6 +6,10 @@ pub struct WorkingChanges {
     pub unstaged: Vec<FileChange>,
     pub untracked: Vec<String>,
     pub conflicted: Vec<String>,
+    /// Hash of the raw `git status` output these lists were parsed from.
+    pub fingerprint: String,
+    /// The caller's fingerprint still matches; every list is empty.
+    pub unchanged: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

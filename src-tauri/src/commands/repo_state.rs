@@ -87,13 +87,22 @@ pub(crate) fn read_repo_state(path: &str) -> Result<RepoStateInfo, String> {
         (RepoState::Clean, None, None)
     };
 
+    // Only an operation in progress reads this list; conflicts outside one (a
+    // `stash pop`) reach the UI through `git status` and `get_conflicts`, so
+    // the common clean refresh skips parsing the whole index.
+    let conflicted_files = if state == RepoState::Clean {
+        Vec::new()
+    } else {
+        conflicted_files(&repo)
+    };
+
     Ok(RepoStateInfo {
         state,
         head_detached: repo.head_detached().unwrap_or(false),
         head_sha: head_sha(&repo),
         rebase_step,
         rebase_total,
-        conflicted_files: conflicted_files(&repo),
+        conflicted_files,
     })
 }
 
@@ -110,6 +119,7 @@ mod tests {
     use super::*;
     use crate::commands::history::testutil::{
         commit_file, conflict_repo, conflict_repo_named, git, git_ok, init_empty_repo, init_repo,
+        write_file,
     };
     use tempfile::TempDir;
 
@@ -220,6 +230,22 @@ mod tests {
         let info = read_repo_state(&repo).unwrap();
         assert_eq!(info.state, RepoState::Clean);
         assert!(!info.head_detached);
+        assert!(info.conflicted_files.is_empty());
+    }
+
+    #[test]
+    fn conflicts_outside_an_operation_are_left_to_the_status() {
+        let (_dir, repo) = init_repo();
+        write_file(&repo, "a.txt", "stashed\n");
+        git_ok(&repo, &["stash"]);
+        commit_file(&repo, "a.txt", "committed\n", "move on");
+        assert!(
+            !git(&repo, &["stash", "pop"]).status.success(),
+            "stash pop was expected to conflict"
+        );
+
+        let info = read_repo_state(&repo).unwrap();
+        assert_eq!(info.state, RepoState::Clean);
         assert!(info.conflicted_files.is_empty());
     }
 

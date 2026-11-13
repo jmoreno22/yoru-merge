@@ -28,6 +28,7 @@ import type {
   RepoChangeKind,
   RepoEntry,
   RepoInfo,
+  RepoWatchErrorPayload,
   ResetResult,
   SequencerResult,
   WritableConfigKey,
@@ -60,18 +61,11 @@ import type {
   ResetMode,
   StashSaveOptions,
 } from './tauri-git.service';
+import { WATCHER_DEBOUNCE_MS, watcherHoldMs } from './watcher-timing';
 import { RepoState, WorkspaceStore } from './workspace.store';
 
+export { WATCHER_DEBOUNCE_MS } from './watcher-timing';
 export type { DiffSource } from './workspace.store';
-
-/**
- * How long after our own refresh a watcher event is treated as our own echo.
- * Long enough to cover the `.git` writes a refresh itself provokes.
- */
-const OWN_WRITE_WINDOW_MS = 1000;
-
-/** Debounce for watcher-driven refreshes; absorbs bursts from an IDE save. */
-export const WATCHER_DEBOUNCE_MS = 400;
 
 /**
  * Facade over the active repository tab.
@@ -830,24 +824,30 @@ export class CurrentRepoService {
     return computed(() => select(this.activeOrFallback())());
   }
 
+  /** Kinds seen since the last debounced refresh, per tab. */
+  private readonly pendingKinds = new WeakMap<RepoState, Set<RepoChangeKind>>();
+
   /**
    * Subscribes once to the backend `repo-changed` event and routes each event
    * to the matching tab.
    *
-   * Events are dropped while an operation is running or right after our own
-   * refresh: git writes to `.git` on every command, so echoing them back
-   * would loop (refresh → fs event → refresh → …).
+   * Events are held, not run, while an operation is running or right after
+   * our own refresh: git writes to `.git` on every command, so running on
+   * each echo would loop (refresh → fs event → refresh → …). One refresh runs
+   * when the hold ends, and costs little when it was only an echo: history
+   * and status then come back `unchanged`.
    */
-  /** Kinds seen since the last debounced refresh, per tab. */
-  private readonly pendingKinds = new WeakMap<RepoState, Set<RepoChangeKind>>();
-
   private async ensureRepoChangeListener(): Promise<void> {
     if (this.repoUnlisten) return;
     try {
+      // First, so a failed `repo-changed` subscription retried later can only
+      // double this listener, whose toasts are deduped by key.
+      await listen<RepoWatchErrorPayload>('repo-watch-error', (event) => {
+        this.workspace.reportWatchError(event.payload.path, event.payload.message);
+      });
       this.repoUnlisten = await listen<RepoChangedPayload>('repo-changed', (event) => {
         const state = this.workspace.findByPath(event.payload.path);
         if (!state) return;
-        if (this.shouldIgnoreWatcherEvent(state)) return;
 
         // The backend emits one event per kind, so a checkout arrives as two.
         // The debounce collapses them into a single refresh, which has to
@@ -856,20 +856,31 @@ export class CurrentRepoService {
         pending.add(event.payload.kind);
         this.pendingKinds.set(state, pending);
 
-        state.setRefreshTimer(() => {
+        const run = (): void => {
+          const hold = this.watcherHold(state);
+          if (hold > 0) {
+            state.setRefreshTimer(run, hold);
+            return;
+          }
           const kinds = this.pendingKinds.get(state);
           this.pendingKinds.delete(state);
-          if (!kinds || this.shouldIgnoreWatcherEvent(state)) return;
-          void this.repoOps.refreshFor(state, kinds, 'external');
-        }, WATCHER_DEBOUNCE_MS);
+          if (kinds) void this.repoOps.refreshFor(state, kinds, 'external');
+        };
+        state.setRefreshTimer(
+          run,
+          Math.max(WATCHER_DEBOUNCE_MS, this.watcherHold(state)),
+        );
       });
     } catch {
       this.repoUnlisten = undefined;
     }
   }
 
-  private shouldIgnoreWatcherEvent(state: RepoState): boolean {
-    if (state.busy() || state.isFetching()) return true;
-    return Date.now() - state.lastRefreshAt < OWN_WRITE_WINDOW_MS;
+  private watcherHold(state: RepoState): number {
+    return watcherHoldMs(
+      Date.now(),
+      state.lastRefreshAt,
+      state.busy() || state.isFetching(),
+    );
   }
 }
