@@ -430,8 +430,8 @@ The window has no native decorations. Top to bottom:
 2. **Toolbar** — clustered controls (Fetch / Pull / Push · Branch / Merge /
    Stash), a centred command bar that opens the palette, and the branch chip,
    notifications, settings and theme on the right.
-3. **Icon rail** — Changes · History · Refs · Remotes · Tags · Stashes · Reflog,
-   with Settings at the bottom. It drives the `railView` preference; Remotes,
+3. **Icon rail** — Changes · History · Refs · Remotes · Tags · Stashes · Reflog.
+   It drives the `railView` preference; Remotes,
    Tags and Stashes are not separate views — they open the refs panel on that
    section, because everything they would show already lives there.
 4. **Workbench** — refs panel (collapsible, width persisted), the centre view,
@@ -447,9 +447,16 @@ The window has no native decorations. Top to bottom:
 5. **Repository-state banner** — above the workbench whenever git is parked in a
    merge, rebase, cherry-pick, revert or bisect. Sakura tone, and the only place
    Continue / Skip / Abort / Resolve live.
-6. **Status bar** — watcher light, branch and upstream, ahead/behind, HEAD sha,
-   detached-HEAD chip, change count, sequencer state, fetch progress, git
-   version.
+6. **Status bar** — watcher light, HEAD sha, detached-HEAD chip, change count,
+   sequencer state, fetch progress, git version.
+
+**One owner per fact.** The branch, its upstream and the ahead / behind counts
+are said by the toolbar's branch chip, and Settings is the toolbar's button —
+not also the status bar's and the rail's. `chromeLayout()`
+(`core/services/chrome-layout.ts`) names the owner and its fallback: while the
+toolbar is hidden (the preference, or zen) the status bar says the branch and
+the rail holds Settings, so neither drops out of the window. A new piece of
+chrome that would repeat a fact gets an entry there instead of a second copy.
 
 **The inspector column.** Four blocks, top to bottom, and only one of them
 grows — which one depends on the view:

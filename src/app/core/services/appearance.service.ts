@@ -1,5 +1,6 @@
 import { computed, effect, Injectable, inject } from '@angular/core';
 import { appearanceTokens, computeMetrics } from './appearance-metrics';
+import { chromeLayout } from './chrome-layout';
 import { findPalette, paletteTokens } from './color-palettes';
 import { PreferencesService } from './preferences.service';
 import { ThemeService } from './theme.service';
@@ -49,6 +50,11 @@ export class AppearanceService {
   readonly showToolbar = computed(
     () => !this.prefs.zenMode() && this.prefs.showToolbar(),
   );
+  /** Which chrome says the branch and holds Settings: one owner each. */
+  readonly chrome = computed(() =>
+    chromeLayout({ toolbarVisible: this.showToolbar() }),
+  );
+
   readonly showStatusBar = computed(
     () => !this.prefs.zenMode() && this.prefs.showStatusBar(),
   );

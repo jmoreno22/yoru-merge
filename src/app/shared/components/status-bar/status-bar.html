@@ -13,6 +13,9 @@
     <span class="font-mono">{{ activity().label }}</span>
   </span>
 
+  <!-- Only while the toolbar is hidden: its branch chip says the same three
+       things, and one window should say them once. -->
+  @if (saysBranch()) {
   @if (repo.currentBranch(); as branch) {
     <span class="flex min-w-0 items-center gap-1 font-mono" data-testid="status-branch">
       <ng-icon
@@ -48,6 +51,7 @@
         {{ repo.aheadBehind().behind }}
       </span>
     </span>
+  }
   }
 
   @if (detached()) {

@@ -6,6 +6,7 @@ import {
   inject,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { SettingsDialogService } from '../../../features/settings/settings-dialog.service';
@@ -35,6 +36,12 @@ export class Rail {
   private readonly repo = inject(CurrentRepoService);
   private readonly settings = inject(SettingsDialogService);
   private readonly shortcuts = inject(KeyboardShortcutsService);
+  private readonly appearance = inject(AppearanceService);
+
+  /** The toolbar holds Settings while it is on screen; the rail only then. */
+  protected readonly holdsSettings = computed(
+    () => this.appearance.chrome().settings === 'rail',
+  );
 
   protected readonly items = RAIL_ITEMS;
   protected readonly view = this.prefs.railView;

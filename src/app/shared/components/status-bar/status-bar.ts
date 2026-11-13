@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { AppearanceService } from '../../../core/services/appearance.service';
 import { CurrentRepoService } from '../../../core/services/current-repo.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 import { relativeTime, shortSha } from '../../../core/utils';
@@ -54,6 +55,12 @@ export class StatusBar {
   protected readonly repo = inject(CurrentRepoService);
   private readonly prefs = inject(PreferencesService);
   private readonly clipboard = inject(ClipboardService);
+  private readonly appearance = inject(AppearanceService);
+
+  /** The toolbar says the branch while it is on screen; this bar only then. */
+  protected readonly saysBranch = computed(
+    () => this.appearance.chrome().branch === 'status-bar',
+  );
 
   protected readonly gitVersion = signal('');
 
