@@ -46,6 +46,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Buttons and fields read as controls.** Secondary buttons and the toolbar
   groups sit on a raised surface instead of matching what is behind them.
 
+- **Faster and quieter.** Reading files in the repository no longer triggers a
+  refresh on Linux, and a refresh that finds nothing new sends no history or
+  status. Opening a repository, checking out and clicking a commit's files
+  start fewer git processes, large diffs and images travel as raw bytes, and
+  in a big diff a click only redraws the hunk it lands in. Settings, the
+  command palette and the less used dialogs and panels load when first opened.
+  A change made outside the app right after a refresh is no longer missed.
+
+- **File history shows the newest 1000 commits** and says so when there are
+  more.
+
 ### Fixed
 
 - **Compact density no longer clips the chrome.** Buttons, fields and rail
